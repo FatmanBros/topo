@@ -1,39 +1,13 @@
-// Organisms: Login form with i18n support
 import { LoginForm } from "../stores/login.tp"
 import { FormField } from "../molecules/form-field.tp"
+import { LangSwitcher } from "../molecules/lang-switcher.tp"
+import { SubmitButton } from "../atoms/button.tp"
+import { Text } from "../atoms/text.tp"
 
 LoginTitle -> {
     type: text
     content: t("sign_in")
     style: "text-2xl font-bold text-gray-900 mb-6 text-center"
-}
-
-SubmitButton -> {
-    type: submit
-    content: t("sign_in")
-    click: LoginForm.Submit
-    style: "w-full bg-indigo-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-indigo-700 transition cursor-pointer"
-}
-
-// Language switcher buttons
-LangJa -> {
-    type: button
-    content: "日本語"
-    click: $i18n.setLocale("ja")
-    style: "px-3 py-1 text-sm rounded bg-gray-200 hover:bg-gray-300 mr-2"
-}
-
-LangEn -> {
-    type: button
-    content: "English"
-    click: $i18n.setLocale("en")
-    style: "px-3 py-1 text-sm rounded bg-gray-200 hover:bg-gray-300"
-}
-
-LangSwitcher -> {
-    style: "flex justify-center mb-4"
-    align: horizontal
-    children: [LangJa, LangEn]
 }
 
 DebugInfo -> {
@@ -64,7 +38,7 @@ LoginFormCard -> {
             onInput: LoginForm.SetPassword
             errorMsg: $LoginForm.passwordError
         }),
-        SubmitButton,
+        SubmitButton(t("sign_in"), LoginForm.Submit),
         DebugInfo
     ]
 }

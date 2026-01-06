@@ -1,0 +1,5 @@
+Operator(symbol, label, color) -> {
+    type: text
+    content: symbol
+    style: color
+}

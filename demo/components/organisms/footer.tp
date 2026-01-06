@@ -1,0 +1,5 @@
+Footer -> {
+    type: text
+    content: "Built with topo - MIT License"
+    style: "text-gray-400 text-sm mt-16 pt-8 border-t border-gray-200"
+}

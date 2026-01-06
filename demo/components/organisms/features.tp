@@ -1,0 +1,10 @@
+import { Card } from "../molecules/card.tp"
+
+Features -> {
+    style: "grid grid-cols-3 gap-6 mb-16"
+    children: [
+        Card("Flat Definitions", "Define components at the top level. Compose by reference with children: [A, B, C]"),
+        Card("NgRx-style State", "Built-in state with Actions, Reducers, Effects, and Selectors"),
+        Card("Auto API Services", "Define REST endpoints, get CRUD methods auto-generated")
+    ]
+}

@@ -18,6 +18,10 @@
 - [ ] LSP（IDE 補完・エラー表示）
 - [ ] Error Boundary（エラーハンドリングのコンポーネント化）
 
+### 構文
+
+- [ ] コンポーネントエイリアス構文（`Alias(args) -> Base(args, defaultValue)`）
+
 ### 設定
 
 - [ ] 環境変数の実装

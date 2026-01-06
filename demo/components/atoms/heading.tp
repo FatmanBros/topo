@@ -1,4 +1,4 @@
-Text(content, style) -> {
+Heading(content, style) -> {
     type: text
     content: content
     style: style

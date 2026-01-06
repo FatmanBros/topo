@@ -1,0 +1,22 @@
+Button(content, onClick, style) -> {
+    type: button
+    content: content
+    click: onClick
+    style: style
+}
+
+// TODO: コンポーネントエイリアス構文サポート後に以下に置き換え
+// PrimaryButton(content, onClick) -> Button(content, onClick, "w-full bg-indigo-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-indigo-700 transition")
+PrimaryButton(content, onClick) -> {
+    type: button
+    content: content
+    click: onClick
+    style: "w-full bg-indigo-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-indigo-700 transition"
+}
+
+SubmitButton(content, onClick) -> {
+    type: submit
+    content: content
+    click: onClick
+    style: "w-full bg-indigo-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-indigo-700 transition cursor-pointer"
+}
