@@ -409,6 +409,7 @@ impl JsCodegen {
 
     fn generate_declaration(&mut self, decl: &Declaration) {
         match decl {
+            Declaration::Import(_) => {} // Imports are resolved at build time
             Declaration::Component(comp) => self.generate_component(comp),
             Declaration::Store(store) => self.generate_store(store),
             Declaration::ApiService(api) => self.generate_api_service(api),
@@ -1160,6 +1161,7 @@ impl TsCodegen {
 
     fn generate_declaration(&mut self, decl: &Declaration) {
         match decl {
+            Declaration::Import(_) => {} // Imports are resolved at build time
             Declaration::Component(comp) => self.generate_component_types(comp),
             Declaration::Store(store) => self.generate_store_types(store),
             Declaration::ApiService(api) => self.generate_api_types(api),

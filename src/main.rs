@@ -4,6 +4,9 @@ use std::fs;
 use std::path::PathBuf;
 use tiny_http::{Response, Server};
 
+use std::collections::{HashMap, HashSet};
+
+use topo::ast::{Declaration, Program};
 use topo::codegen::JsCodegen;
 use topo::config::{Config, BuildMode};
 use topo::lexer::Lexer;
@@ -286,25 +289,32 @@ fn build_project(input: &PathBuf, output: &PathBuf, mode: &str) -> Result<()> {
     // Create output directory
     fs::create_dir_all(output)?;
 
-    // Find all .tp files
-    let tp_files = find_tp_files(input)?;
-    println!("  Found {} .tp files", tp_files.len());
+    // Find all .tp files or use single file
+    let entry_files = find_tp_files(input)?;
+    println!("  Found {} .tp files", entry_files.len());
 
+    // Parse all files and resolve imports
+    let mut parsed_files: HashMap<PathBuf, Program> = HashMap::new();
+    let mut compile_order: Vec<PathBuf> = Vec::new();
+
+    // Parse entry files and their dependencies
+    for file in &entry_files {
+        resolve_imports(file, input, &mut parsed_files, &mut compile_order)?;
+    }
+
+    println!("  Compiling {} files in dependency order", compile_order.len());
+
+    // Generate code in dependency order
     let mut all_output = String::new();
+    let mut codegen = JsCodegen::new();
 
-    for file in &tp_files {
+    for file in &compile_order {
         println!("  Compiling: {:?}", file);
-
-        let source = fs::read_to_string(file)?;
-        let mut lexer = Lexer::new(&source);
-        let tokens = lexer.tokenize()?;
-        let mut parser = TopoParser::new(tokens);
-        let program = parser.parse()?;
-        let mut codegen = JsCodegen::new();
-        let js = codegen.generate(&program);
-
-        all_output.push_str(&js);
-        all_output.push('\n');
+        if let Some(program) = parsed_files.get(file) {
+            let js = codegen.generate(program);
+            all_output.push_str(&js);
+            all_output.push('\n');
+        }
     }
 
     // Write output
@@ -318,6 +328,92 @@ fn build_project(input: &PathBuf, output: &PathBuf, mode: &str) -> Result<()> {
     fs::write(output.join("index.html"), html)?;
 
     Ok(())
+}
+
+/// Recursively resolve imports and build dependency order
+fn resolve_imports(
+    file: &PathBuf,
+    base_dir: &PathBuf,
+    parsed: &mut HashMap<PathBuf, Program>,
+    order: &mut Vec<PathBuf>,
+) -> Result<()> {
+    // Normalize path
+    let file = if file.is_absolute() {
+        file.clone()
+    } else {
+        std::env::current_dir()?.join(file)
+    };
+    let file = file.canonicalize().unwrap_or(file);
+
+    // Skip if already parsed
+    if parsed.contains_key(&file) {
+        return Ok(());
+    }
+
+    // Parse the file
+    let source = fs::read_to_string(&file)?;
+    let mut lexer = Lexer::new(&source);
+    let tokens = lexer.tokenize()?;
+    let mut parser = TopoParser::new(tokens);
+    let program = parser.parse()?;
+
+    // Find imports in this file
+    let imports: Vec<String> = program
+        .declarations
+        .iter()
+        .filter_map(|decl| {
+            if let Declaration::Import(import) = decl {
+                Some(import.path.clone())
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    // Store the parsed program
+    parsed.insert(file.clone(), program);
+
+    // Resolve imports first (dependencies before dependents)
+    let file_dir = file.parent().unwrap_or(base_dir);
+    for import_path in imports {
+        let import_file = resolve_import_path(&import_path, file_dir, base_dir)?;
+        resolve_imports(&import_file, base_dir, parsed, order)?;
+    }
+
+    // Add this file to the order (after its dependencies)
+    if !order.contains(&file) {
+        order.push(file);
+    }
+
+    Ok(())
+}
+
+/// Resolve an import path relative to the current file or base directory
+fn resolve_import_path(import_path: &str, file_dir: &std::path::Path, base_dir: &PathBuf) -> Result<PathBuf> {
+    // Try relative to current file first
+    let relative_path = file_dir.join(import_path);
+    if relative_path.exists() {
+        return Ok(relative_path.canonicalize()?);
+    }
+
+    // Try with .tp extension
+    let with_ext = file_dir.join(format!("{}.tp", import_path));
+    if with_ext.exists() {
+        return Ok(with_ext.canonicalize()?);
+    }
+
+    // Try relative to base directory
+    let base_relative = base_dir.join(import_path);
+    if base_relative.exists() {
+        return Ok(base_relative.canonicalize()?);
+    }
+
+    let base_with_ext = base_dir.join(format!("{}.tp", import_path));
+    if base_with_ext.exists() {
+        return Ok(base_with_ext.canonicalize()?);
+    }
+
+    anyhow::bail!("Cannot resolve import: {} (looked in {:?} and {:?})", import_path, file_dir, base_dir)
 }
 
 fn generate_html(config: &Config) -> String {

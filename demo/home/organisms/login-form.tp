@@ -1,4 +1,7 @@
 // Organisms: Login form
+import "../stores/login.tp"
+import "../atoms/input.tp"
+import "../molecules/form-field.tp"
 
 LoginTitle -> {
     type: text
@@ -28,21 +31,28 @@ SubmitButton -> {
     type: button
     content: "Sign In"
     click: LoginForm.Submit
-    style: "w-full bg-indigo-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-indigo-700 transition"
+    style: "w-full bg-indigo-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-indigo-700 transition cursor-pointer"
 }
 
-LoginForm -> {
-    style: "bg-white p-8 rounded-xl shadow-lg max-w-md mx-auto"
+DebugInfo -> {
+    type: text
+    content: $LoginForm.email
+    style: "text-sm text-gray-500 mt-4 text-center"
+}
+
+LoginFormCard -> {
+    style: "bg-white p-8 rounded-xl shadow-lg max-w-md w-full"
     align: vertical
     children: [
         LoginTitle,
         EmailField,
         PasswordField,
-        SubmitButton
+        SubmitButton,
+        DebugInfo
     ]
 }
 
-LoginPage -> {
-    style: "min-h-screen bg-gray-100 flex items-center justify-center p-4"
-    children: [LoginForm]
+App -> {
+    style: "min-h-screen bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center p-4"
+    children: [LoginFormCard]
 }
