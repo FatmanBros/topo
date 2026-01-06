@@ -44,6 +44,7 @@ impl JsCodegen {
                 "click" | "submit" | "change" | "input" | "focus" | "blur"
                     | "keydown" | "keyup" | "keypress" | "mousedown" | "mouseup"
                     | "mouseover" | "mouseout" | "mouseenter" | "mouseleave"
+                    | "onInput"
             )
         } else {
             false
@@ -221,7 +222,7 @@ impl JsCodegen {
         self.emit_line("");
         self.emit_line("function renderVdom(vdom) {");
         self.emit_line("  if (!vdom) return '';");
-        self.emit_line("  const { type, content, value, style, children, align } = vdom;");
+        self.emit_line("  const { type, content, value, style, children, align, inputType, placeholder } = vdom;");
         self.emit_line("  const styleAttr = style ? ` class=\"${style}\"` : '';");
         self.emit_line("  const flexClass = align === 'horizontal' ? ' flex flex-row' : align === 'vertical' ? ' flex flex-col' : '';");
         self.emit_line("  ");
@@ -230,6 +231,12 @@ impl JsCodegen {
         self.emit_line("  }");
         self.emit_line("  if (type === 'button') {");
         self.emit_line("    return `<button${styleAttr} data-click=\"true\">${content || ''}</button>`;");
+        self.emit_line("  }");
+        self.emit_line("  if (type === 'input') {");
+        self.emit_line("    const inputTypeAttr = inputType || 'text';");
+        self.emit_line("    const placeholderAttr = placeholder ? ` placeholder=\"${placeholder}\"` : '';");
+        self.emit_line("    const valueAttr = value !== undefined ? ` value=\"${value}\"` : '';");
+        self.emit_line("    return `<input type=\"${inputTypeAttr}\"${styleAttr}${placeholderAttr}${valueAttr} data-input=\"true\" />`;");
         self.emit_line("  }");
         self.emit_line("  if (children) {");
         self.emit_line("    const inner = children.map(c => typeof c === 'function' ? renderVdom(c()) : renderVdom(c)).join('');");
@@ -243,6 +250,10 @@ impl JsCodegen {
         self.emit_line("    const handler = findClickHandler(vdom, i);");
         self.emit_line("    if (handler) btn.onclick = handler;");
         self.emit_line("  });");
+        self.emit_line("  el.querySelectorAll('[data-input]').forEach((input, i) => {");
+        self.emit_line("    const handler = findInputHandler(vdom, i);");
+        self.emit_line("    if (handler) input.oninput = (e) => handler(e.target.value);");
+        self.emit_line("  });");
         self.emit_line("}");
         self.emit_line("");
         self.emit_line("function findClickHandler(vdom, index, count = { n: 0 }) {");
@@ -252,6 +263,19 @@ impl JsCodegen {
         self.emit_line("    for (const c of vdom.children) {");
         self.emit_line("      const child = typeof c === 'function' ? c() : c;");
         self.emit_line("      const h = findClickHandler(child, index, count);");
+        self.emit_line("      if (h) return h;");
+        self.emit_line("    }");
+        self.emit_line("  }");
+        self.emit_line("  return null;");
+        self.emit_line("}");
+        self.emit_line("");
+        self.emit_line("function findInputHandler(vdom, index, count = { n: 0 }) {");
+        self.emit_line("  if (!vdom) return null;");
+        self.emit_line("  if (vdom.input && count.n++ === index) return vdom.input;");
+        self.emit_line("  if (vdom.children) {");
+        self.emit_line("    for (const c of vdom.children) {");
+        self.emit_line("      const child = typeof c === 'function' ? c() : c;");
+        self.emit_line("      const h = findInputHandler(child, index, count);");
         self.emit_line("      if (h) return h;");
         self.emit_line("    }");
         self.emit_line("  }");

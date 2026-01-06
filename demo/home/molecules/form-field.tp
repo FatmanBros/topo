@@ -1,0 +1,23 @@
+// Molecules: Form field components
+
+Label(text) -> {
+    type: text
+    content: text
+    style: "block text-sm font-medium text-gray-700 mb-2"
+}
+
+ErrorText(msg) -> {
+    type: text
+    content: msg
+    style: "text-red-500 text-sm mt-1"
+}
+
+FormField(label, inputType, placeholder, value, onInput, errorMsg) -> {
+    style: "mb-4"
+    align: vertical
+    children: [
+        Label(label),
+        Input(inputType, placeholder, value, onInput),
+        ErrorText(errorMsg)
+    ]
+}

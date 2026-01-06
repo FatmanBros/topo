@@ -1,0 +1,44 @@
+// Store: Login form state management
+
+LoginForm | {
+    State {
+        @required
+        @email
+        email: ""
+
+        @required
+        @minLength(8)
+        password: ""
+
+        emailError: ""
+        passwordError: ""
+        isSubmitting: false
+    }
+
+    Actions {
+        SetEmail(value)
+        SetPassword(value)
+        Submit
+        SetEmailError(msg)
+        SetPasswordError(msg)
+        SetSubmitting(value)
+    }
+
+    Reducers {
+        on SetEmail(value) {
+            email: value
+        }
+        on SetPassword(value) {
+            password: value
+        }
+        on SetEmailError(msg) {
+            emailError: msg
+        }
+        on SetPasswordError(msg) {
+            passwordError: msg
+        }
+        on SetSubmitting(value) {
+            isSubmitting: value
+        }
+    }
+}
