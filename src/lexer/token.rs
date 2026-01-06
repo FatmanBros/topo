@@ -88,6 +88,14 @@ pub enum TokenKind {
     Auth,
     Timeout,
 
+    // Keywords - Subscribe (WebSocket/SSE)
+    Subscribe,
+    Message,
+    Error,
+    Open,
+    Close,
+    FatArrow,   // =>
+
     // End of file
     Eof,
 }
@@ -157,6 +165,12 @@ impl std::fmt::Display for TokenKind {
             TokenKind::Headers => write!(f, "headers"),
             TokenKind::Auth => write!(f, "auth"),
             TokenKind::Timeout => write!(f, "timeout"),
+            TokenKind::Subscribe => write!(f, "subscribe"),
+            TokenKind::Message => write!(f, "message"),
+            TokenKind::Error => write!(f, "error"),
+            TokenKind::Open => write!(f, "open"),
+            TokenKind::Close => write!(f, "close"),
+            TokenKind::FatArrow => write!(f, "=>"),
             TokenKind::Eof => write!(f, "EOF"),
         }
     }

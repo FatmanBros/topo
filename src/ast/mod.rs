@@ -69,6 +69,10 @@ pub struct ApiServiceDef {
     pub headers: Option<Vec<Property>>,
     pub auth: Option<Expression>,
     pub timeout: Option<u32>,
+    /// WebSocket/SSE subscription URL
+    pub subscribe: Option<String>,
+    /// Event handlers for subscription
+    pub event_handlers: Vec<EventHandler>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -86,6 +90,24 @@ pub enum HttpMethod {
     Put,
     Patch,
     Delete,
+}
+
+/// Event handler for WebSocket/SSE subscriptions
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct EventHandler {
+    /// Event type: message, error, open, close
+    pub event: EventType,
+    /// Action to dispatch when event occurs
+    pub action: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum EventType {
+    Message,
+    Error,
+    Open,
+    Close,
 }
 
 // ============================================================================
