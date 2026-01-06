@@ -26,8 +26,22 @@ LoginFormCard -> {
     align: vertical
     children: [
         LoginTitle,
-        FormField("Email", "email", "Enter your email", $LoginForm.email, LoginForm.SetEmail, $LoginForm.emailError),
-        FormField("Password", "password", "Enter your password", $LoginForm.password, LoginForm.SetPassword, $LoginForm.passwordError),
+        FormField({
+            label: $LoginForm.email.label
+            inputType: "email"
+            placeholder: "メールアドレスを入力"
+            value: $LoginForm.email
+            onInput: LoginForm.SetEmail
+            errorMsg: $LoginForm.emailError
+        }),
+        FormField({
+            label: $LoginForm.password.label
+            inputType: "password"
+            placeholder: "パスワードを入力"
+            value: $LoginForm.password
+            onInput: LoginForm.SetPassword
+            errorMsg: $LoginForm.passwordError
+        }),
         SubmitButton,
         DebugInfo
     ]
