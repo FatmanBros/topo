@@ -719,7 +719,7 @@ impl JsCodegen {
                     self.indent -= 1;
                     self.emit_line("};");
                     self.indent -= 1;
-                    self.emit_line("}));");
+                    self.emit_line("});");
                     self.emit_line("");
                 }
             }
