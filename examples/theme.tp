@@ -1,0 +1,40 @@
+// Theme example
+
+Theme * {
+    primary: "#3b82f6"
+    secondary: "#6b7280"
+    background: "#f3f4f6"
+    text: "#1f2937"
+    accent: "#10b981"
+}
+
+Title -> {
+    type: text
+    content: "Theme Demo"
+    color: primary
+    style: "text-3xl font-bold"
+}
+
+Subtitle -> {
+    type: text
+    content: "Using CSS variables from Theme"
+    color: secondary
+}
+
+Card -> {
+    bg: primary
+    style: "p-4 rounded"
+    children: [CardText]
+}
+
+CardText -> {
+    type: text
+    content: "Primary colored card"
+    color: background
+}
+
+App -> {
+    style: "p-8"
+    align: vertical
+    children: [Title, Subtitle, Card]
+}
