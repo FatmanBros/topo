@@ -3,8 +3,10 @@ pub mod config;
 pub mod lexer;
 pub mod parser;
 pub mod codegen;
+pub mod typecheck;
 
 pub use ast::*;
 pub use config::Config;
 pub use lexer::Lexer;
 pub use parser::Parser;
+pub use typecheck::TypeChecker;

@@ -41,14 +41,23 @@ pub enum Declaration {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ComponentDef {
     pub name: String,
-    pub params: Vec<String>,
+    pub params: Vec<TypedParam>,
     pub properties: Vec<Property>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct TypedParam {
+    pub name: String,
+    pub type_annotation: Option<TypeAnnotation>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Property {
     pub key: String,
     pub value: Expression,
+    /// Type annotation for this property (e.g., name: string = "")
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub type_annotation: Option<TypeAnnotation>,
     /// Validation annotations for this property
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub annotations: Vec<Annotation>,
@@ -170,7 +179,39 @@ pub struct ActionDef {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Param {
     pub name: String,
-    pub type_annotation: Option<String>,
+    pub type_annotation: Option<TypeAnnotation>,
+}
+
+// ============================================================================
+// Type Annotations
+// ============================================================================
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "kind")]
+pub enum TypeAnnotation {
+    /// Primitive types: string, number, boolean
+    Primitive { name: String },
+
+    /// Array type: string[], number[]
+    Array { element_type: Box<TypeAnnotation> },
+
+    /// Optional type: string?
+    Optional { inner_type: Box<TypeAnnotation> },
+
+    /// Object type: { name: string, age: number }
+    Object { fields: Vec<TypedField> },
+
+    /// Union type: string | number
+    Union { types: Vec<TypeAnnotation> },
+
+    /// Reference to another type/store: User, LoginForm
+    Reference { name: String },
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct TypedField {
+    pub name: String,
+    pub type_annotation: TypeAnnotation,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
