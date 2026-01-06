@@ -224,11 +224,16 @@ impl JsCodegen {
         self.emit_line("  const el = document.querySelector(container);");
         self.emit_line("  if (!el) return;");
         self.emit_line("  const render = () => {");
-        self.emit_line("    const vdom = componentFn();");
+        self.emit_line("    // Use routed page if available, otherwise use provided component");
+        self.emit_line("    const page = currentPage || componentFn;");
+        self.emit_line("    const vdom = typeof page === 'function' ? page() : page;");
         self.emit_line("    el.innerHTML = renderVdom(vdom);");
         self.emit_line("    bindEvents(el, vdom);");
         self.emit_line("  };");
         self.emit_line("  stores.forEach(store => store.subscribe(render));");
+        self.emit_line("  // Re-render on route change");
+        self.emit_line("  window.addEventListener('popstate', render);");
+        self.emit_line("  document.addEventListener('DOMContentLoaded', () => { updateRoute(); render(); });");
         self.emit_line("  render();");
         self.emit_line("}");
         self.emit_line("");
@@ -243,6 +248,10 @@ impl JsCodegen {
         self.emit_line("  }");
         self.emit_line("  if (type === 'button') {");
         self.emit_line("    return `<button${styleAttr} data-click=\"true\">${content || ''}</button>`;");
+        self.emit_line("  }");
+        self.emit_line("  if (type === 'link') {");
+        self.emit_line("    const href = vdom.href || '#';");
+        self.emit_line("    return `<a href=\"${href}\"${styleAttr} data-link=\"true\">${content || ''}</a>`;");
         self.emit_line("  }");
         self.emit_line("  if (type === 'input') {");
         self.emit_line("    const inputTypeAttr = inputType || 'text';");
@@ -265,6 +274,12 @@ impl JsCodegen {
         self.emit_line("  el.querySelectorAll('[data-input]').forEach((input, i) => {");
         self.emit_line("    const handler = findInputHandler(vdom, i);");
         self.emit_line("    if (handler) input.oninput = (e) => handler(e.target.value);");
+        self.emit_line("  });");
+        self.emit_line("  el.querySelectorAll('[data-link]').forEach((link) => {");
+        self.emit_line("    link.onclick = (e) => {");
+        self.emit_line("      e.preventDefault();");
+        self.emit_line("      navigate(link.getAttribute('href'));");
+        self.emit_line("    };");
         self.emit_line("  });");
         self.emit_line("}");
         self.emit_line("");
@@ -293,6 +308,98 @@ impl JsCodegen {
         self.emit_line("  }");
         self.emit_line("  return null;");
         self.emit_line("}");
+        self.emit_line("");
+
+        // Router runtime
+        self.emit_router_runtime();
+    }
+
+    fn emit_router_runtime(&mut self) {
+        self.emit_line("// Router");
+        self.emit_line("const routeState = { path: '/', params: {}, query: {} };");
+        self.emit_line("const routes = [];");
+        self.emit_line("let currentPage = null;");
+        self.emit_line("");
+
+        // Route registration
+        self.emit_line("function registerRoute(pattern, component) {");
+        self.emit_line("  const paramNames = [];");
+        self.emit_line("  const regexPattern = pattern.replace(/\\[([^\\]]+)\\]/g, (_, name) => {");
+        self.emit_line("    if (name.startsWith('...')) {");
+        self.emit_line("      paramNames.push(name.slice(3));");
+        self.emit_line("      return '(.*)';");
+        self.emit_line("    }");
+        self.emit_line("    paramNames.push(name);");
+        self.emit_line("    return '([^/]+)';");
+        self.emit_line("  });");
+        self.emit_line("  routes.push({ pattern: new RegExp(`^${regexPattern}$`), paramNames, component });");
+        self.emit_line("}");
+        self.emit_line("");
+
+        // Route matching
+        self.emit_line("function matchRoute(path) {");
+        self.emit_line("  for (const route of routes) {");
+        self.emit_line("    const match = path.match(route.pattern);");
+        self.emit_line("    if (match) {");
+        self.emit_line("      const params = {};");
+        self.emit_line("      route.paramNames.forEach((name, i) => { params[name] = match[i + 1]; });");
+        self.emit_line("      return { component: route.component, params };");
+        self.emit_line("    }");
+        self.emit_line("  }");
+        self.emit_line("  return null;");
+        self.emit_line("}");
+        self.emit_line("");
+
+        // Parse query string
+        self.emit_line("function parseQuery(search) {");
+        self.emit_line("  const query = {};");
+        self.emit_line("  if (search) {");
+        self.emit_line("    new URLSearchParams(search).forEach((v, k) => { query[k] = v; });");
+        self.emit_line("  }");
+        self.emit_line("  return query;");
+        self.emit_line("}");
+        self.emit_line("");
+
+        // Navigate function
+        self.emit_line("function navigate(path) {");
+        self.emit_line("  history.pushState(null, '', path);");
+        self.emit_line("  updateRoute();");
+        self.emit_line("}");
+        self.emit_line("");
+
+        // Update route
+        self.emit_line("function updateRoute() {");
+        self.emit_line("  const path = location.pathname;");
+        self.emit_line("  const matched = matchRoute(path);");
+        self.emit_line("  routeState.path = path;");
+        self.emit_line("  routeState.query = parseQuery(location.search);");
+        self.emit_line("  if (matched) {");
+        self.emit_line("    routeState.params = matched.params;");
+        self.emit_line("    currentPage = matched.component;");
+        self.emit_line("  } else {");
+        self.emit_line("    routeState.params = {};");
+        self.emit_line("    currentPage = null;");
+        self.emit_line("  }");
+        self.emit_line("  stores.forEach(store => store.dispatch('__routeChange'));");
+        self.emit_line("}");
+        self.emit_line("");
+
+        // Router store
+        self.emit_line("const Router = {");
+        self.emit_line("  get state() { return routeState; },");
+        self.emit_line("  Navigate: navigate,");
+        self.emit_line("  subscribe(fn) { /* handled by stores */ }");
+        self.emit_line("};");
+        self.emit_line("stores.set('Router', Router);");
+        self.emit_line("");
+
+        // $route accessor
+        self.emit_line("const $route = routeState;");
+        self.emit_line("");
+
+        // Initialize router on load
+        self.emit_line("window.addEventListener('popstate', updateRoute);");
+        self.emit_line("document.addEventListener('DOMContentLoaded', updateRoute);");
     }
 
     fn emit_runtime_validators(&mut self) {
@@ -1121,6 +1228,14 @@ impl JsCodegen {
                 format!("{{ {} }}", props.join(", "))
             }
             Expression::Reference { store, path } => {
+                // Special handling for $route
+                if store == "route" {
+                    if path.is_empty() {
+                        return "$route".to_string();
+                    }
+                    return format!("$route.{}", path.join("."));
+                }
+
                 if path.is_empty() {
                     format!("{}.state", store)
                 } else if path.last().map(|s| s.as_str()) == Some("label") {

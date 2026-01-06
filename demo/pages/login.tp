@@ -1,0 +1,6 @@
+// Login page
+import { LoginApp } from "../home/organisms/login-form.tp"
+
+LoginPage -> {
+    children: [LoginApp]
+}

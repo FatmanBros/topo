@@ -1,0 +1,32 @@
+// User detail page (dynamic route)
+
+UserDetailTitle -> {
+    type: text
+    content: "User Detail"
+    style: "text-3xl font-bold text-gray-900 mb-4"
+}
+
+UserIdDisplay -> {
+    type: text
+    content: $route.params.id
+    style: "text-6xl font-mono text-blue-600 mb-4"
+}
+
+UserIdLabel -> {
+    type: text
+    content: "User ID from URL parameter"
+    style: "text-sm text-gray-500 mb-8"
+}
+
+BackToUsersLink -> {
+    type: link
+    href: "/users"
+    content: "Back to Users"
+    style: "px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+}
+
+UsersDetailPage -> {
+    style: "min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-purple-50 to-violet-100"
+    align: vertical
+    children: [UserDetailTitle, UserIdDisplay, UserIdLabel, BackToUsersLink]
+}
