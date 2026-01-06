@@ -1,0 +1,12 @@
+import { Text } from "../atoms/text.tp"
+import { Heading } from "../atoms/heading.tp"
+
+Hero -> {
+    style: "mb-16"
+    align: vertical
+    children: [
+        Heading("topo", "text-7xl font-black text-gray-900 mb-4"),
+        Text("A UI framework that eliminates nesting hell", "text-2xl text-gray-600 mb-6"),
+        Text("Write flat, readable UI code. No more callback pyramids or deeply nested components.", "text-lg text-gray-500 mb-10 max-w-xl")
+    ]
+}

@@ -1,0 +1,13 @@
+import { Heading } from "../atoms/heading.tp"
+import { Step } from "../molecules/step.tp"
+
+GettingStarted -> {
+    style: "mb-16"
+    align: vertical
+    children: [
+        Heading("Getting Started", "text-3xl font-bold text-gray-900 mb-6"),
+        Step("1. Install:  cargo install --path ."),
+        Step("2. Create:   topo new my-app"),
+        Step("3. Run:      cd my-app && topo start")
+    ]
+}

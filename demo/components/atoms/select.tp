@@ -1,9 +1,8 @@
-Input(inputType, placeholder, value, onInput, dataField) -> {
-    type: input
-    inputType: inputType
-    placeholder: placeholder
+Select(options, value, onInput, placeholder) -> {
+    type: select
+    options: options
     value: value
     input: onInput
-    dataField: dataField
+    placeholder: placeholder
     style: "w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition"
 }

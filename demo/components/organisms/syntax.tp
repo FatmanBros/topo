@@ -1,0 +1,14 @@
+import { Heading } from "../atoms/heading.tp"
+import { Operator } from "../molecules/operator.tp"
+
+Syntax -> {
+    style: "mb-16"
+    align: vertical
+    children: [
+        Heading("4 Definition Operators", "text-3xl font-bold text-gray-900 mb-6"),
+        Operator("->  Component (UI)", "Component", "font-mono text-lg bg-blue-50 text-blue-700 px-4 py-2 rounded mb-2"),
+        Operator("|   Store (State)", "Store", "font-mono text-lg bg-purple-50 text-purple-700 px-4 py-2 rounded mb-2"),
+        Operator("::  API Service", "API", "font-mono text-lg bg-green-50 text-green-700 px-4 py-2 rounded mb-2"),
+        Operator("{}  Method (Logic)", "Method", "font-mono text-lg bg-orange-50 text-orange-700 px-4 py-2 rounded mb-2")
+    ]
+}

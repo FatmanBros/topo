@@ -1,0 +1,11 @@
+import { Heading } from "../atoms/heading.tp"
+import { Code } from "../atoms/code.tp"
+
+Example -> {
+    style: "mb-16"
+    align: vertical
+    children: [
+        Heading("Example: Counter", "text-3xl font-bold text-gray-900 mb-6"),
+        Code("Counter | {\n    State { count: 0 }\n    Actions { Increment, Decrement }\n    Reducers {\n        on Increment { count: count + 1 }\n        on Decrement { count: count - 1 }\n    }\n}\n\nDisplay -> {\n    type: text\n    value: $Counter.count\n}\n\nButton -> {\n    type: button\n    content: \"+\"\n    click: Counter.Increment\n}")
+    ]
+}

@@ -1,0 +1,5 @@
+Logo(text, style) -> {
+    type: text
+    content: text
+    style: style
+}

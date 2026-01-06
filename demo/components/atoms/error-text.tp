@@ -1,0 +1,6 @@
+ErrorText(msg, dataError) -> {
+    type: text
+    content: msg
+    dataError: dataError
+    style: "text-red-500 text-sm mt-1"
+}
