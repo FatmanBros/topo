@@ -590,11 +590,52 @@ impl Parser {
     // ========================================================================
 
     fn property(&mut self) -> Result<Property, ParseError> {
+        // Parse annotations before the property
+        let annotations = self.parse_annotations()?;
+
         let key = self.expect_property_key()?;
         self.expect(TokenKind::Colon)?;
         let value = self.expression()?;
 
-        Ok(Property { key, value })
+        Ok(Property {
+            key,
+            value,
+            annotations,
+        })
+    }
+
+    // ========================================================================
+    // Annotations
+    // ========================================================================
+
+    fn parse_annotations(&mut self) -> Result<Vec<Annotation>, ParseError> {
+        let mut annotations = Vec::new();
+
+        while self.check(TokenKind::At) {
+            self.advance();
+            annotations.push(self.parse_annotation()?);
+        }
+
+        Ok(annotations)
+    }
+
+    fn parse_annotation(&mut self) -> Result<Annotation, ParseError> {
+        let name = self.expect_identifier()?;
+        let mut args = Vec::new();
+
+        // Check for optional arguments: @min(3), @pattern("[a-z]+")
+        if self.check(TokenKind::LParen) {
+            self.advance();
+            while !self.check(TokenKind::RParen) && !self.is_at_end() {
+                args.push(self.expression()?);
+                if !self.check(TokenKind::RParen) {
+                    let _ = self.match_token(TokenKind::Comma);
+                }
+            }
+            self.expect(TokenKind::RParen)?;
+        }
+
+        Ok(Annotation { name, args })
     }
 
     /// Accept identifiers or keywords as property keys
