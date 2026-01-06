@@ -346,13 +346,32 @@ fn build_project(input: &PathBuf, output: &PathBuf, mode: &str) -> Result<()> {
         all_output.push_str("\n");
     }
 
+    let mut has_app = false;
     for file in &compile_order {
         println!("  Compiling: {:?}", file);
         if let Some(program) = parsed_files.get(file) {
+            // Check if this file contains App component
+            for decl in &program.declarations {
+                if let Declaration::Component(comp) = decl {
+                    if comp.name == "App" {
+                        has_app = true;
+                    }
+                }
+            }
             let js = codegen.generate(program);
             all_output.push_str(&js);
             all_output.push('\n');
         }
+    }
+
+    // Add mount call at the end
+    // If App component exists, use it; otherwise if routes exist, let router handle it
+    if has_app {
+        all_output.push_str("// Mount app\n");
+        all_output.push_str("mount(App, '#app');\n");
+    } else if !routes.is_empty() {
+        all_output.push_str("// Mount with router\n");
+        all_output.push_str("mount(null, '#app');\n");
     }
 
     // Write output
@@ -547,7 +566,21 @@ fn generate_html(config: &Config) -> String {
 
 fn start_server(port: u16, output_dir: &PathBuf, open_browser: bool) -> Result<()> {
     let addr = format!("0.0.0.0:{}", port);
-    let server = Server::http(&addr).map_err(|e| anyhow::anyhow!("Failed to start server: {}", e))?;
+    let server = Server::http(&addr).map_err(|e| {
+        let err_str = e.to_string();
+        if err_str.contains("Address already in use") || err_str.contains("os error 98") {
+            anyhow::anyhow!(
+                "Port {} is already in use.\n\n\
+                 Try one of the following:\n\
+                 • Stop the other process using port {}\n\
+                 • Use a different port: topo start --port {}\n\
+                 • Kill the process: lsof -ti:{} | xargs kill -9",
+                port, port, port + 1, port
+            )
+        } else {
+            anyhow::anyhow!("Failed to start server: {}", e)
+        }
+    })?;
 
     println!();
     println!("  Server running at:");

@@ -98,16 +98,12 @@ impl JsCodegen {
     }
 
     pub fn generate(&mut self, program: &Program) -> String {
-        // First pass: collect API service names, find App component, collect theme and component params
-        let mut has_app = false;
+        // First pass: collect API service names, collect theme and component params
         for decl in &program.declarations {
             if let Declaration::ApiService(api) = decl {
                 self.api_service_names.insert(api.name.clone());
             }
             if let Declaration::Component(comp) = decl {
-                if comp.name == "App" {
-                    has_app = true;
-                }
                 // Collect component parameter names for object-style props conversion
                 if !comp.params.is_empty() {
                     let param_names: Vec<String> = comp.params.iter().map(|p| p.name.clone()).collect();
@@ -135,11 +131,8 @@ impl JsCodegen {
             self.emit_line("");
         }
 
-        // Auto-mount App component if it exists
-        if has_app {
-            self.emit_line("// Mount app");
-            self.emit_line("mount(App, '#app');");
-        }
+        // Note: mount is now handled by the build system to avoid duplicates
+        // when compiling multiple files
 
         std::mem::take(&mut self.output)
     }
