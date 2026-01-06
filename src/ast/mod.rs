@@ -49,6 +49,19 @@ pub struct ComponentDef {
 pub struct Property {
     pub key: String,
     pub value: Expression,
+    /// Validation annotations for this property
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub annotations: Vec<Annotation>,
+}
+
+// ============================================================================
+// Annotations (for validation)
+// ============================================================================
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Annotation {
+    pub name: String,
+    pub args: Vec<Expression>,
 }
 
 // ============================================================================

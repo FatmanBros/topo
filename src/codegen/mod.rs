@@ -169,6 +169,8 @@ impl JsCodegen {
         self.emit_line("// topo runtime");
         self.emit_line("const stores = new Map();");
         self.emit_line("");
+        self.emit_runtime_validators();
+        self.emit_line("");
         self.emit_line("function createStore(name, initialState) {");
         self.emit_line("  const state = { ...initialState };");
         self.emit_line("  const listeners = [];");
@@ -257,6 +259,130 @@ impl JsCodegen {
         self.emit_line("}");
     }
 
+    fn emit_runtime_validators(&mut self) {
+        self.emit_line("// Validators");
+        self.emit_line("const validators = {");
+        self.indent += 1;
+
+        // required
+        self.emit_line("required(value, _args, field) {");
+        self.emit_line("  if (value === null || value === undefined || value === '') {");
+        self.emit_line("    return { valid: false, error: `${field} is required` };");
+        self.emit_line("  }");
+        self.emit_line("  return { valid: true };");
+        self.emit_line("},");
+
+        // min - minimum value for numbers, minimum length for strings
+        self.emit_line("min(value, args, field) {");
+        self.emit_line("  const min = args[0];");
+        self.emit_line("  if (typeof value === 'string' && value.length < min) {");
+        self.emit_line("    return { valid: false, error: `${field} must be at least ${min} characters` };");
+        self.emit_line("  }");
+        self.emit_line("  if (typeof value === 'number' && value < min) {");
+        self.emit_line("    return { valid: false, error: `${field} must be at least ${min}` };");
+        self.emit_line("  }");
+        self.emit_line("  return { valid: true };");
+        self.emit_line("},");
+
+        // max - maximum value for numbers, maximum length for strings
+        self.emit_line("max(value, args, field) {");
+        self.emit_line("  const max = args[0];");
+        self.emit_line("  if (typeof value === 'string' && value.length > max) {");
+        self.emit_line("    return { valid: false, error: `${field} must be at most ${max} characters` };");
+        self.emit_line("  }");
+        self.emit_line("  if (typeof value === 'number' && value > max) {");
+        self.emit_line("    return { valid: false, error: `${field} must be at most ${max}` };");
+        self.emit_line("  }");
+        self.emit_line("  return { valid: true };");
+        self.emit_line("},");
+
+        // minLength - minimum length for strings
+        self.emit_line("minLength(value, args, field) {");
+        self.emit_line("  const min = args[0];");
+        self.emit_line("  if (typeof value === 'string' && value.length < min) {");
+        self.emit_line("    return { valid: false, error: `${field} must be at least ${min} characters` };");
+        self.emit_line("  }");
+        self.emit_line("  return { valid: true };");
+        self.emit_line("},");
+
+        // maxLength - maximum length for strings
+        self.emit_line("maxLength(value, args, field) {");
+        self.emit_line("  const max = args[0];");
+        self.emit_line("  if (typeof value === 'string' && value.length > max) {");
+        self.emit_line("    return { valid: false, error: `${field} must be at most ${max} characters` };");
+        self.emit_line("  }");
+        self.emit_line("  return { valid: true };");
+        self.emit_line("},");
+
+        // email
+        self.emit_line("email(value, _args, field) {");
+        self.emit_line("  const emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;");
+        self.emit_line("  if (typeof value === 'string' && !emailRegex.test(value)) {");
+        self.emit_line("    return { valid: false, error: `${field} must be a valid email address` };");
+        self.emit_line("  }");
+        self.emit_line("  return { valid: true };");
+        self.emit_line("},");
+
+        // pattern - regex pattern
+        self.emit_line("pattern(value, args, field) {");
+        self.emit_line("  const pattern = new RegExp(args[0]);");
+        self.emit_line("  if (typeof value === 'string' && !pattern.test(value)) {");
+        self.emit_line("    return { valid: false, error: `${field} does not match the required pattern` };");
+        self.emit_line("  }");
+        self.emit_line("  return { valid: true };");
+        self.emit_line("},");
+
+        // url
+        self.emit_line("url(value, _args, field) {");
+        self.emit_line("  try {");
+        self.emit_line("    new URL(value);");
+        self.emit_line("    return { valid: true };");
+        self.emit_line("  } catch {");
+        self.emit_line("    return { valid: false, error: `${field} must be a valid URL` };");
+        self.emit_line("  }");
+        self.emit_line("},");
+
+        // alphanumeric
+        self.emit_line("alphanumeric(value, _args, field) {");
+        self.emit_line("  if (typeof value === 'string' && !/^[a-zA-Z0-9]+$/.test(value)) {");
+        self.emit_line("    return { valid: false, error: `${field} must contain only letters and numbers` };");
+        self.emit_line("  }");
+        self.emit_line("  return { valid: true };");
+        self.emit_line("},");
+
+        // range - between min and max
+        self.emit_line("range(value, args, field) {");
+        self.emit_line("  const [min, max] = args;");
+        self.emit_line("  if (typeof value === 'number' && (value < min || value > max)) {");
+        self.emit_line("    return { valid: false, error: `${field} must be between ${min} and ${max}` };");
+        self.emit_line("  }");
+        self.emit_line("  return { valid: true };");
+        self.emit_line("},");
+
+        self.indent -= 1;
+        self.emit_line("};");
+        self.emit_line("");
+
+        // validate function
+        self.emit_line("function validate(data, rules) {");
+        self.emit_line("  const errors = {};");
+        self.emit_line("  for (const [field, fieldRules] of Object.entries(rules)) {");
+        self.emit_line("    const value = data[field];");
+        self.emit_line("    for (const rule of fieldRules) {");
+        self.emit_line("      const validator = validators[rule.name];");
+        self.emit_line("      if (validator) {");
+        self.emit_line("        const result = validator(value, rule.args || [], field);");
+        self.emit_line("        if (!result.valid) {");
+        self.emit_line("          errors[field] = errors[field] || [];");
+        self.emit_line("          errors[field].push(result.error);");
+        self.emit_line("        }");
+        self.emit_line("      }");
+        self.emit_line("    }");
+        self.emit_line("  }");
+        self.emit_line("  return { valid: Object.keys(errors).length === 0, errors };");
+        self.emit_line("}");
+    }
+
     fn generate_declaration(&mut self, decl: &Declaration) {
         match decl {
             Declaration::Component(comp) => self.generate_component(comp),
@@ -321,6 +447,30 @@ impl JsCodegen {
         self.indent -= 1;
         self.emit_line("});");
         self.emit_line("");
+
+        // Generate validation rules from annotations
+        if let Some(state) = &store.state {
+            let validation_rules = self.collect_validation_rules(&state.fields);
+            if !validation_rules.is_empty() {
+                self.emit_line(&format!("const {}ValidationRules = {{", store.name));
+                self.indent += 1;
+                for (i, (field, rules)) in validation_rules.iter().enumerate() {
+                    let comma = if i < validation_rules.len() - 1 { "," } else { "" };
+                    self.emit_line(&format!("{}: [{}]{}", field, rules.join(", "), comma));
+                }
+                self.indent -= 1;
+                self.emit_line("};");
+                self.emit_line("");
+
+                // Generate validate helper for this store
+                self.emit_line(&format!("function validate{}(data) {{", store.name));
+                self.indent += 1;
+                self.emit_line(&format!("return validate(data, {}ValidationRules);", store.name));
+                self.indent -= 1;
+                self.emit_line("}");
+                self.emit_line("");
+            }
+        }
 
         // Generate reducers
         if let Some(reducers) = &store.reducers {
@@ -909,6 +1059,31 @@ impl JsCodegen {
         self.output.push_str(&indent);
         self.output.push_str(line);
         self.output.push('\n');
+    }
+
+    /// Collect validation rules from property annotations
+    fn collect_validation_rules(&mut self, fields: &[Property]) -> Vec<(String, Vec<String>)> {
+        let mut result = Vec::new();
+
+        for field in fields {
+            if !field.annotations.is_empty() {
+                let rules: Vec<String> = field.annotations.iter()
+                    .map(|ann| {
+                        if ann.args.is_empty() {
+                            format!("{{ name: '{}' }}", ann.name)
+                        } else {
+                            let args: Vec<String> = ann.args.iter()
+                                .map(|arg| self.generate_expression(arg))
+                                .collect();
+                            format!("{{ name: '{}', args: [{}] }}", ann.name, args.join(", "))
+                        }
+                    })
+                    .collect();
+                result.push((field.key.clone(), rules));
+            }
+        }
+
+        result
     }
 }
 

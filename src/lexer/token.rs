@@ -34,6 +34,7 @@ pub enum TokenKind {
     Arrow,      // ->
     Pipe,       // |
     Dollar,     // $
+    At,         // @
 
     // Operators
     Plus,       // +
@@ -122,6 +123,7 @@ impl std::fmt::Display for TokenKind {
             TokenKind::Arrow => write!(f, "->"),
             TokenKind::Pipe => write!(f, "|"),
             TokenKind::Dollar => write!(f, "$"),
+            TokenKind::At => write!(f, "@"),
             TokenKind::Plus => write!(f, "+"),
             TokenKind::Minus => write!(f, "-"),
             TokenKind::Star => write!(f, "*"),
