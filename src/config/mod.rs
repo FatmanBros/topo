@@ -41,6 +41,29 @@ pub struct Config {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub plugins: Option<Vec<PluginConfig>>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub i18n: Option<I18nConfig>,
+}
+
+/// Internationalization configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct I18nConfig {
+    /// Available locales (e.g., ["ja", "en"])
+    pub locales: Vec<String>,
+
+    /// Default locale
+    #[serde(rename = "defaultLocale")]
+    pub default_locale: String,
+
+    /// Inline translations: { "key": { "ja": "日本語", "en": "English" } }
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub translations: Option<std::collections::HashMap<String, std::collections::HashMap<String, String>>>,
+
+    /// Path to translation files directory (e.g., "locales")
+    /// Files should be named {locale}.json
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub translations_dir: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -253,6 +276,7 @@ impl Default for Config {
             paths: Some(PathsConfig::default()),
             runtime: None,
             plugins: None,
+            i18n: None,
         }
     }
 }

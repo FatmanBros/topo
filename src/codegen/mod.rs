@@ -54,6 +54,15 @@ impl JsCodegen {
         }
     }
 
+    /// Check if current property is an input event handler that receives a value
+    fn is_input_event_handler(&self) -> bool {
+        if let Some(key) = &self.current_property_key {
+            matches!(key.as_str(), "onInput" | "input" | "change")
+        } else {
+            false
+        }
+    }
+
     /// Check if current property should have identifier values quoted
     fn should_quote_identifier(&self) -> bool {
         if let Some(key) = &self.current_property_key {
@@ -230,10 +239,13 @@ impl JsCodegen {
         self.emit_line("    el.innerHTML = renderVdom(vdom);");
         self.emit_line("    bindEvents(el, vdom);");
         self.emit_line("  };");
-        self.emit_line("  stores.forEach(store => store.subscribe(render));");
+        self.emit_line("  stores.forEach(store => store.subscribe && store.subscribe(render));");
         self.emit_line("  // Re-render on route change");
-        self.emit_line("  window.addEventListener('popstate', render);");
-        self.emit_line("  document.addEventListener('DOMContentLoaded', () => { updateRoute(); render(); });");
+        self.emit_line("  window.addEventListener('popstate', () => { updateRoute(); render(); });");
+        self.emit_line("  // Make render accessible for navigation");
+        self.emit_line("  __rerender = render;");
+        self.emit_line("  // Initial route setup and render");
+        self.emit_line("  updateRoute();");
         self.emit_line("  render();");
         self.emit_line("}");
         self.emit_line("");
@@ -319,6 +331,7 @@ impl JsCodegen {
         self.emit_line("const routeState = { path: '/', params: {}, query: {} };");
         self.emit_line("const routes = [];");
         self.emit_line("let currentPage = null;");
+        self.emit_line("let __rerender = () => {};");
         self.emit_line("");
 
         // Route registration
@@ -364,6 +377,7 @@ impl JsCodegen {
         self.emit_line("function navigate(path) {");
         self.emit_line("  history.pushState(null, '', path);");
         self.emit_line("  updateRoute();");
+        self.emit_line("  __rerender();");
         self.emit_line("}");
         self.emit_line("");
 
@@ -380,7 +394,7 @@ impl JsCodegen {
         self.emit_line("    routeState.params = {};");
         self.emit_line("    currentPage = null;");
         self.emit_line("  }");
-        self.emit_line("  stores.forEach(store => store.dispatch('__routeChange'));");
+        self.emit_line("  stores.forEach(store => store.dispatch && store.dispatch('__routeChange'));");
         self.emit_line("}");
         self.emit_line("");
 
@@ -722,6 +736,30 @@ impl JsCodegen {
                     self.emit_line("});");
                     self.emit_line("");
                 }
+            }
+
+            // Auto-generate Submit action handler that validates all fields
+            let validated_fields: Vec<&str> = state.fields.iter()
+                .filter(|f| !f.annotations.is_empty() && !f.annotations.iter().all(|a| a.name == "label"))
+                .map(|f| f.key.as_str())
+                .collect();
+
+            if !validated_fields.is_empty() {
+                self.emit_line(&format!("{}.on('Submit', (state) => {{", store.name));
+                self.indent += 1;
+                self.emit_line(&format!("const result = validate{}(state);", store.name));
+                self.emit_line("return {");
+                self.indent += 1;
+                self.emit_line("...state,");
+                for (i, field) in validated_fields.iter().enumerate() {
+                    let comma = if i < validated_fields.len() - 1 { "," } else { "" };
+                    self.emit_line(&format!("{}Error: result.errors.{} ? result.errors.{}[0] : ''{}", field, field, field, comma));
+                }
+                self.indent -= 1;
+                self.emit_line("};");
+                self.indent -= 1;
+                self.emit_line("});");
+                self.emit_line("");
             }
         }
 
@@ -1236,6 +1274,14 @@ impl JsCodegen {
                     return format!("$route.{}", path.join("."));
                 }
 
+                // Special handling for $i18n
+                if store == "i18n" {
+                    if path.is_empty() {
+                        return "$i18n".to_string();
+                    }
+                    return format!("$i18n.{}", path.join("."));
+                }
+
                 if path.is_empty() {
                     format!("{}.state", store)
                 } else if path.last().map(|s| s.as_str()) == Some("label") {
@@ -1252,7 +1298,12 @@ impl JsCodegen {
             Expression::ActionRef { store, action, args } => {
                 let args_str: Vec<String> = args.iter().map(|a| self.generate_expression(a)).collect();
                 if args_str.is_empty() {
-                    format!("() => dispatch('{}', '{}')", store, action)
+                    // For input handlers, pass the value as argument
+                    if self.is_input_event_handler() {
+                        format!("(value) => dispatch('{}', '{}', value)", store, action)
+                    } else {
+                        format!("() => dispatch('{}', '{}')", store, action)
+                    }
                 } else {
                     format!(
                         "() => dispatch('{}', '{}', {})",
@@ -1297,8 +1348,12 @@ impl JsCodegen {
                 // In event handler context, treat Store.Action as ActionRef
                 if self.is_event_handler() {
                     if let Expression::Identifier { name: store } = object.as_ref() {
-                        // Generate as action dispatch: () => dispatch('Store', 'Action')
-                        return format!("() => dispatch('{}', '{}')", store, property);
+                        // For input handlers, pass the value as argument
+                        if self.is_input_event_handler() {
+                            return format!("(value) => dispatch('{}', '{}', value)", store, property);
+                        } else {
+                            return format!("() => dispatch('{}', '{}')", store, property);
+                        }
                     }
                 }
                 // Check if object is an API service name - add Api suffix
@@ -1344,7 +1399,19 @@ impl JsCodegen {
                 }
 
                 let args_str: Vec<String> = args.iter().map(|a| self.generate_expression(a)).collect();
-                format!("{}({})", c, args_str.join(", "))
+                let call = format!("{}({})", c, args_str.join(", "));
+
+                // In event handler context (click, etc.), wrap method calls in arrow function
+                if self.is_event_handler() && !self.is_input_event_handler() {
+                    // Check if it's a method call on $i18n or similar
+                    if let Expression::MemberAccess { .. } = callee.as_ref() {
+                        return format!("() => {}", call);
+                    }
+                    if let Expression::Reference { .. } = callee.as_ref() {
+                        return format!("() => {}", call);
+                    }
+                }
+                call
             }
             Expression::Await { expr } => {
                 let e = self.generate_expression(expr);

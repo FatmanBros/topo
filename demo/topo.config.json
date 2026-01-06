@@ -1,0 +1,59 @@
+{
+  "project": {
+    "name": "my-app",
+    "version": "0.1.0"
+  },
+  "build": {
+    "mode": "spa",
+    "output": "dist"
+  },
+  "style": {
+    "tailwind": {
+      "enabled": true,
+      "version": "3.4.0",
+      "cdn": true
+    }
+  },
+  "i18n": {
+    "locales": ["ja", "en"],
+    "defaultLocale": "ja",
+    "translations": {
+      "sign_in": {
+        "ja": "サインイン",
+        "en": "Sign In"
+      },
+      "email": {
+        "ja": "メールアドレス",
+        "en": "Email"
+      },
+      "password": {
+        "ja": "パスワード",
+        "en": "Password"
+      },
+      "email_placeholder": {
+        "ja": "メールアドレスを入力",
+        "en": "Enter your email"
+      },
+      "password_placeholder": {
+        "ja": "パスワードを入力",
+        "en": "Enter your password"
+      },
+      "welcome": {
+        "ja": "topoへようこそ！",
+        "en": "Welcome to topo!"
+      },
+      "about": {
+        "ja": "topoについて",
+        "en": "About topo"
+      },
+      "users": {
+        "ja": "ユーザー",
+        "en": "Users"
+      },
+      "back_home": {
+        "ja": "ホームに戻る",
+        "en": "Back to Home"
+      }
+    }
+  }
+}

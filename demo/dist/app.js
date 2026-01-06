@@ -152,10 +152,13 @@ function mount(componentFn, container) {
     el.innerHTML = renderVdom(vdom);
     bindEvents(el, vdom);
   };
-  stores.forEach(store => store.subscribe(render));
+  stores.forEach(store => store.subscribe && store.subscribe(render));
   // Re-render on route change
-  window.addEventListener('popstate', render);
-  document.addEventListener('DOMContentLoaded', () => { updateRoute(); render(); });
+  window.addEventListener('popstate', () => { updateRoute(); render(); });
+  // Make render accessible for navigation
+  __rerender = render;
+  // Initial route setup and render
+  updateRoute();
   render();
 }
 
@@ -235,6 +238,7 @@ function findInputHandler(vdom, index, count = { n: 0 }) {
 const routeState = { path: '/', params: {}, query: {} };
 const routes = [];
 let currentPage = null;
+let __rerender = () => {};
 
 function registerRoute(pattern, component) {
   const paramNames = [];
@@ -272,6 +276,7 @@ function parseQuery(search) {
 function navigate(path) {
   history.pushState(null, '', path);
   updateRoute();
+  __rerender();
 }
 
 function updateRoute() {
@@ -286,7 +291,7 @@ function updateRoute() {
     routeState.params = {};
     currentPage = null;
   }
-  stores.forEach(store => store.dispatch('__routeChange'));
+  stores.forEach(store => store.dispatch && store.dispatch('__routeChange'));
 }
 
 const Router = {
@@ -302,312 +307,83 @@ window.addEventListener('popstate', updateRoute);
 document.addEventListener('DOMContentLoaded', updateRoute);
 
 
+// i18n Internationalization
+const __i18n = {
+  locale: 'ja',
+  locales: ["ja", "en"],
+  translations: {
+    'password_placeholder': {
+      'ja': 'パスワードを入力',
+      'en': 'Enter your password',
+    },
+    'email_placeholder': {
+      'ja': 'メールアドレスを入力',
+      'en': 'Enter your email',
+    },
+    'about': {
+      'ja': 'topoについて',
+      'en': 'About topo',
+    },
+    'sign_in': {
+      'ja': 'サインイン',
+      'en': 'Sign In',
+    },
+    'email': {
+      'en': 'Email',
+      'ja': 'メールアドレス',
+    },
+    'users': {
+      'en': 'Users',
+      'ja': 'ユーザー',
+    },
+    'password': {
+      'ja': 'パスワード',
+      'en': 'Password',
+    },
+    'back_home': {
+      'en': 'Back to Home',
+      'ja': 'ホームに戻る',
+    },
+    'welcome': {
+      'en': 'Welcome to topo!',
+      'ja': 'topoへようこそ！',
+    },
+  },
+  subscribers: [],
+};
+
+function t(key, params = {}) {
+  const translation = __i18n.translations[key];
+  if (!translation) return key;
+  let text = translation[__i18n.locale] || translation[Object.keys(translation)[0]] || key;
+  // Replace {{param}} placeholders
+  for (const [k, v] of Object.entries(params)) {
+    text = text.replace(new RegExp(`{{${k}}}`, 'g'), v);
+  }
+  return text;
+}
+
+const $i18n = {
+  get locale() { return __i18n.locale; },
+  get locales() { return __i18n.locales; },
+  setLocale(locale) {
+    if (__i18n.locales.includes(locale)) {
+      __i18n.locale = locale;
+      __i18n.subscribers.forEach(fn => fn());
+      __rerender();
+    }
+  },
+  subscribe(fn) { __i18n.subscribers.push(fn); },
+};
+stores.set('i18n', $i18n);
+
+
 // File-based routes
 registerRoute('/', AppPage);
 registerRoute('/about', AboutPage);
 registerRoute('/login', LoginPage);
 registerRoute('/users', UsersPage);
 registerRoute('/users/[id]', UsersDetailPage);
-
-function Text(content, style) {
-  return {
-    type: 'text',
-    content: content,
-    style: style
-  };
-}
-
-function Heading(content, level) {
-  return {
-    type: 'text',
-    content: content,
-    style: level
-  };
-}
-
-function Code(content) {
-  return {
-    type: 'text',
-    content: content,
-    style: 'font-mono text-sm bg-gray-900 text-green-400 p-6 rounded-xl whitespace-pre-wrap'
-  };
-}
-
-function Badge(content, color) {
-  return {
-    type: 'text',
-    content: content,
-    style: color
-  };
-}
-
-
-
-function Card(title, desc) {
-  return {
-    style: 'bg-white p-6 rounded-xl shadow-sm border border-gray-100',
-    align: 'vertical',
-    children: [Text(title, 'text-xl font-semibold text-gray-800 mb-2'), Text(desc, 'text-gray-600')]
-  };
-}
-
-function NavItem(label) {
-  return {
-    type: 'text',
-    content: label,
-    style: 'text-gray-700 hover:text-indigo-600 cursor-pointer mb-2'
-  };
-}
-
-function Step(content) {
-  return {
-    type: 'text',
-    content: content,
-    style: 'font-mono bg-gray-100 px-4 py-3 rounded mb-3'
-  };
-}
-
-function Operator(symbol, label, color) {
-  return {
-    type: 'text',
-    content: symbol,
-    style: color
-  };
-}
-
-
-
-
-function Hero() {
-  return {
-    style: 'mb-16',
-    align: 'vertical',
-    children: [Heading('topo', 'text-7xl font-black text-gray-900 mb-4'), Text('A UI framework that eliminates nesting hell', 'text-2xl text-gray-600 mb-6'), Text('Write flat, readable UI code. No more callback pyramids or deeply nested components.', 'text-lg text-gray-500 mb-10 max-w-xl')]
-  };
-}
-
-function Features() {
-  return {
-    style: 'grid grid-cols-3 gap-6 mb-16',
-    children: [Card('Flat Definitions', 'Define components at the top level. Compose by reference with children: [A, B, C]'), Card('NgRx-style State', 'Built-in state with Actions, Reducers, Effects, and Selectors'), Card('Auto API Services', 'Define REST endpoints, get CRUD methods auto-generated')]
-  };
-}
-
-function Syntax() {
-  return {
-    style: 'mb-16',
-    align: 'vertical',
-    children: [Heading('4 Definition Operators', 'text-3xl font-bold text-gray-900 mb-6'), Operator('->  Component (UI)', 'Component', 'font-mono text-lg bg-blue-50 text-blue-700 px-4 py-2 rounded mb-2'), Operator('|   Store (State)', 'Store', 'font-mono text-lg bg-purple-50 text-purple-700 px-4 py-2 rounded mb-2'), Operator('::  API Service', 'API', 'font-mono text-lg bg-green-50 text-green-700 px-4 py-2 rounded mb-2'), Operator('{}  Method (Logic)', 'Method', 'font-mono text-lg bg-orange-50 text-orange-700 px-4 py-2 rounded mb-2')]
-  };
-}
-
-function Example() {
-  return {
-    style: 'mb-16',
-    align: 'vertical',
-    children: [Heading('Example: Counter', 'text-3xl font-bold text-gray-900 mb-6'), Code('Counter | {\n    State { count: 0 }\n    Actions { Increment, Decrement }\n    Reducers {\n        on Increment { count: count + 1 }\n        on Decrement { count: count - 1 }\n    }\n}\n\nDisplay -> {\n    type: text\n    value: $Counter.count\n}\n\nButton -> {\n    type: button\n    content: \"+\"\n    click: Counter.Increment\n}')]
-  };
-}
-
-function GettingStarted() {
-  return {
-    style: 'mb-16',
-    align: 'vertical',
-    children: [Heading('Getting Started', 'text-3xl font-bold text-gray-900 mb-6'), Step('1. Install:  cargo install --path .'), Step('2. Create:   topo new my-app'), Step('3. Run:      cd my-app && topo start')]
-  };
-}
-
-function Footer() {
-  return {
-    type: 'text',
-    content: 'Built with topo - MIT License',
-    style: 'text-gray-400 text-sm mt-16 pt-8 border-t border-gray-200'
-  };
-}
-
-
-const LoginForm = createStore('LoginForm', {
-  email: '',
-  password: '',
-  isSubmitting: false,
-  emailError: '',
-  passwordError: ''
-});
-
-const LoginFormValidationRules = {
-  email: [{ name: 'required' }, { name: 'email' }],
-  password: [{ name: 'required' }, { name: 'minLength', args: [8] }]
-};
-
-const LoginFormFieldLabels = {
-  email: 'メールアドレス',
-  password: 'パスワード',
-  isSubmitting: 'isSubmitting'
-};
-
-LoginForm.labels = LoginFormFieldLabels;
-function validateLoginForm(data) {
-  const errors = {};
-  for (const [field, fieldRules] of Object.entries(LoginFormValidationRules)) {
-    const value = data[field];
-    const label = LoginFormFieldLabels[field] || field;
-    for (const rule of fieldRules) {
-      const validator = validators[rule.name];
-      if (validator) {
-        const result = validator(value, rule.args || [], label);
-        if (!result.valid) {
-          errors[field] = errors[field] || [];
-          errors[field].push(result.error);
-        }
-      }
-    }
-  }
-  return { valid: Object.keys(errors).length === 0, errors };
-}
-
-LoginForm.on('SetEmail', (state, value) => {
-  const result = validateLoginForm({ ...state, email: value });
-  const error = result.errors.email ? result.errors.email[0] : '';
-  return {
-    ...state,
-    email: value,
-    emailError: error
-  };
-});
-
-LoginForm.on('SetPassword', (state, value) => {
-  const result = validateLoginForm({ ...state, password: value });
-  const error = result.errors.password ? result.errors.password[0] : '';
-  return {
-    ...state,
-    password: value,
-    passwordError: error
-  };
-});
-
-LoginForm.on('SetSubmitting', (state, value) => ({
-  ...state,
-  isSubmitting: value
-}));
-
-
-
-function Input(inputType, placeholder, value, onInput) {
-  return {
-    type: 'input',
-    inputType: inputType,
-    placeholder: placeholder,
-    value: value,
-    input: onInput,
-    style: 'w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition'
-  };
-}
-
-function Button(content, onClick, variant) {
-  return {
-    type: 'button',
-    content: content,
-    click: onClick,
-    style: variant
-  };
-}
-
-function PrimaryButton(content, onClick) {
-  return {
-    type: 'button',
-    content: content,
-    click: onClick,
-    style: 'w-full bg-indigo-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-indigo-700 transition'
-  };
-}
-
-
-
-function Label(text) {
-  return {
-    type: text,
-    content: text,
-    style: 'block text-sm font-medium text-gray-700 mb-2'
-  };
-}
-
-function ErrorText(msg) {
-  return {
-    type: 'text',
-    content: msg,
-    style: 'text-red-500 text-sm mt-1'
-  };
-}
-
-function FormField(label, inputType, placeholder, value, onInput, errorMsg) {
-  return {
-    style: 'mb-4',
-    align: 'vertical',
-    children: [Label(label), Input(inputType, placeholder, value, onInput), ErrorText(errorMsg)]
-  };
-}
-
-
-
-
-function LoginTitle() {
-  return {
-    type: 'text',
-    content: 'Sign In',
-    style: 'text-2xl font-bold text-gray-900 mb-6 text-center'
-  };
-}
-
-function SubmitButton() {
-  return {
-    type: 'button',
-    content: 'Sign In',
-    click: () => dispatch('LoginForm', 'Submit'),
-    style: 'w-full bg-indigo-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-indigo-700 transition cursor-pointer'
-  };
-}
-
-function DebugInfo() {
-  return {
-    type: 'text',
-    content: LoginForm.state.email,
-    style: 'text-sm text-gray-500 mt-4 text-center'
-  };
-}
-
-function LoginFormCard() {
-  return {
-    style: 'bg-white p-8 rounded-xl shadow-lg max-w-md w-full',
-    align: 'vertical',
-    children: [LoginTitle, FormField(LoginForm.labels.email, 'email', 'メールアドレスを入力', LoginForm.state.email, () => dispatch('LoginForm', 'SetEmail'), LoginForm.state.emailError), FormField(LoginForm.labels.password, 'password', 'パスワードを入力', LoginForm.state.password, () => dispatch('LoginForm', 'SetPassword'), LoginForm.state.passwordError), SubmitButton, DebugInfo]
-  };
-}
-
-function LoginApp() {
-  return {
-    style: 'min-h-screen bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center p-4',
-    children: [LoginFormCard]
-  };
-}
-
-
-
-function Logo() {
-  return {
-    type: 'text',
-    content: 'topo',
-    style: 'text-3xl font-bold text-indigo-600 mb-8'
-  };
-}
-
-function Sidebar() {
-  return {
-    style: 'w-56 bg-white border-r border-gray-200 p-6 min-h-screen fixed left-0 top-0',
-    align: 'vertical',
-    children: [Logo, NavItem('Home'), NavItem('Getting Started'), NavItem('Syntax'), NavItem('Components'), NavItem('State'), NavItem('API Services')]
-  };
-}
-
 
 function UserDetailTitle() {
   return {
@@ -778,6 +554,206 @@ function AppPage() {
 }
 
 
+const LoginForm = createStore('LoginForm', {
+  email: '',
+  password: '',
+  isSubmitting: false,
+  emailError: '',
+  passwordError: ''
+});
+
+const LoginFormValidationRules = {
+  email: [{ name: 'required' }, { name: 'email' }],
+  password: [{ name: 'required' }, { name: 'minLength', args: [8] }]
+};
+
+const LoginFormFieldLabels = {
+  email: 'メールアドレス',
+  password: 'パスワード',
+  isSubmitting: 'isSubmitting'
+};
+
+LoginForm.labels = LoginFormFieldLabels;
+function validateLoginForm(data) {
+  const errors = {};
+  for (const [field, fieldRules] of Object.entries(LoginFormValidationRules)) {
+    const value = data[field];
+    const label = LoginFormFieldLabels[field] || field;
+    for (const rule of fieldRules) {
+      const validator = validators[rule.name];
+      if (validator) {
+        const result = validator(value, rule.args || [], label);
+        if (!result.valid) {
+          errors[field] = errors[field] || [];
+          errors[field].push(result.error);
+        }
+      }
+    }
+  }
+  return { valid: Object.keys(errors).length === 0, errors };
+}
+
+LoginForm.on('SetEmail', (state, value) => {
+  const result = validateLoginForm({ ...state, email: value });
+  const error = result.errors.email ? result.errors.email[0] : '';
+  return {
+    ...state,
+    email: value,
+    emailError: error
+  };
+});
+
+LoginForm.on('SetPassword', (state, value) => {
+  const result = validateLoginForm({ ...state, password: value });
+  const error = result.errors.password ? result.errors.password[0] : '';
+  return {
+    ...state,
+    password: value,
+    passwordError: error
+  };
+});
+
+LoginForm.on('Submit', (state) => {
+  const result = validateLoginForm(state);
+  return {
+    ...state,
+    emailError: result.errors.email ? result.errors.email[0] : '',
+    passwordError: result.errors.password ? result.errors.password[0] : ''
+  };
+});
+
+LoginForm.on('SetSubmitting', (state, value) => ({
+  ...state,
+  isSubmitting: value
+}));
+
+
+
+function Input(inputType, placeholder, value, onInput) {
+  return {
+    type: 'input',
+    inputType: inputType,
+    placeholder: placeholder,
+    value: value,
+    input: onInput,
+    style: 'w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition'
+  };
+}
+
+function Button(content, onClick, variant) {
+  return {
+    type: 'button',
+    content: content,
+    click: onClick,
+    style: variant
+  };
+}
+
+function PrimaryButton(content, onClick) {
+  return {
+    type: 'button',
+    content: content,
+    click: onClick,
+    style: 'w-full bg-indigo-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-indigo-700 transition'
+  };
+}
+
+
+
+function Label(text) {
+  return {
+    type: text,
+    content: text,
+    style: 'block text-sm font-medium text-gray-700 mb-2'
+  };
+}
+
+function ErrorText(msg) {
+  return {
+    type: 'text',
+    content: msg,
+    style: 'text-red-500 text-sm mt-1'
+  };
+}
+
+function FormField(label, inputType, placeholder, value, onInput, errorMsg) {
+  return {
+    style: 'mb-4',
+    align: 'vertical',
+    children: [Label(label), Input(inputType, placeholder, value, onInput), ErrorText(errorMsg)]
+  };
+}
+
+
+
+
+function LoginTitle() {
+  return {
+    type: 'text',
+    content: t('sign_in'),
+    style: 'text-2xl font-bold text-gray-900 mb-6 text-center'
+  };
+}
+
+function SubmitButton() {
+  return {
+    type: 'button',
+    content: t('sign_in'),
+    click: () => dispatch('LoginForm', 'Submit'),
+    style: 'w-full bg-indigo-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-indigo-700 transition cursor-pointer'
+  };
+}
+
+function LangJa() {
+  return {
+    type: 'button',
+    content: '日本語',
+    click: () => $i18n.setLocale('ja'),
+    style: 'px-3 py-1 text-sm rounded bg-gray-200 hover:bg-gray-300 mr-2'
+  };
+}
+
+function LangEn() {
+  return {
+    type: 'button',
+    content: 'English',
+    click: () => $i18n.setLocale('en'),
+    style: 'px-3 py-1 text-sm rounded bg-gray-200 hover:bg-gray-300'
+  };
+}
+
+function LangSwitcher() {
+  return {
+    style: 'flex justify-center mb-4',
+    align: 'horizontal',
+    children: [LangJa, LangEn]
+  };
+}
+
+function DebugInfo() {
+  return {
+    type: 'text',
+    content: LoginForm.state.email,
+    style: 'text-sm text-gray-500 mt-4 text-center'
+  };
+}
+
+function LoginFormCard() {
+  return {
+    style: 'bg-white p-8 rounded-xl shadow-lg max-w-md w-full',
+    align: 'vertical',
+    children: [LangSwitcher, LoginTitle, FormField(t('email'), 'email', t('email_placeholder'), LoginForm.state.email, (value) => dispatch('LoginForm', 'SetEmail', value), LoginForm.state.emailError), FormField(t('password'), 'password', t('password_placeholder'), LoginForm.state.password, (value) => dispatch('LoginForm', 'SetPassword', value), LoginForm.state.passwordError), SubmitButton, DebugInfo]
+  };
+}
+
+function LoginApp() {
+  return {
+    style: 'min-h-screen bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center p-4',
+    children: [LoginFormCard]
+  };
+}
+
+
 
 function LoginPage() {
   return {
@@ -819,24 +795,4 @@ function AboutPage() {
   };
 }
 
-
-
-
-function Content() {
-  return {
-    style: 'ml-56 p-12 bg-gray-50 min-h-screen',
-    align: 'vertical',
-    children: [Hero, Features, Syntax, Example, GettingStarted, Footer]
-  };
-}
-
-function App() {
-  return {
-    style: 'font-sans',
-    children: [Sidebar, Content]
-  };
-}
-
-// Mount app
-mount(App, '#app');
 
