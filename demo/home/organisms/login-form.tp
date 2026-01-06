@@ -1,30 +1,11 @@
 // Organisms: Login form
 import { LoginForm } from "../stores/login.tp"
-import { Input } from "../atoms/input.tp"
-import { Label } from "../molecules/form-field.tp"
+import { FormField } from "../molecules/form-field.tp"
 
 LoginTitle -> {
     type: text
     content: "Sign In"
     style: "text-2xl font-bold text-gray-900 mb-6 text-center"
-}
-
-EmailField -> {
-    style: "mb-4"
-    align: vertical
-    children: [
-        Label("Email"),
-        Input("email", "Enter your email", $LoginForm.email, LoginForm.SetEmail)
-    ]
-}
-
-PasswordField -> {
-    style: "mb-6"
-    align: vertical
-    children: [
-        Label("Password"),
-        Input("password", "Enter your password", $LoginForm.password, LoginForm.SetPassword)
-    ]
 }
 
 SubmitButton -> {
@@ -45,8 +26,8 @@ LoginFormCard -> {
     align: vertical
     children: [
         LoginTitle,
-        EmailField,
-        PasswordField,
+        FormField("Email", "email", "Enter your email", $LoginForm.email, LoginForm.SetEmail, $LoginForm.emailError),
+        FormField("Password", "password", "Enter your password", $LoginForm.password, LoginForm.SetPassword, $LoginForm.passwordError),
         SubmitButton,
         DebugInfo
     ]

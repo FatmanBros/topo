@@ -1,4 +1,5 @@
 // Molecules: Form field components
+import { Input } from "../atoms/input.tp"
 
 Label(text) -> {
     type: text
