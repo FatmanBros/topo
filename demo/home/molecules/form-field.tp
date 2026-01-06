@@ -14,12 +14,12 @@ ErrorText(msg, dataError) -> {
     style: "text-red-500 text-sm mt-1"
 }
 
-FormField(label, inputType, placeholder, value, onInput, errorMsg, dataError) -> {
+FormField(label, inputType, placeholder, value, onInput, errorMsg, dataError, dataField) -> {
     style: "mb-4"
     align: vertical
     children: [
         Label(label),
-        Input(inputType, placeholder, value, onInput),
+        Input(inputType, placeholder, value, onInput, dataField),
         ErrorText(errorMsg, dataError)
     ]
 }

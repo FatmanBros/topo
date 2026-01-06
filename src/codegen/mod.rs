@@ -305,11 +305,12 @@ impl JsCodegen {
         self.emit_line("");
         self.emit_line("function renderVdom(vdom) {");
         self.emit_line("  if (!vdom) return '';");
-        self.emit_line("  const { type, content, value, style, children, align, inputType, placeholder, dataError, dataBind, options, rows } = vdom;");
+        self.emit_line("  const { type, content, value, style, children, align, inputType, placeholder, dataError, dataBind, dataField, options, rows } = vdom;");
         self.emit_line("  const styleAttr = style ? ` class=\"${style}\"` : '';");
         self.emit_line("  const flexClass = align === 'horizontal' ? ' flex flex-row' : align === 'vertical' ? ' flex flex-col' : '';");
         self.emit_line("  const dataErrorAttr = dataError ? ` data-error=\"${dataError}\"` : '';");
         self.emit_line("  const dataBindAttr = dataBind ? ` data-bind=\"${dataBind}\"` : '';");
+        self.emit_line("  const dataFieldAttr = dataField ? ` data-field=\"${dataField}\"` : '';");
         self.emit_line("  ");
         self.emit_line("  if (type === 'text') {");
         self.emit_line("    return `<span${styleAttr}${dataErrorAttr}${dataBindAttr}>${content || value || ''}</span>`;");
@@ -328,7 +329,7 @@ impl JsCodegen {
         self.emit_line("    const inputTypeAttr = inputType || 'text';");
         self.emit_line("    const placeholderAttr = placeholder ? ` placeholder=\"${placeholder}\"` : '';");
         self.emit_line("    const valueAttr = value !== undefined ? ` value=\"${value}\"` : '';");
-        self.emit_line("    return `<input type=\"${inputTypeAttr}\"${styleAttr}${placeholderAttr}${valueAttr} data-input=\"true\" />`;");
+        self.emit_line("    return `<input type=\"${inputTypeAttr}\"${styleAttr}${placeholderAttr}${valueAttr}${dataFieldAttr} data-input=\"true\" />`;");
         self.emit_line("  }");
         self.emit_line("  if (type === 'select') {");
         self.emit_line("    const placeholderOpt = placeholder ? `<option value=\"\" disabled selected>${placeholder}</option>` : '';");
@@ -338,12 +339,12 @@ impl JsCodegen {
         self.emit_line("      const selected = optVal === value ? ' selected' : '';");
         self.emit_line("      return `<option value=\"${optVal}\"${selected}>${optLabel}</option>`;");
         self.emit_line("    }).join('');");
-        self.emit_line("    return `<select${styleAttr} data-input=\"true\">${placeholderOpt}${opts}</select>`;");
+        self.emit_line("    return `<select${styleAttr}${dataFieldAttr} data-input=\"true\">${placeholderOpt}${opts}</select>`;");
         self.emit_line("  }");
         self.emit_line("  if (type === 'textarea') {");
         self.emit_line("    const placeholderAttr = placeholder ? ` placeholder=\"${placeholder}\"` : '';");
         self.emit_line("    const rowsAttr = rows ? ` rows=\"${rows}\"` : '';");
-        self.emit_line("    return `<textarea${styleAttr}${placeholderAttr}${rowsAttr} data-input=\"true\">${value || ''}</textarea>`;");
+        self.emit_line("    return `<textarea${styleAttr}${placeholderAttr}${rowsAttr}${dataFieldAttr} data-input=\"true\">${value || ''}</textarea>`;");
         self.emit_line("  }");
         self.emit_line("  if (children) {");
         self.emit_line("    const inner = children.map(c => typeof c === 'function' ? renderVdom(c()) : renderVdom(c)).join('');");
@@ -639,6 +640,7 @@ impl JsCodegen {
             Declaration::ApiService(api) => self.generate_api_service(api),
             Declaration::Method(method) => self.generate_method(method),
             Declaration::Theme(_) => {} // Handled separately via CSS injection
+            Declaration::Test(_) => {}  // Handled separately for Playwright test generation
         }
     }
 
@@ -1480,8 +1482,9 @@ impl JsCodegen {
                             // Clone param_names to avoid borrow conflict
                             let param_names_opt = self.component_params.get(name).cloned();
                             if let Some(param_names) = param_names_opt {
-                                // Check for error Reference props and collect their paths
+                                // Check for Reference props and collect their paths
                                 let mut auto_data_error: Option<String> = None;
+                                let mut auto_data_field: Option<String> = None;
                                 for p in properties {
                                     if let Expression::Reference { store, path } = &p.value {
                                         if let Some(last) = path.last() {
@@ -1489,6 +1492,10 @@ impl JsCodegen {
                                                 // Build the data-error path: StoreName.fieldNameError
                                                 let error_path = format!("{}.{}", store, path.join("."));
                                                 auto_data_error = Some(error_path);
+                                            } else if p.key == "value" {
+                                                // Build the data-field path: StoreName.fieldName
+                                                let field_path = format!("{}.{}", store, path.join("."));
+                                                auto_data_field = Some(field_path);
                                             }
                                         }
                                     }
@@ -1497,7 +1504,7 @@ impl JsCodegen {
                                 // Convert object props to positional args in param order
                                 let mut positional_args: Vec<String> = Vec::new();
                                 for param_name in &param_names {
-                                    // Check if this param is 'dataError' and should be auto-filled
+                                    // Check if this param should be auto-filled
                                     let explicit_value = properties
                                         .iter()
                                         .find(|p| &p.key == param_name);
@@ -1511,6 +1518,11 @@ impl JsCodegen {
                                     } else if param_name == "dataError" {
                                         // Auto-fill dataError if we detected an error Reference
                                         auto_data_error.as_ref()
+                                            .map(|path| format!("'{}'", path))
+                                            .unwrap_or_else(|| "undefined".to_string())
+                                    } else if param_name == "dataField" {
+                                        // Auto-fill dataField if we detected a value Reference
+                                        auto_data_field.as_ref()
                                             .map(|path| format!("'{}'", path))
                                             .unwrap_or_else(|| "undefined".to_string())
                                     } else {
@@ -1673,6 +1685,7 @@ impl TsCodegen {
             Declaration::ApiService(api) => self.generate_api_types(api),
             Declaration::Theme(theme) => self.generate_theme_types(theme),
             Declaration::Method(_) => {} // Methods don't need type exports
+            Declaration::Test(_) => {}   // Tests don't need type exports
         }
     }
 

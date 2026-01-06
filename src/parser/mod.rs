@@ -53,6 +53,11 @@ impl Parser {
             return self.import_statement();
         }
 
+        // Check for Test definition: Test "name" { ... }
+        if self.check(TokenKind::Test) {
+            return self.test_definition();
+        }
+
         // All other declarations start with an identifier
         let name = self.expect_identifier()?;
 
@@ -885,6 +890,173 @@ impl Parser {
         } else {
             Err(ParseError::UnexpectedToken {
                 expected: "property key".to_string(),
+                found: token.lexeme,
+                line: token.line,
+                column: token.column,
+            })
+        }
+    }
+
+    // ========================================================================
+    // Test Definition
+    // ========================================================================
+
+    fn test_definition(&mut self) -> Result<Declaration, ParseError> {
+        self.expect(TokenKind::Test)?;
+        let name = self.expect_string()?;
+        self.expect(TokenKind::LBrace)?;
+
+        let mut statements = Vec::new();
+        while !self.check(TokenKind::RBrace) && !self.is_at_end() {
+            statements.push(self.test_statement()?);
+        }
+
+        self.expect(TokenKind::RBrace)?;
+        Ok(Declaration::Test(TestDef { name, statements }))
+    }
+
+    fn test_statement(&mut self) -> Result<TestStatement, ParseError> {
+        let token = self.peek().clone();
+
+        match token.kind {
+            TokenKind::Goto => {
+                self.advance();
+                let path = self.expect_string()?;
+                Ok(TestStatement::Goto { path })
+            }
+            TokenKind::Click => {
+                self.advance();
+                let target = self.test_target()?;
+                Ok(TestStatement::Click { target })
+            }
+            TokenKind::Fill => {
+                self.advance();
+                let target = self.test_target()?;
+                let value = self.expression()?;
+                Ok(TestStatement::Fill { target, value })
+            }
+            TokenKind::Type => {
+                self.advance();
+                let target = self.test_target()?;
+                let value = self.expression()?;
+                Ok(TestStatement::Type { target, value })
+            }
+            TokenKind::Expect => {
+                self.advance();
+                let target = self.test_target()?;
+                let assertion = self.test_assertion()?;
+                Ok(TestStatement::Expect { target, assertion })
+            }
+            TokenKind::Mock => {
+                self.advance();
+                let service = self.expect_identifier()?;
+                self.expect(TokenKind::Dot)?;
+                let method = self.expect_identifier()?;
+                self.expect(TokenKind::Arrow)?;
+                let response = self.expression()?;
+                Ok(TestStatement::Mock {
+                    service,
+                    method,
+                    response,
+                })
+            }
+            TokenKind::Wait => {
+                self.advance();
+                let value = self.expect_number()?;
+                Ok(TestStatement::Wait { ms: value as u32 })
+            }
+            _ => Err(ParseError::UnexpectedToken {
+                expected: "test statement".to_string(),
+                found: token.lexeme,
+                line: token.line,
+                column: token.column,
+            }),
+        }
+    }
+
+    fn test_target(&mut self) -> Result<TestTarget, ParseError> {
+        let token = self.peek().clone();
+
+        match token.kind {
+            TokenKind::Dollar => {
+                // $Store.field
+                self.advance();
+                let store = self.expect_identifier()?;
+                self.expect(TokenKind::Dot)?;
+                let field = self.expect_identifier()?;
+                Ok(TestTarget::Field { store, field })
+            }
+            TokenKind::Text => {
+                // text "content"
+                self.advance();
+                let content = self.expect_string()?;
+                Ok(TestTarget::Text { content })
+            }
+            TokenKind::Submit => {
+                self.advance();
+                Ok(TestTarget::Submit)
+            }
+            TokenKind::Button => {
+                self.advance();
+                let content = self.expect_string()?;
+                Ok(TestTarget::Button { content })
+            }
+            TokenKind::Url => {
+                self.advance();
+                Ok(TestTarget::Url)
+            }
+            TokenKind::String => {
+                // CSS selector
+                let selector = self.expect_string()?;
+                Ok(TestTarget::Selector { selector })
+            }
+            _ => Err(ParseError::UnexpectedToken {
+                expected: "test target".to_string(),
+                found: token.lexeme,
+                line: token.line,
+                column: token.column,
+            }),
+        }
+    }
+
+    fn test_assertion(&mut self) -> Result<TestAssertion, ParseError> {
+        let token = self.peek().clone();
+
+        match token.kind {
+            TokenKind::Visible => {
+                self.advance();
+                Ok(TestAssertion::Visible)
+            }
+            TokenKind::Hidden => {
+                self.advance();
+                Ok(TestAssertion::Hidden)
+            }
+            TokenKind::String => {
+                let value = self.expect_string()?;
+                Ok(TestAssertion::Equals { value })
+            }
+            _ => Err(ParseError::UnexpectedToken {
+                expected: "assertion (visible, hidden, or string value)".to_string(),
+                found: token.lexeme,
+                line: token.line,
+                column: token.column,
+            }),
+        }
+    }
+
+    fn expect_number(&mut self) -> Result<f64, ParseError> {
+        let token = self.peek().clone();
+        if token.kind == TokenKind::Number {
+            self.advance();
+            token.lexeme.parse::<f64>().map_err(|_| ParseError::UnexpectedToken {
+                expected: "number".to_string(),
+                found: token.lexeme,
+                line: token.line,
+                column: token.column,
+            })
+        } else {
+            Err(ParseError::UnexpectedToken {
+                expected: "number".to_string(),
                 found: token.lexeme,
                 line: token.line,
                 column: token.column,
