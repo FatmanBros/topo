@@ -437,13 +437,30 @@ impl JsCodegen {
         self.emit_line("return {");
         self.indent += 1;
 
-        for (i, prop) in comp.properties.iter().enumerate() {
-            let comma = if i < comp.properties.len() - 1 { "," } else { "" };
+        // Count total properties including lifecycle hooks
+        let has_lifecycle = comp.init.is_some() || comp.destroy.is_some();
+        let total_props = comp.properties.len() + if has_lifecycle { 1 } else { 0 };
+        let mut prop_index = 0;
+
+        for prop in &comp.properties {
+            prop_index += 1;
+            let comma = if prop_index < total_props { "," } else { "" };
             // Track current property key for event handler detection
             self.current_property_key = Some(prop.key.clone());
             let value = self.generate_expression(&prop.value);
             self.current_property_key = None;
             self.emit_line(&format!("{}: {}{}", prop.key, value, comma));
+        }
+
+        // Generate lifecycle hooks
+        if comp.init.is_some() || comp.destroy.is_some() {
+            let init_code = comp.init.as_ref()
+                .map(|e| self.generate_expression(e))
+                .unwrap_or_else(|| "null".to_string());
+            let destroy_code = comp.destroy.as_ref()
+                .map(|e| self.generate_expression(e))
+                .unwrap_or_else(|| "null".to_string());
+            self.emit_line(&format!("lifecycle: {{ init: {}, destroy: {} }}", init_code, destroy_code));
         }
 
         self.indent -= 1;
@@ -1497,5 +1514,22 @@ mod tests {
         assert!(output.contains("name: string"));
         assert!(output.contains("age: number"));
         assert!(output.contains("export declare function UserCard(props: UserCardProps): VNode"));
+    }
+
+    #[test]
+    fn test_generate_lifecycle_hooks() {
+        let source = r#"
+            Timer -> {
+                type: div
+                content: "Timer"
+                init: console.log("mounted")
+                destroy: console.log("destroyed")
+            }
+        "#;
+
+        let output = generate(source);
+        assert!(output.contains("lifecycle:"));
+        assert!(output.contains("init:"));
+        assert!(output.contains("destroy:"));
     }
 }

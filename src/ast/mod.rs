@@ -61,6 +61,12 @@ pub struct ComponentDef {
     pub name: String,
     pub params: Vec<TypedParam>,
     pub properties: Vec<Property>,
+    /// Lifecycle hook: called when component is mounted
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub init: Option<Expression>,
+    /// Lifecycle hook: called when component is destroyed
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub destroy: Option<Expression>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

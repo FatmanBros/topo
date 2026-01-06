@@ -1,56 +1,7 @@
 // topo Documentation Site
-
-// ============================================
-// Navigation Components
-// ============================================
-
-Logo -> {
-    type: text
-    content: "topo"
-    style: "text-3xl font-bold text-indigo-600 mb-8"
-}
-
-NavHome -> {
-    type: text
-    content: "Home"
-    style: "text-gray-700 hover:text-indigo-600 cursor-pointer mb-2"
-}
-
-NavStart -> {
-    type: text
-    content: "Getting Started"
-    style: "text-gray-700 hover:text-indigo-600 cursor-pointer mb-2"
-}
-
-NavSyntax -> {
-    type: text
-    content: "Syntax"
-    style: "text-gray-700 hover:text-indigo-600 cursor-pointer mb-2"
-}
-
-NavComponents -> {
-    type: text
-    content: "Components"
-    style: "text-gray-700 hover:text-indigo-600 cursor-pointer mb-2"
-}
-
-NavState -> {
-    type: text
-    content: "State"
-    style: "text-gray-700 hover:text-indigo-600 cursor-pointer mb-2"
-}
-
-NavApi -> {
-    type: text
-    content: "API Services"
-    style: "text-gray-700 hover:text-indigo-600 cursor-pointer mb-2"
-}
-
-Sidebar -> {
-    style: "w-56 bg-white border-r border-gray-200 p-6 min-h-screen fixed left-0 top-0"
-    align: vertical
-    children: [Logo, NavHome, NavStart, NavSyntax, NavComponents, NavState, NavApi]
-}
+import "home/atoms/text.tp"
+import "home/organisms/sidebar.tp"
+import "home/organisms/sections.tp"
 
 // ============================================
 // Hero Section
