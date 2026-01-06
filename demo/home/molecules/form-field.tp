@@ -7,18 +7,19 @@ Label(text) -> {
     style: "block text-sm font-medium text-gray-700 mb-2"
 }
 
-ErrorText(msg) -> {
+ErrorText(msg, dataError) -> {
     type: text
     content: msg
+    dataError: dataError
     style: "text-red-500 text-sm mt-1"
 }
 
-FormField(label, inputType, placeholder, value, onInput, errorMsg) -> {
+FormField(label, inputType, placeholder, value, onInput, errorMsg, dataError) -> {
     style: "mb-4"
     align: vertical
     children: [
         Label(label),
         Input(inputType, placeholder, value, onInput),
-        ErrorText(errorMsg)
+        ErrorText(errorMsg, dataError)
     ]
 }
