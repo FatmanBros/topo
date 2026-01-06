@@ -1,0 +1,48 @@
+// Organisms: Login form
+
+LoginTitle -> {
+    type: text
+    content: "Sign In"
+    style: "text-2xl font-bold text-gray-900 mb-6 text-center"
+}
+
+EmailField -> {
+    style: "mb-4"
+    align: vertical
+    children: [
+        Label("Email"),
+        Input("email", "Enter your email", $LoginForm.email, LoginForm.SetEmail)
+    ]
+}
+
+PasswordField -> {
+    style: "mb-6"
+    align: vertical
+    children: [
+        Label("Password"),
+        Input("password", "Enter your password", $LoginForm.password, LoginForm.SetPassword)
+    ]
+}
+
+SubmitButton -> {
+    type: button
+    content: "Sign In"
+    click: LoginForm.Submit
+    style: "w-full bg-indigo-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-indigo-700 transition"
+}
+
+LoginForm -> {
+    style: "bg-white p-8 rounded-xl shadow-lg max-w-md mx-auto"
+    align: vertical
+    children: [
+        LoginTitle,
+        EmailField,
+        PasswordField,
+        SubmitButton
+    ]
+}
+
+LoginPage -> {
+    style: "min-h-screen bg-gray-100 flex items-center justify-center p-4"
+    children: [LoginForm]
+}
