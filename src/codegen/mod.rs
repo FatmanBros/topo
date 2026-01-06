@@ -3,7 +3,7 @@
 //! Converts AST to JavaScript code.
 
 use crate::ast::*;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 pub struct JsCodegen {
     output: String,
@@ -20,6 +20,8 @@ pub struct JsCodegen {
     theme_colors: HashSet<String>,
     /// Theme color values for CSS generation
     theme_values: Vec<(String, String)>,
+    /// Component parameter names (for object-style props conversion)
+    component_params: HashMap<String, Vec<String>>,
 }
 
 impl JsCodegen {
@@ -33,6 +35,7 @@ impl JsCodegen {
             api_service_names: HashSet::new(),
             theme_colors: HashSet::new(),
             theme_values: Vec::new(),
+            component_params: HashMap::new(),
         }
     }
 
@@ -86,7 +89,7 @@ impl JsCodegen {
     }
 
     pub fn generate(&mut self, program: &Program) -> String {
-        // First pass: collect API service names, find App component, and collect theme
+        // First pass: collect API service names, find App component, collect theme and component params
         let mut has_app = false;
         for decl in &program.declarations {
             if let Declaration::ApiService(api) = decl {
@@ -95,6 +98,11 @@ impl JsCodegen {
             if let Declaration::Component(comp) = decl {
                 if comp.name == "App" {
                     has_app = true;
+                }
+                // Collect component parameter names for object-style props conversion
+                if !comp.params.is_empty() {
+                    let param_names: Vec<String> = comp.params.iter().map(|p| p.name.clone()).collect();
+                    self.component_params.insert(comp.name.clone(), param_names);
                 }
             }
             // Collect theme colors from Theme definition
@@ -360,6 +368,16 @@ impl JsCodegen {
         self.emit_line("  return { valid: true };");
         self.emit_line("},");
 
+        // regex - alias for pattern with custom error message support
+        self.emit_line("regex(value, args, field) {");
+        self.emit_line("  const pattern = new RegExp(args[0]);");
+        self.emit_line("  const customMsg = args[1];");
+        self.emit_line("  if (typeof value === 'string' && !pattern.test(value)) {");
+        self.emit_line("    return { valid: false, error: customMsg || `${field} does not match the required format` };");
+        self.emit_line("  }");
+        self.emit_line("  return { valid: true };");
+        self.emit_line("},");
+
         // url
         self.emit_line("url(value, _args, field) {");
         self.emit_line("  try {");
@@ -478,15 +496,34 @@ impl JsCodegen {
     }
 
     fn generate_store(&mut self, store: &StoreDef) {
+        // Collect fields with validation annotations for auto-validation
+        let validated_fields: Vec<String> = store.state.as_ref()
+            .map(|s| s.fields.iter()
+                .filter(|f| !f.annotations.is_empty())
+                .map(|f| f.key.clone())
+                .collect())
+            .unwrap_or_default();
+
         // Generate store creation
         self.emit_line(&format!("const {} = createStore('{}', {{", store.name, store.name));
         self.indent += 1;
 
         if let Some(state) = &store.state {
-            for (i, field) in state.fields.iter().enumerate() {
-                let comma = if i < state.fields.len() - 1 { "," } else { "" };
+            // Count total fields including auto-generated error fields
+            let total_fields = state.fields.len() + validated_fields.len();
+            let mut field_index = 0;
+
+            for field in &state.fields {
+                field_index += 1;
+                let comma = if field_index < total_fields { "," } else { "" };
                 let value = self.generate_expression(&field.value);
                 self.emit_line(&format!("{}: {}{}", field.key, value, comma));
+            }
+
+            // Auto-generate error fields for validated fields
+            for (i, field_name) in validated_fields.iter().enumerate() {
+                let comma = if i < validated_fields.len() - 1 { "," } else { "" };
+                self.emit_line(&format!("{}Error: ''{}", field_name, comma));
             }
         }
 
@@ -497,6 +534,8 @@ impl JsCodegen {
         // Generate validation rules from annotations
         if let Some(state) = &store.state {
             let validation_rules = self.collect_validation_rules(&state.fields);
+            let field_labels = self.collect_field_labels(&state.fields);
+
             if !validation_rules.is_empty() {
                 self.emit_line(&format!("const {}ValidationRules = {{", store.name));
                 self.indent += 1;
@@ -508,13 +547,74 @@ impl JsCodegen {
                 self.emit_line("};");
                 self.emit_line("");
 
-                // Generate validate helper for this store
+                // Generate field labels map
+                self.emit_line(&format!("const {}FieldLabels = {{", store.name));
+                self.indent += 1;
+                for (i, (field, label)) in field_labels.iter().enumerate() {
+                    let comma = if i < field_labels.len() - 1 { "," } else { "" };
+                    self.emit_line(&format!("{}: '{}'{}", field, label, comma));
+                }
+                self.indent -= 1;
+                self.emit_line("};");
+                self.emit_line("");
+
+                // Attach labels to store object for runtime access ($Store.label.field)
+                self.emit_line(&format!("{}.labels = {}FieldLabels;", store.name, store.name));
+
+                // Generate validate helper for this store with custom labels
                 self.emit_line(&format!("function validate{}(data) {{", store.name));
                 self.indent += 1;
-                self.emit_line(&format!("return validate(data, {}ValidationRules);", store.name));
+                self.emit_line("const errors = {};");
+                self.emit_line(&format!("for (const [field, fieldRules] of Object.entries({}ValidationRules)) {{", store.name));
+                self.indent += 1;
+                self.emit_line("const value = data[field];");
+                self.emit_line(&format!("const label = {}FieldLabels[field] || field;", store.name));
+                self.emit_line("for (const rule of fieldRules) {");
+                self.indent += 1;
+                self.emit_line("const validator = validators[rule.name];");
+                self.emit_line("if (validator) {");
+                self.indent += 1;
+                self.emit_line("const result = validator(value, rule.args || [], label);");
+                self.emit_line("if (!result.valid) {");
+                self.indent += 1;
+                self.emit_line("errors[field] = errors[field] || [];");
+                self.emit_line("errors[field].push(result.error);");
+                self.indent -= 1;
+                self.emit_line("}");
+                self.indent -= 1;
+                self.emit_line("}");
+                self.indent -= 1;
+                self.emit_line("}");
+                self.indent -= 1;
+                self.emit_line("}");
+                self.emit_line("return { valid: Object.keys(errors).length === 0, errors };");
                 self.indent -= 1;
                 self.emit_line("}");
                 self.emit_line("");
+            }
+
+            // Auto-generate Set actions with validation for annotated fields
+            for field in &state.fields {
+                if !field.annotations.is_empty() && !field.annotations.iter().all(|a| a.name == "label") {
+                    let field_name = &field.key;
+                    let capitalized = capitalize_first(field_name);
+
+                    // Generate auto-validating setter
+                    self.emit_line(&format!("{}.on('Set{}', (state, value) => {{", store.name, capitalized));
+                    self.indent += 1;
+                    self.emit_line(&format!("const result = validate{}({{ ...state, {}: value }});", store.name, field_name));
+                    self.emit_line(&format!("const error = result.errors.{} ? result.errors.{}[0] : '';", field_name, field_name));
+                    self.emit_line("return {");
+                    self.indent += 1;
+                    self.emit_line("...state,");
+                    self.emit_line(&format!("{}: value,", field_name));
+                    self.emit_line(&format!("{}Error: error", field_name));
+                    self.indent -= 1;
+                    self.emit_line("};");
+                    self.indent -= 1;
+                    self.emit_line("}));");
+                    self.emit_line("");
+                }
             }
         }
 
@@ -1023,6 +1123,13 @@ impl JsCodegen {
             Expression::Reference { store, path } => {
                 if path.is_empty() {
                     format!("{}.state", store)
+                } else if path.last().map(|s| s.as_str()) == Some("label") {
+                    // $Store.field.label -> Store.labels.field (virtual property)
+                    let field_path: Vec<&str> = path.iter()
+                        .take(path.len() - 1)
+                        .map(|s| s.as_str())
+                        .collect();
+                    format!("{}.labels.{}", store, field_path.join("."))
                 } else {
                     format!("{}.state.{}", store, path.join("."))
                 }
@@ -1090,6 +1197,37 @@ impl JsCodegen {
             }
             Expression::Call { callee, args } => {
                 let c = self.generate_expression(callee);
+
+                // Check for object-style props: ComponentName({ prop1: val1, prop2: val2 })
+                // Convert to positional args: ComponentName(val1, val2)
+                if args.len() == 1 {
+                    if let Expression::Object { properties } = &args[0] {
+                        if let Expression::Identifier { name } = callee.as_ref() {
+                            // Clone param_names to avoid borrow conflict
+                            let param_names_opt = self.component_params.get(name).cloned();
+                            if let Some(param_names) = param_names_opt {
+                                // Convert object props to positional args in param order
+                                let mut positional_args: Vec<String> = Vec::new();
+                                for param_name in &param_names {
+                                    let value = properties
+                                        .iter()
+                                        .find(|p| &p.key == param_name)
+                                        .map(|p| {
+                                            // Set property key context for event handler detection
+                                            self.current_property_key = Some(p.key.clone());
+                                            let val = self.generate_expression(&p.value);
+                                            self.current_property_key = None;
+                                            val
+                                        })
+                                        .unwrap_or_else(|| "undefined".to_string());
+                                    positional_args.push(value);
+                                }
+                                return format!("{}({})", c, positional_args.join(", "));
+                            }
+                        }
+                    }
+                }
+
                 let args_str: Vec<String> = args.iter().map(|a| self.generate_expression(a)).collect();
                 format!("{}({})", c, args_str.join(", "))
             }
@@ -1107,13 +1245,17 @@ impl JsCodegen {
         self.output.push('\n');
     }
 
-    /// Collect validation rules from property annotations
+    /// Collect validation rules from property annotations (excluding @label)
     fn collect_validation_rules(&mut self, fields: &[Property]) -> Vec<(String, Vec<String>)> {
         let mut result = Vec::new();
 
         for field in fields {
-            if !field.annotations.is_empty() {
-                let rules: Vec<String> = field.annotations.iter()
+            let validation_annotations: Vec<&Annotation> = field.annotations.iter()
+                .filter(|a| a.name != "label")
+                .collect();
+
+            if !validation_annotations.is_empty() {
+                let rules: Vec<String> = validation_annotations.iter()
                     .map(|ann| {
                         if ann.args.is_empty() {
                             format!("{{ name: '{}' }}", ann.name)
@@ -1131,6 +1273,39 @@ impl JsCodegen {
 
         result
     }
+
+    /// Collect field labels from @label annotations
+    fn collect_field_labels(&mut self, fields: &[Property]) -> Vec<(String, String)> {
+        let mut result = Vec::new();
+
+        for field in fields {
+            // Look for @label annotation
+            let label = field.annotations.iter()
+                .find(|a| a.name == "label")
+                .and_then(|a| a.args.first())
+                .map(|arg| {
+                    if let Expression::String { value } = arg {
+                        value.clone()
+                    } else {
+                        field.key.clone()
+                    }
+                })
+                .unwrap_or_else(|| field.key.clone());
+
+            result.push((field.key.clone(), label));
+        }
+
+        result
+    }
+}
+
+/// Capitalize the first letter of a string
+fn capitalize_first(s: &str) -> String {
+    let mut chars = s.chars();
+    match chars.next() {
+        None => String::new(),
+        Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
+    }
 }
 
 impl Default for JsCodegen {
@@ -1144,6 +1319,7 @@ impl Default for JsCodegen {
             api_service_names: HashSet::new(),
             theme_colors: HashSet::new(),
             theme_values: Vec::new(),
+            component_params: HashMap::new(),
         }
     }
 }
@@ -1535,5 +1711,25 @@ mod tests {
         assert!(output.contains("lifecycle:"));
         assert!(output.contains("init:"));
         assert!(output.contains("destroy:"));
+    }
+
+    #[test]
+    fn test_generate_object_style_props() {
+        let source = r#"
+            FormField(label, inputType, placeholder) -> {
+                type: div
+                content: label
+            }
+
+            App -> {
+                children: [
+                    FormField({ label: "Email" inputType: "email" placeholder: "Enter email" })
+                ]
+            }
+        "#;
+
+        let output = generate(source);
+        // The object-style call should be converted to positional args
+        assert!(output.contains("FormField('Email', 'email', 'Enter email')"));
     }
 }
