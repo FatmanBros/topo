@@ -1,18 +1,39 @@
-// Organisms: Login form
+// Organisms: Login form with i18n support
 import { LoginForm } from "../stores/login.tp"
 import { FormField } from "../molecules/form-field.tp"
 
 LoginTitle -> {
     type: text
-    content: "Sign In"
+    content: t("sign_in")
     style: "text-2xl font-bold text-gray-900 mb-6 text-center"
 }
 
 SubmitButton -> {
     type: button
-    content: "Sign In"
+    content: t("sign_in")
     click: LoginForm.Submit
     style: "w-full bg-indigo-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-indigo-700 transition cursor-pointer"
+}
+
+// Language switcher buttons
+LangJa -> {
+    type: button
+    content: "日本語"
+    click: $i18n.setLocale("ja")
+    style: "px-3 py-1 text-sm rounded bg-gray-200 hover:bg-gray-300 mr-2"
+}
+
+LangEn -> {
+    type: button
+    content: "English"
+    click: $i18n.setLocale("en")
+    style: "px-3 py-1 text-sm rounded bg-gray-200 hover:bg-gray-300"
+}
+
+LangSwitcher -> {
+    style: "flex justify-center mb-4"
+    align: horizontal
+    children: [LangJa, LangEn]
 }
 
 DebugInfo -> {
@@ -25,19 +46,20 @@ LoginFormCard -> {
     style: "bg-white p-8 rounded-xl shadow-lg max-w-md w-full"
     align: vertical
     children: [
+        LangSwitcher,
         LoginTitle,
         FormField({
-            label: $LoginForm.email.label
+            label: t("email")
             inputType: "email"
-            placeholder: "メールアドレスを入力"
+            placeholder: t("email_placeholder")
             value: $LoginForm.email
             onInput: LoginForm.SetEmail
             errorMsg: $LoginForm.emailError
         }),
         FormField({
-            label: $LoginForm.password.label
+            label: t("password")
             inputType: "password"
-            placeholder: "パスワードを入力"
+            placeholder: t("password_placeholder")
             value: $LoginForm.password
             onInput: LoginForm.SetPassword
             errorMsg: $LoginForm.passwordError

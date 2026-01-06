@@ -8,7 +8,7 @@ use std::collections::HashMap;
 
 use topo::ast::{Declaration, Program};
 use topo::codegen::JsCodegen;
-use topo::config::{Config, BuildMode};
+use topo::config::{Config, BuildMode, I18nConfig};
 use topo::lexer::Lexer;
 use topo::parser::Parser as TopoParser;
 
@@ -321,12 +321,20 @@ fn build_project(input: &PathBuf, output: &PathBuf, mode: &str) -> Result<()> {
 
     println!("  Compiling {} files in dependency order", compile_order.len());
 
+    // Load config early for i18n generation
+    let config = Config::load_or_default();
+
     // Generate code in dependency order
     let mut all_output = String::new();
     let mut codegen = JsCodegen::new();
 
     // Generate runtime once at the beginning
     all_output.push_str(&codegen.generate_runtime());
+
+    // Generate i18n runtime if configured
+    if let Some(i18n_config) = &config.i18n {
+        all_output.push_str(&generate_i18n_runtime(i18n_config));
+    }
 
     // Generate file-based routes
     let routes = generate_routes(&entry_files, input)?;
@@ -352,8 +360,7 @@ fn build_project(input: &PathBuf, output: &PathBuf, mode: &str) -> Result<()> {
     fs::write(&output_file, &all_output)?;
     println!("✓ Build complete: {:?}", output_file);
 
-    // Load config for HTML generation
-    let config = Config::load_or_default();
+    // Generate HTML
     let html = generate_html(&config);
     fs::write(output.join("index.html"), html)?;
 
@@ -486,6 +493,51 @@ fn generate_html(config: &Config) -> String {
 <body>
     <div id="app"></div>
     <script type="module" src="./app.js"></script>
+    <script>
+    // Error Overlay for development
+    (function() {{
+      const overlay = document.createElement('div');
+      overlay.id = 'topo-error-overlay';
+      overlay.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:99999;padding:32px;overflow:auto;font-family:ui-monospace,monospace';
+
+      function showError(title, message, stack) {{
+        overlay.innerHTML = `
+          <div style="max-width:900px;margin:0 auto;background:#1a1a1a;border-radius:12px;border:1px solid #333;overflow:hidden">
+            <div style="background:#dc2626;color:white;padding:16px 20px;display:flex;justify-content:space-between;align-items:center">
+              <span style="font-weight:600;font-size:16px">${{title}}</span>
+              <div>
+                <button id="topo-copy-btn" style="background:#fff2;border:none;color:white;padding:8px 16px;border-radius:6px;cursor:pointer;margin-right:8px;font-size:13px">Copy</button>
+                <button id="topo-close-btn" style="background:#fff2;border:none;color:white;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:13px">✕</button>
+              </div>
+            </div>
+            <div style="padding:20px">
+              <div style="color:#f87171;font-size:18px;font-weight:500;margin-bottom:16px;word-break:break-word">${{message}}</div>
+              ${{stack ? `<pre style="color:#a1a1aa;font-size:13px;line-height:1.6;margin:0;white-space:pre-wrap;word-break:break-word">${{stack}}</pre>` : ''}}
+            </div>
+          </div>
+        `;
+        overlay.style.display = 'block';
+        document.getElementById('topo-close-btn').onclick = () => overlay.style.display = 'none';
+        document.getElementById('topo-copy-btn').onclick = () => {{
+          navigator.clipboard.writeText(message + (stack ? '\\n\\n' + stack : ''));
+          document.getElementById('topo-copy-btn').textContent = 'Copied!';
+          setTimeout(() => document.getElementById('topo-copy-btn').textContent = 'Copy', 2000);
+        }};
+      }}
+
+      document.body.appendChild(overlay);
+
+      window.onerror = (msg, src, line, col, err) => {{
+        const loc = src ? `${{src}}:${{line}}:${{col}}` : '';
+        showError('Runtime Error', msg, err?.stack || loc);
+        return false;
+      }};
+
+      window.onunhandledrejection = (e) => {{
+        showError('Unhandled Promise Rejection', e.reason?.message || String(e.reason), e.reason?.stack);
+      }};
+    }})();
+    </script>
 </body>
 </html>
 "#,
@@ -820,6 +872,63 @@ fn find_tp_files(dir: &PathBuf) -> Result<Vec<PathBuf>> {
     }
 
     Ok(files)
+}
+
+/// Generate i18n runtime code
+fn generate_i18n_runtime(config: &I18nConfig) -> String {
+    let mut output = String::new();
+    output.push_str("\n// i18n Internationalization\n");
+
+    // Generate translations object
+    output.push_str("const __i18n = {\n");
+    output.push_str(&format!("  locale: '{}',\n", config.default_locale));
+    output.push_str(&format!("  locales: {:?},\n", config.locales));
+    output.push_str("  translations: {\n");
+
+    if let Some(translations) = &config.translations {
+        for (key, locales) in translations {
+            output.push_str(&format!("    '{}': {{\n", key));
+            for (locale, value) in locales {
+                // Escape single quotes in value
+                let escaped_value = value.replace('\'', "\\'");
+                output.push_str(&format!("      '{}': '{}',\n", locale, escaped_value));
+            }
+            output.push_str("    },\n");
+        }
+    }
+
+    output.push_str("  },\n");
+    output.push_str("  subscribers: [],\n");
+    output.push_str("};\n\n");
+
+    // Generate t() function for translations
+    output.push_str("function t(key, params = {}) {\n");
+    output.push_str("  const translation = __i18n.translations[key];\n");
+    output.push_str("  if (!translation) return key;\n");
+    output.push_str("  let text = translation[__i18n.locale] || translation[Object.keys(translation)[0]] || key;\n");
+    output.push_str("  // Replace {{param}} placeholders\n");
+    output.push_str("  for (const [k, v] of Object.entries(params)) {\n");
+    output.push_str("    text = text.replace(new RegExp(`{{${k}}}`, 'g'), v);\n");
+    output.push_str("  }\n");
+    output.push_str("  return text;\n");
+    output.push_str("}\n\n");
+
+    // Generate $i18n store
+    output.push_str("const $i18n = {\n");
+    output.push_str("  get locale() { return __i18n.locale; },\n");
+    output.push_str("  get locales() { return __i18n.locales; },\n");
+    output.push_str("  setLocale(locale) {\n");
+    output.push_str("    if (__i18n.locales.includes(locale)) {\n");
+    output.push_str("      __i18n.locale = locale;\n");
+    output.push_str("      __i18n.subscribers.forEach(fn => fn());\n");
+    output.push_str("      __rerender();\n");
+    output.push_str("    }\n");
+    output.push_str("  },\n");
+    output.push_str("  subscribe(fn) { __i18n.subscribers.push(fn); },\n");
+    output.push_str("};\n");
+    output.push_str("stores.set('i18n', $i18n);\n\n");
+
+    output
 }
 
 /// Generate file-based routes from pages directory
