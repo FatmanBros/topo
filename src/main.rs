@@ -66,6 +66,20 @@ enum Commands {
         port: Option<u16>,
     },
 
+    /// Run E2E tests with Playwright
+    Test {
+        /// Run tests in headed mode
+        #[arg(long)]
+        headed: bool,
+
+        /// Open Playwright UI
+        #[arg(long)]
+        ui: bool,
+
+        /// Specific test file to run
+        file: Option<String>,
+    },
+
     /// Check for errors without building
     Check {
         /// Input file or directory
@@ -139,6 +153,9 @@ fn main() -> Result<()> {
             let port = port.unwrap_or(dev_config.port);
 
             start_dev_server(port, &config)?;
+        }
+        Commands::Test { headed, ui, file } => {
+            run_tests(headed, ui, file)?;
         }
         Commands::Check { input } => {
             check_project(&input)?;
@@ -575,6 +592,133 @@ fn start_dev_server(port: u16, _config: &Config) -> Result<()> {
     println!("  Local: http://localhost:{}", port);
     println!();
     println!("(Dev server with HMR not yet implemented - use 'topo start' for now)");
+    Ok(())
+}
+
+fn run_tests(headed: bool, ui: bool, file: Option<String>) -> Result<()> {
+    // Check if package.json exists
+    if !PathBuf::from("package.json").exists() {
+        println!("No package.json found. Creating test setup...");
+        create_test_setup()?;
+    }
+
+    // Check if node_modules exists
+    if !PathBuf::from("node_modules").exists() {
+        println!("Installing dependencies...");
+        let status = std::process::Command::new("npm")
+            .arg("install")
+            .status()?;
+        if !status.success() {
+            anyhow::bail!("Failed to install dependencies");
+        }
+
+        // Install Playwright browsers
+        println!("Installing Playwright browsers...");
+        let status = std::process::Command::new("npx")
+            .args(["playwright", "install", "chromium"])
+            .status()?;
+        if !status.success() {
+            anyhow::bail!("Failed to install Playwright browsers");
+        }
+    }
+
+    // Build args
+    let mut args = vec!["playwright", "test"];
+
+    if headed {
+        args.push("--headed");
+    }
+
+    if ui {
+        args.push("--ui");
+    }
+
+    if let Some(ref f) = file {
+        args.push(f);
+    }
+
+    println!("Running tests...");
+    let status = std::process::Command::new("npx")
+        .args(&args)
+        .status()?;
+
+    if !status.success() {
+        anyhow::bail!("Tests failed");
+    }
+
+    Ok(())
+}
+
+fn create_test_setup() -> Result<()> {
+    // Create package.json
+    let package_json = r#"{
+  "name": "topo-app",
+  "version": "0.1.0",
+  "scripts": {
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "test:headed": "playwright test --headed"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.40.0"
+  }
+}
+"#;
+    fs::write("package.json", package_json)?;
+
+    // Create playwright.config.ts
+    let playwright_config = r#"import { defineConfig, devices } from '@playwright/test';
+
+export default defineConfig({
+  testDir: './tests',
+  fullyParallel: true,
+  forbidOnly: !!process.env.CI,
+  retries: process.env.CI ? 2 : 0,
+  workers: process.env.CI ? 1 : undefined,
+  reporter: 'html',
+  use: {
+    baseURL: 'http://localhost:3000',
+    trace: 'on-first-retry',
+  },
+  projects: [
+    {
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'] },
+    },
+  ],
+  webServer: {
+    command: 'topo start --port 3000 --no-open',
+    url: 'http://localhost:3000',
+    reuseExistingServer: !process.env.CI,
+    timeout: 120 * 1000,
+  },
+});
+"#;
+    fs::write("playwright.config.ts", playwright_config)?;
+
+    // Create tests directory
+    fs::create_dir_all("tests")?;
+
+    // Create sample test
+    let sample_test = r#"import { test, expect } from '@playwright/test';
+
+test('has title', async ({ page }) => {
+  await page.goto('/');
+  await expect(page).toHaveTitle(/topo/);
+});
+
+test('can navigate', async ({ page }) => {
+  await page.goto('/');
+  // Add your navigation tests here
+});
+"#;
+    fs::write("tests/app.spec.ts", sample_test)?;
+
+    println!("✓ Created test setup");
+    println!("  - package.json");
+    println!("  - playwright.config.ts");
+    println!("  - tests/app.spec.ts");
+
     Ok(())
 }
 
