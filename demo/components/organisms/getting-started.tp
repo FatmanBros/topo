@@ -1,5 +1,5 @@
 import { Heading } from "../atoms/heading.tp"
-import { Step } from "../molecules/step.tp"
+import { Step } from "../atoms/step.tp"
 
 GettingStarted -> {
     style: "mb-16"
