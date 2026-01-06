@@ -18,6 +18,9 @@ pub struct Program {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum Declaration {
+    /// Import statement: `import "path/to/file.tp"` or `import { Name } from "path"`
+    Import(ImportDef),
+
     /// Component definition: `Name -> { ... }`
     Component(ComponentDef),
 
@@ -32,6 +35,21 @@ pub enum Declaration {
 
     /// Theme definition: `Name * { ... }`
     Theme(ThemeDef),
+}
+
+// ============================================================================
+// Import Definition
+// ============================================================================
+
+/// Import statement
+/// - `import "path/to/file.tp"` - import all exports
+/// - `import { Name, Other } from "path/to/file.tp"` - named imports
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ImportDef {
+    /// The path to the file to import (relative or absolute)
+    pub path: String,
+    /// Specific names to import (empty = import all)
+    pub names: Vec<String>,
 }
 
 // ============================================================================

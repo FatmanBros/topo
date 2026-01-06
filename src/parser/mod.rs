@@ -48,7 +48,12 @@ impl Parser {
     // ========================================================================
 
     fn declaration(&mut self) -> Result<Declaration, ParseError> {
-        // All declarations start with an identifier
+        // Check for import statement
+        if self.check(TokenKind::Import) {
+            return self.import_statement();
+        }
+
+        // All other declarations start with an identifier
         let name = self.expect_identifier()?;
 
         // Check for optional typed parameters: Name(param1: type, param2: type)
@@ -100,6 +105,53 @@ impl Parser {
         } else {
             let token = self.peek();
             Err(ParseError::InvalidDefinitionOperator {
+                line: token.line,
+                column: token.column,
+            })
+        }
+    }
+
+    // ========================================================================
+    // Import Statement
+    // ========================================================================
+
+    fn import_statement(&mut self) -> Result<Declaration, ParseError> {
+        self.expect(TokenKind::Import)?;
+
+        // Check for named imports: import { Name, Other } from "path"
+        let names = if self.check(TokenKind::LBrace) {
+            self.advance();
+            let mut names = Vec::new();
+            while !self.check(TokenKind::RBrace) && !self.is_at_end() {
+                names.push(self.expect_identifier()?);
+                if !self.check(TokenKind::RBrace) {
+                    let _ = self.match_token(TokenKind::Comma);
+                }
+            }
+            self.expect(TokenKind::RBrace)?;
+            self.expect(TokenKind::From)?;
+            names
+        } else {
+            Vec::new()
+        };
+
+        // Expect the path string
+        let path = self.expect_string()?;
+
+        Ok(Declaration::Import(ImportDef { path, names }))
+    }
+
+    fn expect_string(&mut self) -> Result<String, ParseError> {
+        let token = self.peek().clone();
+        if token.kind == TokenKind::String {
+            self.advance();
+            // Remove quotes from the string
+            let s = token.lexeme.trim_matches('"').to_string();
+            Ok(s)
+        } else {
+            Err(ParseError::UnexpectedToken {
+                expected: "string".to_string(),
+                found: token.lexeme,
                 line: token.line,
                 column: token.column,
             })
@@ -628,17 +680,43 @@ impl Parser {
     fn is_type_start(&self) -> bool {
         let token = self.peek();
         // Type annotations start with identifiers like "string", "number", "boolean", etc.
-        // We distinguish from values by checking if it's followed by = or []
+        // We distinguish from values by checking what follows
         if token.kind != TokenKind::Identifier {
             return false;
         }
 
-        // Check if this looks like a type (primitive type names or uppercase for references)
         let name = &token.lexeme;
-        matches!(
+
+        // Check what follows this identifier
+        let next_token = self.peek_ahead(1);
+
+        // If followed by '.', '(' - it's an expression (Store.Action, func())
+        if matches!(next_token.kind, TokenKind::Dot | TokenKind::LParen) {
+            return false;
+        }
+
+        // Primitive type names are always types
+        if matches!(
             name.as_str(),
             "string" | "number" | "boolean" | "any" | "void" | "null" | "undefined"
-        ) || name.chars().next().map_or(false, |c| c.is_uppercase())
+        ) {
+            return true;
+        }
+
+        // Uppercase identifiers followed by '=' or '[]' or '?' or '|' are types
+        if name.chars().next().map_or(false, |c| c.is_uppercase()) {
+            return matches!(
+                next_token.kind,
+                TokenKind::Eq | TokenKind::LBracket | TokenKind::Question | TokenKind::Pipe
+            );
+        }
+
+        false
+    }
+
+    /// Peek ahead by n tokens (0 = current)
+    fn peek_ahead(&self, n: usize) -> &Token {
+        self.tokens.get(self.current + n).unwrap_or(&self.tokens[self.tokens.len() - 1])
     }
 
     // ========================================================================

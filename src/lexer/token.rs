@@ -70,6 +70,7 @@ pub enum TokenKind {
     Extends,
     Import,
     Export,
+    From,
     Layout,
 
     // Keywords - Store blocks
@@ -154,6 +155,7 @@ impl std::fmt::Display for TokenKind {
             TokenKind::Extends => write!(f, "extends"),
             TokenKind::Import => write!(f, "import"),
             TokenKind::Export => write!(f, "export"),
+            TokenKind::From => write!(f, "from"),
             TokenKind::Layout => write!(f, "layout"),
             TokenKind::State => write!(f, "State"),
             TokenKind::Actions => write!(f, "Actions"),

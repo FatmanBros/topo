@@ -339,6 +339,7 @@ impl<'a> Lexer<'a> {
             "extends" => TokenKind::Extends,
             "import" => TokenKind::Import,
             "export" => TokenKind::Export,
+            "from" => TokenKind::From,
             "layout" => TokenKind::Layout,
             // Store blocks
             "State" => TokenKind::State,
