@@ -609,24 +609,6 @@ function Sidebar() {
 }
 
 
-function Content() {
-  return {
-    style: 'ml-56 p-12 bg-gray-50 min-h-screen',
-    align: 'vertical',
-    children: [Hero, Features, Syntax, Example, GettingStarted, Footer]
-  };
-}
-
-function App() {
-  return {
-    style: 'font-sans',
-    children: [Sidebar, Content]
-  };
-}
-
-// Mount app
-mount(App, '#app');
-
 function UserDetailTitle() {
   return {
     type: 'text',
