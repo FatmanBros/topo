@@ -78,6 +78,13 @@ impl JsCodegen {
         self.theme_colors.contains(name)
     }
 
+    /// Generate runtime code (call once at the beginning of build)
+    pub fn generate_runtime(&mut self) -> String {
+        self.emit_runtime_imports();
+        self.emit_line("");
+        std::mem::take(&mut self.output)
+    }
+
     pub fn generate(&mut self, program: &Program) -> String {
         // First pass: collect API service names, find App component, and collect theme
         let mut has_app = false;
@@ -95,9 +102,6 @@ impl JsCodegen {
                 self.collect_theme_from_def(theme);
             }
         }
-
-        self.emit_runtime_imports();
-        self.emit_line("");
 
         // Generate theme CSS injection if theme is defined
         if !self.theme_values.is_empty() {
@@ -120,7 +124,7 @@ impl JsCodegen {
             self.emit_line("mount(App, '#app');");
         }
 
-        self.output.clone()
+        std::mem::take(&mut self.output)
     }
 
     fn collect_theme_from_def(&mut self, theme: &ThemeDef) {

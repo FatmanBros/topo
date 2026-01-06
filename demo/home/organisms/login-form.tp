@@ -1,7 +1,7 @@
 // Organisms: Login form
-import "../stores/login.tp"
-import "../atoms/input.tp"
-import "../molecules/form-field.tp"
+import { LoginForm } from "../stores/login.tp"
+import { Input } from "../atoms/input.tp"
+import { Label } from "../molecules/form-field.tp"
 
 LoginTitle -> {
     type: text
@@ -52,7 +52,7 @@ LoginFormCard -> {
     ]
 }
 
-App -> {
+LoginApp -> {
     style: "min-h-screen bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center p-4"
     children: [LoginFormCard]
 }

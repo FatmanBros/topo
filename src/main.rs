@@ -308,6 +308,9 @@ fn build_project(input: &PathBuf, output: &PathBuf, mode: &str) -> Result<()> {
     let mut all_output = String::new();
     let mut codegen = JsCodegen::new();
 
+    // Generate runtime once at the beginning
+    all_output.push_str(&codegen.generate_runtime());
+
     for file in &compile_order {
         println!("  Compiling: {:?}", file);
         if let Some(program) = parsed_files.get(file) {

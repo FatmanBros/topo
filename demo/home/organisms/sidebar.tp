@@ -1,4 +1,5 @@
 // Organisms: Sidebar navigation
+import { NavItem } from "../molecules/card.tp"
 
 Logo -> {
     type: text
