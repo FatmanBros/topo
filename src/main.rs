@@ -312,24 +312,59 @@ fn build_project(input: &PathBuf, output: &PathBuf, mode: &str) -> Result<()> {
     fs::write(&output_file, &all_output)?;
     println!("✓ Build complete: {:?}", output_file);
 
-    // Create index.html
-    let html = r#"<!DOCTYPE html>
+    // Load config for HTML generation
+    let config = Config::load_or_default();
+    let html = generate_html(&config);
+    fs::write(output.join("index.html"), html)?;
+
+    Ok(())
+}
+
+fn generate_html(config: &Config) -> String {
+    let style_config = config.style.clone().unwrap_or_default();
+    let tailwind_config = style_config.tailwind.unwrap_or_default();
+
+    // Generate Tailwind script tag based on config
+    let tailwind_script = if tailwind_config.enabled && tailwind_config.cdn {
+        if let Some(custom_url) = &tailwind_config.cdn_url {
+            format!("    <script src=\"{}\"></script>\n", custom_url)
+        } else {
+            // Use versioned CDN URL
+            format!(
+                "    <script src=\"https://cdn.tailwindcss.com/{}\"></script>\n",
+                tailwind_config.version
+            )
+        }
+    } else if tailwind_config.enabled {
+        // Local Tailwind - user needs to set up their own build
+        "    <!-- Tailwind CSS: Configure local build in tailwind.config.js -->\n    <link rel=\"stylesheet\" href=\"./styles.css\">\n".to_string()
+    } else {
+        String::new()
+    };
+
+    // Get project name
+    let title = config
+        .project
+        .as_ref()
+        .map(|p| p.name.clone())
+        .unwrap_or_else(|| "topo App".to_string());
+
+    format!(
+        r#"<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>topo App</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
+    <title>{}</title>
+{}</head>
 <body>
     <div id="app"></div>
     <script type="module" src="./app.js"></script>
 </body>
 </html>
-"#;
-    fs::write(output.join("index.html"), html)?;
-
-    Ok(())
+"#,
+        title, tailwind_script
+    )
 }
 
 fn start_server(port: u16, output_dir: &PathBuf, open_browser: bool) -> Result<()> {
