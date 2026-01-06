@@ -1,0 +1,28 @@
+// Login form tests
+import { LoginForm } from "./home/stores/login.tp"
+
+Test "ログインフォームが表示される" {
+    goto "/login"
+    expect $LoginForm.email visible
+    expect $LoginForm.password visible
+    expect submit visible
+}
+
+Test "空のメールでバリデーションエラー" {
+    goto "/login"
+    fill $LoginForm.email ""
+    click submit
+    expect $LoginForm.emailError visible
+}
+
+Test "正常なログインフロー" {
+    mock AuthApi.login -> { token: "test-token" }
+
+    goto "/login"
+    fill $LoginForm.email "test@example.com"
+    fill $LoginForm.password "password123"
+    click submit
+
+    wait 500
+    expect url "/"
+}

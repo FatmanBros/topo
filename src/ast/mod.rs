@@ -35,6 +35,9 @@ pub enum Declaration {
 
     /// Theme definition: `Name * { ... }`
     Theme(ThemeDef),
+
+    /// Test definition: `Test "name" { ... }`
+    Test(TestDef),
 }
 
 // ============================================================================
@@ -414,6 +417,90 @@ pub enum BinaryOperator {
 pub enum UnaryOperator {
     Not,      // !
     Neg,      // -
+}
+
+// ============================================================================
+// Test Definition
+// ============================================================================
+
+/// Test definition: `Test "test name" { ... }`
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct TestDef {
+    pub name: String,
+    pub statements: Vec<TestStatement>,
+}
+
+/// Test statement types
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "type")]
+pub enum TestStatement {
+    /// Navigate to a URL: `goto "/path"`
+    Goto { path: String },
+
+    /// Click an element: `click submit`, `click text "Login"`, `click $Store.field`
+    Click { target: TestTarget },
+
+    /// Fill an input: `fill $Store.field "value"`
+    Fill { target: TestTarget, value: Expression },
+
+    /// Type text: `type $Store.field "value"`
+    Type { target: TestTarget, value: Expression },
+
+    /// Expect assertion: `expect $Store.field visible`, `expect url "/path"`
+    Expect { target: TestTarget, assertion: TestAssertion },
+
+    /// Mock an API: `mock Service.method -> data`
+    Mock {
+        service: String,
+        method: String,
+        response: Expression,
+    },
+
+    /// Wait for time: `wait 1000`
+    Wait { ms: u32 },
+}
+
+/// Target for test operations
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "type")]
+pub enum TestTarget {
+    /// Store field reference: `$LoginForm.email`
+    Field { store: String, field: String },
+
+    /// Text content: `text "Login"`
+    Text { content: String },
+
+    /// Submit button
+    Submit,
+
+    /// Button with text
+    Button { content: String },
+
+    /// URL
+    Url,
+
+    /// CSS selector
+    Selector { selector: String },
+}
+
+/// Test assertions
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "type")]
+pub enum TestAssertion {
+    /// Element is visible
+    Visible,
+
+    /// Element is hidden
+    Hidden,
+
+    /// Element has text value
+    HasText { value: String },
+
+    /// URL equals
+    Equals { value: String },
+
+    /// Element contains text
+    Contains { value: String },
 }
 
 // ============================================================================

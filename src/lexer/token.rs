@@ -99,6 +99,23 @@ pub enum TokenKind {
     Close,
     FatArrow,   // =>
 
+    // Keywords - Testing
+    Test,
+    Goto,
+    Click,
+    Fill,
+    Type,
+    Expect,
+    Mock,
+    Wait,
+    Visible,
+    Hidden,
+    Text,
+    Url,
+    Submit,
+    Button,
+    In,
+
     // End of file
     Eof,
 }
@@ -177,6 +194,21 @@ impl std::fmt::Display for TokenKind {
             TokenKind::Open => write!(f, "open"),
             TokenKind::Close => write!(f, "close"),
             TokenKind::FatArrow => write!(f, "=>"),
+            TokenKind::Test => write!(f, "Test"),
+            TokenKind::Goto => write!(f, "goto"),
+            TokenKind::Click => write!(f, "click"),
+            TokenKind::Fill => write!(f, "fill"),
+            TokenKind::Type => write!(f, "type"),
+            TokenKind::Expect => write!(f, "expect"),
+            TokenKind::Mock => write!(f, "mock"),
+            TokenKind::Wait => write!(f, "wait"),
+            TokenKind::Visible => write!(f, "visible"),
+            TokenKind::Hidden => write!(f, "hidden"),
+            TokenKind::Text => write!(f, "text"),
+            TokenKind::Url => write!(f, "url"),
+            TokenKind::Submit => write!(f, "submit"),
+            TokenKind::Button => write!(f, "button"),
+            TokenKind::In => write!(f, "in"),
             TokenKind::Eof => write!(f, "EOF"),
         }
     }

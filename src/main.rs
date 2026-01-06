@@ -674,6 +674,9 @@ fn run_tests(headed: bool, ui: bool, file: Option<String>) -> Result<()> {
         }
     }
 
+    // Compile .test.tp files to Playwright specs
+    compile_test_files()?;
+
     // Build args
     let mut args = vec!["playwright", "test"];
 
@@ -699,6 +702,186 @@ fn run_tests(headed: bool, ui: bool, file: Option<String>) -> Result<()> {
     }
 
     Ok(())
+}
+
+fn compile_test_files() -> Result<()> {
+    use glob::glob;
+
+    // Find all .test.tp files only
+    let mut test_files = Vec::new();
+
+    for entry in glob("**/*.test.tp")? {
+        if let Ok(path) = entry {
+            // Skip node_modules
+            if !path.to_string_lossy().contains("node_modules") {
+                test_files.push(path);
+            }
+        }
+    }
+
+    if test_files.is_empty() {
+        println!("No .test.tp files found");
+        return Ok(());
+    }
+
+    // Ensure tests directory exists
+    fs::create_dir_all("tests")?;
+
+    for test_file in test_files {
+        println!("  Compiling test: {:?}", test_file);
+        let source = fs::read_to_string(&test_file)?;
+
+        let mut lexer = Lexer::new(&source);
+        let tokens = lexer.tokenize()?;
+        let mut parser = TopoParser::new(tokens);
+        let ast = parser.parse()?;
+
+        // Generate Playwright test code
+        let playwright_code = generate_playwright_test(&ast)?;
+
+        // Write to tests directory
+        let output_name = test_file
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("test");
+        let output_path = format!("tests/{}.spec.ts", output_name.replace(".test", ""));
+
+        fs::write(&output_path, playwright_code)?;
+        println!("  Generated: {}", output_path);
+    }
+
+    Ok(())
+}
+
+fn generate_playwright_test(ast: &Program) -> Result<String> {
+    use topo::ast::{TestStatement, TestTarget, TestAssertion};
+
+    let mut output = String::new();
+    output.push_str("import { test, expect } from '@playwright/test';\n\n");
+
+    for decl in &ast.declarations {
+        if let Declaration::Test(test_def) = decl {
+            output.push_str(&format!("test('{}', async ({{ page }}) => {{\n", test_def.name));
+
+            for stmt in &test_def.statements {
+                match stmt {
+                    TestStatement::Goto { path } => {
+                        output.push_str(&format!("  await page.goto('{}');\n", path));
+                    }
+                    TestStatement::Click { target } => {
+                        let selector = target_to_selector(target);
+                        output.push_str(&format!("  await page.locator('{}').click();\n", selector));
+                    }
+                    TestStatement::Fill { target, value } => {
+                        let selector = target_to_selector(target);
+                        let val = expression_to_string(value);
+                        output.push_str(&format!("  await page.locator('{}').fill({});\n", selector, val));
+                    }
+                    TestStatement::Type { target, value } => {
+                        let selector = target_to_selector(target);
+                        let val = expression_to_string(value);
+                        output.push_str(&format!("  await page.locator('{}').type({});\n", selector, val));
+                    }
+                    TestStatement::Expect { target, assertion } => {
+                        match target {
+                            TestTarget::Url => {
+                                match assertion {
+                                    TestAssertion::Equals { value } => {
+                                        output.push_str(&format!("  await expect(page).toHaveURL('{}');\n", value));
+                                    }
+                                    _ => {}
+                                }
+                            }
+                            _ => {
+                                let selector = target_to_selector(target);
+                                match assertion {
+                                    TestAssertion::Visible => {
+                                        output.push_str(&format!("  await expect(page.locator('{}')).toBeVisible();\n", selector));
+                                    }
+                                    TestAssertion::Hidden => {
+                                        output.push_str(&format!("  await expect(page.locator('{}')).toBeHidden();\n", selector));
+                                    }
+                                    TestAssertion::HasText { value } => {
+                                        output.push_str(&format!("  await expect(page.locator('{}')).toHaveText('{}');\n", selector, value));
+                                    }
+                                    TestAssertion::Equals { value } => {
+                                        output.push_str(&format!("  await expect(page.locator('{}')).toHaveText('{}');\n", selector, value));
+                                    }
+                                    TestAssertion::Contains { value } => {
+                                        output.push_str(&format!("  await expect(page.locator('{}')).toContainText('{}');\n", selector, value));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    TestStatement::Mock { service, method, response } => {
+                        // Generate route mock based on service/method
+                        let response_str = expression_to_string(response);
+                        let route_pattern = format!("**/api/{}/**", service.to_lowercase());
+                        output.push_str(&format!(
+                            "  // Mock {}.{}\n  await page.route('{}', route => route.fulfill({{ json: {} }}));\n",
+                            service, method, route_pattern, response_str
+                        ));
+                    }
+                    TestStatement::Wait { ms } => {
+                        output.push_str(&format!("  await page.waitForTimeout({});\n", ms));
+                    }
+                }
+            }
+
+            output.push_str("});\n\n");
+        }
+    }
+
+    Ok(output)
+}
+
+fn target_to_selector(target: &topo::ast::TestTarget) -> String {
+    use topo::ast::TestTarget;
+
+    match target {
+        TestTarget::Field { store, field } => {
+            format!("[data-field=\"{}.{}\"]", store, field)
+        }
+        TestTarget::Text { content } => {
+            format!("text={}", content)
+        }
+        TestTarget::Submit => {
+            "button[type=\"submit\"]".to_string()
+        }
+        TestTarget::Button { content } => {
+            format!("button:has-text(\"{}\")", content)
+        }
+        TestTarget::Url => {
+            "".to_string() // Handled specially in expect
+        }
+        TestTarget::Selector { selector } => {
+            selector.clone()
+        }
+    }
+}
+
+fn expression_to_string(expr: &topo::ast::Expression) -> String {
+    use topo::ast::Expression;
+
+    match expr {
+        Expression::String { value } => format!("'{}'", value),
+        Expression::Number { value } => value.to_string(),
+        Expression::Boolean { value } => value.to_string(),
+        Expression::Null => "null".to_string(),
+        Expression::Array { elements } => {
+            let elems: Vec<String> = elements.iter().map(|e| expression_to_string(e)).collect();
+            format!("[{}]", elems.join(", "))
+        }
+        Expression::Object { properties } => {
+            let props: Vec<String> = properties
+                .iter()
+                .map(|p| format!("{}: {}", p.key, expression_to_string(&p.value)))
+                .collect();
+            format!("{{ {} }}", props.join(", "))
+        }
+        _ => "''".to_string(),
+    }
 }
 
 fn create_test_setup() -> Result<()> {

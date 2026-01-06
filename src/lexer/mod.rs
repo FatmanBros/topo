@@ -363,6 +363,22 @@ impl<'a> Lexer<'a> {
             "error" => TokenKind::Error,
             "open" => TokenKind::Open,
             "close" => TokenKind::Close,
+            // Testing keywords
+            "Test" => TokenKind::Test,
+            "goto" => TokenKind::Goto,
+            "click" => TokenKind::Click,
+            "fill" => TokenKind::Fill,
+            "type" => TokenKind::Type,
+            "expect" => TokenKind::Expect,
+            "mock" => TokenKind::Mock,
+            "wait" => TokenKind::Wait,
+            "visible" => TokenKind::Visible,
+            "hidden" => TokenKind::Hidden,
+            "text" => TokenKind::Text,
+            "url" => TokenKind::Url,
+            "submit" => TokenKind::Submit,
+            "button" => TokenKind::Button,
+            "in" => TokenKind::In,
             _ => TokenKind::Identifier,
         }
     }
