@@ -51,11 +51,27 @@ impl Parser {
         // All declarations start with an identifier
         let name = self.expect_identifier()?;
 
+        // Check for optional parameters: Name(param1, param2)
+        let params = if self.check(TokenKind::LParen) {
+            self.advance();
+            let mut params = Vec::new();
+            while !self.check(TokenKind::RParen) && !self.is_at_end() {
+                params.push(self.expect_identifier_or_keyword()?);
+                if !self.check(TokenKind::RParen) {
+                    let _ = self.match_token(TokenKind::Comma);
+                }
+            }
+            self.expect(TokenKind::RParen)?;
+            params
+        } else {
+            Vec::new()
+        };
+
         // Check which type of definition this is based on the operator
         if self.check(TokenKind::Arrow) {
-            // Component: Name -> { }
+            // Component: Name(params) -> { }
             self.advance();
-            Ok(Declaration::Component(self.component_def(name)?))
+            Ok(Declaration::Component(self.component_def(name, params)?))
         } else if self.check(TokenKind::ColonColon) {
             // API Service: Name :: { }
             self.advance();
@@ -84,7 +100,7 @@ impl Parser {
     // Component Definition (->)
     // ========================================================================
 
-    fn component_def(&mut self, name: String) -> Result<ComponentDef, ParseError> {
+    fn component_def(&mut self, name: String, params: Vec<String>) -> Result<ComponentDef, ParseError> {
         self.expect(TokenKind::LBrace)?;
 
         let mut properties = Vec::new();
@@ -94,7 +110,7 @@ impl Parser {
 
         self.expect(TokenKind::RBrace)?;
 
-        Ok(ComponentDef { name, properties })
+        Ok(ComponentDef { name, params, properties })
     }
 
     // ========================================================================
@@ -860,6 +876,31 @@ impl Parser {
             TokenKind::Null => {
                 self.advance();
                 Ok(Expression::Null)
+            }
+            TokenKind::For => {
+                // for item in items { body }
+                self.advance();
+                let item = self.expect_identifier_or_keyword()?;
+                // Expect 'in' - we'll use Identifier for now
+                let in_token = self.peek().clone();
+                if in_token.lexeme != "in" {
+                    return Err(ParseError::UnexpectedToken {
+                        expected: "in".to_string(),
+                        found: in_token.lexeme,
+                        line: in_token.line,
+                        column: in_token.column,
+                    });
+                }
+                self.advance();
+                let items = self.expression()?;
+                self.expect(TokenKind::LBrace)?;
+                let body = self.expression()?;
+                self.expect(TokenKind::RBrace)?;
+                Ok(Expression::ForIn {
+                    item,
+                    items: Box::new(items),
+                    body: Box::new(body),
+                })
             }
             TokenKind::Identifier => {
                 self.advance();

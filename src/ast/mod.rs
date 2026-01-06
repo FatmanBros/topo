@@ -41,6 +41,7 @@ pub enum Declaration {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ComponentDef {
     pub name: String,
+    pub params: Vec<String>,
     pub properties: Vec<Property>,
 }
 
@@ -250,6 +251,13 @@ pub enum Expression {
 
     /// Array: `[a, b, c]`
     Array { elements: Vec<Expression> },
+
+    /// For loop: `for item in items { Component(item) }`
+    ForIn {
+        item: String,
+        items: Box<Expression>,
+        body: Box<Expression>,
+    },
 
     /// Object: `{ key: value }`
     Object { properties: Vec<Property> },
