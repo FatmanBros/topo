@@ -25,7 +25,7 @@
     }
   },
   "paths": {
-    "pages": "demo",
+    "pages": "demo/pages",
     "components": "src/components",
     "stores": "src/stores",
     "services": "src/services"
