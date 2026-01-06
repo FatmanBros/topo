@@ -2,6 +2,7 @@ use anyhow::Result;
 use clap::{Parser, Subcommand};
 use std::fs;
 use std::path::PathBuf;
+use tiny_http::{Response, Server};
 
 use topo::codegen::JsCodegen;
 use topo::config::{Config, BuildMode};
@@ -43,7 +44,19 @@ enum Commands {
         mode: Option<String>,
     },
 
-    /// Start development server
+    /// Build and start the server (alias: s)
+    #[command(alias = "s")]
+    Start {
+        /// Port number (overrides config)
+        #[arg(short, long)]
+        port: Option<u16>,
+
+        /// Don't open browser automatically
+        #[arg(long)]
+        no_open: bool,
+    },
+
+    /// Start development server with hot reload
     Dev {
         /// Port number (overrides config)
         #[arg(short, long)]
@@ -95,6 +108,27 @@ fn main() -> Result<()> {
             });
 
             build_project(&input, &output, &mode)?;
+        }
+        Commands::Start { port, no_open } => {
+            let config = Config::load_or_default();
+            let build_config = config.build_config();
+            let dev_config = config.dev_config();
+            let paths_config = config.paths_config();
+
+            let port = port.unwrap_or(dev_config.port);
+            let input = PathBuf::from(&paths_config.pages);
+            let output = PathBuf::from(&build_config.output);
+            let mode = match build_config.mode {
+                BuildMode::Spa => "spa".to_string(),
+                BuildMode::Ssg => "ssg".to_string(),
+                BuildMode::Ssr => "ssr".to_string(),
+            };
+
+            // Build first
+            build_project(&input, &output, &mode)?;
+
+            // Then start server
+            start_server(port, &output, !no_open && dev_config.open)?;
         }
         Commands::Dev { port } => {
             let config = Config::load_or_default();
@@ -298,13 +332,105 @@ fn build_project(input: &PathBuf, output: &PathBuf, mode: &str) -> Result<()> {
     Ok(())
 }
 
+fn start_server(port: u16, output_dir: &PathBuf, open_browser: bool) -> Result<()> {
+    let addr = format!("0.0.0.0:{}", port);
+    let server = Server::http(&addr).map_err(|e| anyhow::anyhow!("Failed to start server: {}", e))?;
+
+    println!();
+    println!("  Server running at:");
+    println!("  Local:   http://localhost:{}", port);
+    println!();
+    println!("  Press Ctrl+C to stop");
+    println!();
+
+    // Open browser if configured
+    if open_browser {
+        let url = format!("http://localhost:{}", port);
+        if let Err(e) = open_in_browser(&url) {
+            eprintln!("  Warning: Could not open browser: {}", e);
+        }
+    }
+
+    // Serve files
+    for request in server.incoming_requests() {
+        let url_path = request.url().trim_start_matches('/');
+        let file_path = if url_path.is_empty() || url_path == "/" {
+            output_dir.join("index.html")
+        } else {
+            output_dir.join(url_path)
+        };
+
+        let response = if file_path.exists() && file_path.is_file() {
+            match fs::read(&file_path) {
+                Ok(content) => {
+                    let content_type = get_content_type(&file_path);
+                    Response::from_data(content).with_header(
+                        tiny_http::Header::from_bytes(&b"Content-Type"[..], content_type.as_bytes()).unwrap()
+                    )
+                }
+                Err(_) => Response::from_string("500 Internal Server Error")
+                    .with_status_code(500),
+            }
+        } else {
+            // For SPA, serve index.html for non-existent paths
+            match fs::read(output_dir.join("index.html")) {
+                Ok(content) => Response::from_data(content).with_header(
+                    tiny_http::Header::from_bytes(&b"Content-Type"[..], b"text/html").unwrap()
+                ),
+                Err(_) => Response::from_string("404 Not Found").with_status_code(404),
+            }
+        };
+
+        let _ = request.respond(response);
+    }
+
+    Ok(())
+}
+
+fn get_content_type(path: &PathBuf) -> String {
+    match path.extension().and_then(|e| e.to_str()) {
+        Some("html") => "text/html",
+        Some("js") => "application/javascript",
+        Some("css") => "text/css",
+        Some("json") => "application/json",
+        Some("png") => "image/png",
+        Some("jpg") | Some("jpeg") => "image/jpeg",
+        Some("gif") => "image/gif",
+        Some("svg") => "image/svg+xml",
+        Some("ico") => "image/x-icon",
+        Some("woff") => "font/woff",
+        Some("woff2") => "font/woff2",
+        Some("ttf") => "font/ttf",
+        _ => "application/octet-stream",
+    }
+    .to_string()
+}
+
+fn open_in_browser(url: &str) -> Result<()> {
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open").arg(url).spawn()?;
+    }
+    #[cfg(target_os = "linux")]
+    {
+        std::process::Command::new("xdg-open").arg(url).spawn()?;
+    }
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("cmd")
+            .args(["/C", "start", url])
+            .spawn()?;
+    }
+    Ok(())
+}
+
 fn start_dev_server(port: u16, _config: &Config) -> Result<()> {
     println!("Starting development server...");
     println!("  Port: {}", port);
     println!();
     println!("  Local: http://localhost:{}", port);
     println!();
-    println!("(Dev server not yet implemented - use 'topo build' for now)");
+    println!("(Dev server with HMR not yet implemented - use 'topo start' for now)");
     Ok(())
 }
 

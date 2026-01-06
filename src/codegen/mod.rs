@@ -54,10 +54,16 @@ impl JsCodegen {
     }
 
     pub fn generate(&mut self, program: &Program) -> String {
-        // First pass: collect API service names for reference resolution
+        // First pass: collect API service names and find App component
+        let mut has_app = false;
         for decl in &program.declarations {
             if let Declaration::ApiService(api) = decl {
                 self.api_service_names.insert(api.name.clone());
+            }
+            if let Declaration::Component(comp) = decl {
+                if comp.name == "App" {
+                    has_app = true;
+                }
             }
         }
 
@@ -69,11 +75,106 @@ impl JsCodegen {
             self.emit_line("");
         }
 
+        // Auto-mount App component if it exists
+        if has_app {
+            self.emit_line("// Mount app");
+            self.emit_line("mount(App, '#app');");
+        }
+
         self.output.clone()
     }
 
     fn emit_runtime_imports(&mut self) {
-        self.emit_line("import { createStore, dispatch, ref, mount } from 'topo-runtime';");
+        // Inline minimal runtime
+        self.emit_line("// topo runtime");
+        self.emit_line("const stores = new Map();");
+        self.emit_line("");
+        self.emit_line("function createStore(name, initialState) {");
+        self.emit_line("  const state = { ...initialState };");
+        self.emit_line("  const listeners = [];");
+        self.emit_line("  const reducers = new Map();");
+        self.emit_line("  const effects = new Map();");
+        self.emit_line("  const selectors = new Map();");
+        self.emit_line("");
+        self.emit_line("  const store = {");
+        self.emit_line("    get state() { return state; },");
+        self.emit_line("    on(action, reducer) { reducers.set(action, reducer); },");
+        self.emit_line("    effect(action, handler) { effects.set(action, handler); },");
+        self.emit_line("    selector(name, fn) { selectors.set(name, fn); },");
+        self.emit_line("    subscribe(fn) { listeners.push(fn); },");
+        self.emit_line("    dispatch(action, ...args) {");
+        self.emit_line("      const reducer = reducers.get(action);");
+        self.emit_line("      if (reducer) {");
+        self.emit_line("        Object.assign(state, reducer(state, ...args));");
+        self.emit_line("        listeners.forEach(fn => fn(state));");
+        self.emit_line("      }");
+        self.emit_line("      const effect = effects.get(action);");
+        self.emit_line("      if (effect) effect(...args);");
+        self.emit_line("    },");
+        self.emit_line("    select(name) {");
+        self.emit_line("      const selector = selectors.get(name);");
+        self.emit_line("      return selector ? selector(state) : undefined;");
+        self.emit_line("    }");
+        self.emit_line("  };");
+        self.emit_line("  stores.set(name, store);");
+        self.emit_line("  return store;");
+        self.emit_line("}");
+        self.emit_line("");
+        self.emit_line("function dispatch(storeName, action, ...args) {");
+        self.emit_line("  const store = stores.get(storeName);");
+        self.emit_line("  if (store) store.dispatch(action, ...args);");
+        self.emit_line("}");
+        self.emit_line("");
+        self.emit_line("function mount(componentFn, container) {");
+        self.emit_line("  const el = document.querySelector(container);");
+        self.emit_line("  if (!el) return;");
+        self.emit_line("  const render = () => {");
+        self.emit_line("    const vdom = componentFn();");
+        self.emit_line("    el.innerHTML = renderVdom(vdom);");
+        self.emit_line("    bindEvents(el, vdom);");
+        self.emit_line("  };");
+        self.emit_line("  stores.forEach(store => store.subscribe(render));");
+        self.emit_line("  render();");
+        self.emit_line("}");
+        self.emit_line("");
+        self.emit_line("function renderVdom(vdom) {");
+        self.emit_line("  if (!vdom) return '';");
+        self.emit_line("  const { type, content, value, style, children, align } = vdom;");
+        self.emit_line("  const styleAttr = style ? ` class=\"${style}\"` : '';");
+        self.emit_line("  const flexClass = align === 'horizontal' ? ' flex flex-row' : align === 'vertical' ? ' flex flex-col' : '';");
+        self.emit_line("  ");
+        self.emit_line("  if (type === 'text') {");
+        self.emit_line("    return `<span${styleAttr}>${content || value || ''}</span>`;");
+        self.emit_line("  }");
+        self.emit_line("  if (type === 'button') {");
+        self.emit_line("    return `<button${styleAttr} data-click=\"true\">${content || ''}</button>`;");
+        self.emit_line("  }");
+        self.emit_line("  if (children) {");
+        self.emit_line("    const inner = children.map(c => typeof c === 'function' ? renderVdom(c()) : renderVdom(c)).join('');");
+        self.emit_line("    return `<div class=\"${(style || '') + flexClass}\">${inner}</div>`;");
+        self.emit_line("  }");
+        self.emit_line("  return `<div${styleAttr}>${content || value || ''}</div>`;");
+        self.emit_line("}");
+        self.emit_line("");
+        self.emit_line("function bindEvents(el, vdom) {");
+        self.emit_line("  el.querySelectorAll('[data-click]').forEach((btn, i) => {");
+        self.emit_line("    const handler = findClickHandler(vdom, i);");
+        self.emit_line("    if (handler) btn.onclick = handler;");
+        self.emit_line("  });");
+        self.emit_line("}");
+        self.emit_line("");
+        self.emit_line("function findClickHandler(vdom, index, count = { n: 0 }) {");
+        self.emit_line("  if (!vdom) return null;");
+        self.emit_line("  if (vdom.click && count.n++ === index) return vdom.click;");
+        self.emit_line("  if (vdom.children) {");
+        self.emit_line("    for (const c of vdom.children) {");
+        self.emit_line("      const child = typeof c === 'function' ? c() : c;");
+        self.emit_line("      const h = findClickHandler(child, index, count);");
+        self.emit_line("      if (h) return h;");
+        self.emit_line("    }");
+        self.emit_line("  }");
+        self.emit_line("  return null;");
+        self.emit_line("}");
     }
 
     fn generate_declaration(&mut self, decl: &Declaration) {

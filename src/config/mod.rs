@@ -153,7 +153,7 @@ fn default_mode() -> BuildMode { BuildMode::Spa }
 fn default_output() -> String { "dist".to_string() }
 fn default_true() -> bool { true }
 fn default_target() -> String { "es2022".to_string() }
-fn default_port() -> u16 { 3000 }
+fn default_port() -> u16 { 7090 }
 fn default_host() -> String { "localhost".to_string() }
 fn default_style_framework() -> String { "tailwind".to_string() }
 fn default_pages_path() -> String { "src/pages".to_string() }
@@ -244,7 +244,7 @@ impl Default for BuildConfig {
 impl Default for DevConfig {
     fn default() -> Self {
         Self {
-            port: 3000,
+            port: 7090,
             host: "localhost".to_string(),
             open: true,
             hmr: true,
@@ -300,6 +300,6 @@ mod tests {
     fn test_default_config() {
         let config = Config::default();
         assert_eq!(config.build_config().mode, BuildMode::Spa);
-        assert_eq!(config.dev_config().port, 3000);
+        assert_eq!(config.dev_config().port, 7090);
     }
 }

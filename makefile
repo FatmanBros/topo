@@ -150,6 +150,18 @@ setup-full:
 	@make init
 	@echo "🎉 Full setup completed!"
 
+# topo CLI インストール
+topo-install:
+	cargo install --path .
+
+# topo CLI アンインストール
+topo-uninstall:
+	cargo uninstall topo
+
+# topo リリースビルド
+topo-build:
+	cargo build --release
+
 # ヘルプ
 help:
 	@echo "Docker環境管理コマンド:"

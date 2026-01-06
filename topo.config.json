@@ -11,7 +11,7 @@
     "sourcemap": true
   },
   "dev": {
-    "port": 3000,
+    "port": 7090,
     "open": true,
     "hmr": true
   },
@@ -20,7 +20,7 @@
     "config": "tailwind.config.js"
   },
   "paths": {
-    "pages": "src/pages",
+    "pages": "demo",
     "components": "src/components",
     "stores": "src/stores",
     "services": "src/services"
