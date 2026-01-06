@@ -1,6 +1,6 @@
 // topo Documentation Site
-import { Sidebar } from "home/organisms/sidebar.tp"
-import { Hero, Features, Syntax, Example, GettingStarted, Footer } from "home/organisms/sections.tp"
+import { Sidebar } from "components/organisms/sidebar.tp"
+import { Hero, Features, Syntax, Example, GettingStarted, Footer } from "components/organisms/sections.tp"
 
 // ============================================
 // Main Content
