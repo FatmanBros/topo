@@ -4,7 +4,7 @@ use std::fs;
 use std::path::PathBuf;
 use tiny_http::{Response, Server};
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use topo::ast::{Declaration, Program};
 use topo::codegen::JsCodegen;
@@ -310,6 +310,16 @@ fn build_project(input: &PathBuf, output: &PathBuf, mode: &str) -> Result<()> {
 
     // Generate runtime once at the beginning
     all_output.push_str(&codegen.generate_runtime());
+
+    // Generate file-based routes
+    let routes = generate_routes(&entry_files, input)?;
+    if !routes.is_empty() {
+        all_output.push_str("\n// File-based routes\n");
+        for (pattern, component) in &routes {
+            all_output.push_str(&format!("registerRoute('{}', {});\n", pattern, component));
+        }
+        all_output.push_str("\n");
+    }
 
     for file in &compile_order {
         println!("  Compiling: {:?}", file);
@@ -666,4 +676,120 @@ fn find_tp_files(dir: &PathBuf) -> Result<Vec<PathBuf>> {
     }
 
     Ok(files)
+}
+
+/// Generate file-based routes from pages directory
+/// pages/index.tp -> /
+/// pages/about.tp -> /about
+/// pages/users/index.tp -> /users
+/// pages/users/[id].tp -> /users/[id]
+fn generate_routes(files: &[PathBuf], base_dir: &PathBuf) -> Result<Vec<(String, String)>> {
+    let mut routes = Vec::new();
+
+    // Look for pages directory
+    let pages_dir = if base_dir.join("pages").exists() {
+        base_dir.join("pages")
+    } else if base_dir.ends_with("pages") {
+        base_dir.clone()
+    } else {
+        // No pages directory, no file-based routing
+        return Ok(routes);
+    };
+
+    for file in files {
+        // Only process files in pages directory
+        if !file.starts_with(&pages_dir) {
+            continue;
+        }
+
+        // Get relative path from pages directory
+        let relative = file.strip_prefix(&pages_dir)?;
+        let path_str = relative.to_string_lossy();
+
+        // Convert file path to route pattern
+        let route_pattern = file_path_to_route(&path_str);
+
+        // Extract component name from file (assumes App or last defined component)
+        // For simplicity, use the capitalized file name without extension
+        let component_name = file
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .map(|s| {
+                if s == "index" {
+                    // For index files, use parent dir name or "App"
+                    relative
+                        .parent()
+                        .and_then(|p| p.file_name())
+                        .and_then(|s| s.to_str())
+                        .map(|s| capitalize(s))
+                        .unwrap_or_else(|| "App".to_string())
+                } else if s.starts_with('[') && s.ends_with(']') {
+                    // Dynamic route like [id] -> use parent directory name + "Detail"
+                    relative
+                        .parent()
+                        .and_then(|p| p.file_name())
+                        .and_then(|s| s.to_str())
+                        .map(|s| format!("{}Detail", capitalize(s)))
+                        .unwrap_or_else(|| "Detail".to_string())
+                } else {
+                    capitalize(s)
+                }
+            })
+            .unwrap_or_else(|| "App".to_string());
+
+        // Look for component ending with "Page" or the capitalized filename
+        let page_component = format!("{}Page", component_name);
+
+        routes.push((route_pattern, page_component));
+    }
+
+    // Sort routes: specific routes before dynamic ones
+    routes.sort_by(|a, b| {
+        let a_dynamic = a.0.contains('[');
+        let b_dynamic = b.0.contains('[');
+        match (a_dynamic, b_dynamic) {
+            (false, true) => std::cmp::Ordering::Less,
+            (true, false) => std::cmp::Ordering::Greater,
+            _ => a.0.cmp(&b.0),
+        }
+    });
+
+    Ok(routes)
+}
+
+/// Convert file path to route pattern
+/// index.tp -> /
+/// about.tp -> /about
+/// users/index.tp -> /users
+/// users/[id].tp -> /users/[id]
+/// [...slug].tp -> /[...slug]
+fn file_path_to_route(path: &str) -> String {
+    let path = path.trim_end_matches(".tp");
+
+    // Handle index files
+    let path = if path == "index" {
+        "/"
+    } else if path.ends_with("/index") {
+        &path[..path.len() - 6]
+    } else {
+        path
+    };
+
+    // Ensure path starts with /
+    if path.starts_with('/') {
+        path.to_string()
+    } else if path == "/" {
+        "/".to_string()
+    } else {
+        format!("/{}", path)
+    }
+}
+
+/// Capitalize first letter
+fn capitalize(s: &str) -> String {
+    let mut chars = s.chars();
+    match chars.next() {
+        None => String::new(),
+        Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
+    }
 }
