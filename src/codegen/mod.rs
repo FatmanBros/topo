@@ -215,6 +215,16 @@ impl JsCodegen {
         self.emit_line("      const effect = effects.get(action);");
         self.emit_line("      if (effect) effect(...args);");
         self.emit_line("    },");
+        self.emit_line("    // Silent dispatch - update state without triggering re-render");
+        self.emit_line("    dispatchSilent(action, ...args) {");
+        self.emit_line("      const reducer = reducers.get(action);");
+        self.emit_line("      if (reducer) {");
+        self.emit_line("        Object.assign(state, reducer(state, ...args));");
+        self.emit_line("      }");
+        self.emit_line("      const effect = effects.get(action);");
+        self.emit_line("      if (effect) effect(...args);");
+        self.emit_line("      return state;");
+        self.emit_line("    },");
         self.emit_line("    select(name) {");
         self.emit_line("      const selector = selectors.get(name);");
         self.emit_line("      return selector ? selector(state) : undefined;");
@@ -229,15 +239,59 @@ impl JsCodegen {
         self.emit_line("  if (store) store.dispatch(action, ...args);");
         self.emit_line("}");
         self.emit_line("");
+        self.emit_line("// Silent dispatch for form field handlers - no re-render, just update related elements");
+        self.emit_line("function dispatchField(storeName, action, value, fieldName) {");
+        self.emit_line("  const store = stores.get(storeName);");
+        self.emit_line("  if (store) {");
+        self.emit_line("    const newState = store.dispatchSilent(action, value);");
+        self.emit_line("    // Update error element directly");
+        self.emit_line("    const errorEl = document.querySelector(`[data-error=\"${storeName}.${fieldName}Error\"]`);");
+        self.emit_line("    if (errorEl) {");
+        self.emit_line("      const errorText = newState[fieldName + 'Error'] || '';");
+        self.emit_line("      errorEl.textContent = errorText;");
+        self.emit_line("      errorEl.style.display = errorText ? '' : 'none';");
+        self.emit_line("    }");
+        self.emit_line("    // Update any bound text elements");
+        self.emit_line("    document.querySelectorAll(`[data-bind=\"${storeName}.${fieldName}\"]`).forEach(el => {");
+        self.emit_line("      el.textContent = newState[fieldName] || '';");
+        self.emit_line("    });");
+        self.emit_line("  }");
+        self.emit_line("}");
+        self.emit_line("");
         self.emit_line("function mount(componentFn, container) {");
         self.emit_line("  const el = document.querySelector(container);");
         self.emit_line("  if (!el) return;");
         self.emit_line("  const render = () => {");
+        self.emit_line("    // Save focus state before re-render");
+        self.emit_line("    const activeEl = document.activeElement;");
+        self.emit_line("    const inputs = el.querySelectorAll('input, textarea, select');");
+        self.emit_line("    let focusIndex = -1, selStart = 0, selEnd = 0;");
+        self.emit_line("    inputs.forEach((inp, i) => {");
+        self.emit_line("      if (inp === activeEl) {");
+        self.emit_line("        focusIndex = i;");
+        self.emit_line("        // Only save selection for text inputs and textareas");
+        self.emit_line("        if (inp.selectionStart !== undefined) {");
+        self.emit_line("          selStart = inp.selectionStart || 0;");
+        self.emit_line("          selEnd = inp.selectionEnd || 0;");
+        self.emit_line("        }");
+        self.emit_line("      }");
+        self.emit_line("    });");
         self.emit_line("    // Use routed page if available, otherwise use provided component");
         self.emit_line("    const page = currentPage || componentFn;");
         self.emit_line("    const vdom = typeof page === 'function' ? page() : page;");
         self.emit_line("    el.innerHTML = renderVdom(vdom);");
         self.emit_line("    bindEvents(el, vdom);");
+        self.emit_line("    // Restore focus after re-render");
+        self.emit_line("    if (focusIndex >= 0) {");
+        self.emit_line("      const newInputs = el.querySelectorAll('input, textarea, select');");
+        self.emit_line("      if (newInputs[focusIndex]) {");
+        self.emit_line("        newInputs[focusIndex].focus();");
+        self.emit_line("        // Only restore selection for text inputs and textareas");
+        self.emit_line("        if (newInputs[focusIndex].setSelectionRange) {");
+        self.emit_line("          try { newInputs[focusIndex].setSelectionRange(selStart, selEnd); } catch(e) {}");
+        self.emit_line("        }");
+        self.emit_line("      }");
+        self.emit_line("    }");
         self.emit_line("  };");
         self.emit_line("  stores.forEach(store => store.subscribe && store.subscribe(render));");
         self.emit_line("  // Re-render on route change");
@@ -251,15 +305,20 @@ impl JsCodegen {
         self.emit_line("");
         self.emit_line("function renderVdom(vdom) {");
         self.emit_line("  if (!vdom) return '';");
-        self.emit_line("  const { type, content, value, style, children, align, inputType, placeholder } = vdom;");
+        self.emit_line("  const { type, content, value, style, children, align, inputType, placeholder, dataError, dataBind, options, rows } = vdom;");
         self.emit_line("  const styleAttr = style ? ` class=\"${style}\"` : '';");
         self.emit_line("  const flexClass = align === 'horizontal' ? ' flex flex-row' : align === 'vertical' ? ' flex flex-col' : '';");
+        self.emit_line("  const dataErrorAttr = dataError ? ` data-error=\"${dataError}\"` : '';");
+        self.emit_line("  const dataBindAttr = dataBind ? ` data-bind=\"${dataBind}\"` : '';");
         self.emit_line("  ");
         self.emit_line("  if (type === 'text') {");
-        self.emit_line("    return `<span${styleAttr}>${content || value || ''}</span>`;");
+        self.emit_line("    return `<span${styleAttr}${dataErrorAttr}${dataBindAttr}>${content || value || ''}</span>`;");
         self.emit_line("  }");
         self.emit_line("  if (type === 'button') {");
         self.emit_line("    return `<button${styleAttr} data-click=\"true\">${content || ''}</button>`;");
+        self.emit_line("  }");
+        self.emit_line("  if (type === 'submit') {");
+        self.emit_line("    return `<button type=\"submit\"${styleAttr} data-click=\"true\">${content || ''}</button>`;");
         self.emit_line("  }");
         self.emit_line("  if (type === 'link') {");
         self.emit_line("    const href = vdom.href || '#';");
@@ -270,6 +329,21 @@ impl JsCodegen {
         self.emit_line("    const placeholderAttr = placeholder ? ` placeholder=\"${placeholder}\"` : '';");
         self.emit_line("    const valueAttr = value !== undefined ? ` value=\"${value}\"` : '';");
         self.emit_line("    return `<input type=\"${inputTypeAttr}\"${styleAttr}${placeholderAttr}${valueAttr} data-input=\"true\" />`;");
+        self.emit_line("  }");
+        self.emit_line("  if (type === 'select') {");
+        self.emit_line("    const placeholderOpt = placeholder ? `<option value=\"\" disabled selected>${placeholder}</option>` : '';");
+        self.emit_line("    const opts = (options || []).map(o => {");
+        self.emit_line("      const optVal = typeof o === 'object' ? o.value : o;");
+        self.emit_line("      const optLabel = typeof o === 'object' ? o.label : o;");
+        self.emit_line("      const selected = optVal === value ? ' selected' : '';");
+        self.emit_line("      return `<option value=\"${optVal}\"${selected}>${optLabel}</option>`;");
+        self.emit_line("    }).join('');");
+        self.emit_line("    return `<select${styleAttr} data-input=\"true\">${placeholderOpt}${opts}</select>`;");
+        self.emit_line("  }");
+        self.emit_line("  if (type === 'textarea') {");
+        self.emit_line("    const placeholderAttr = placeholder ? ` placeholder=\"${placeholder}\"` : '';");
+        self.emit_line("    const rowsAttr = rows ? ` rows=\"${rows}\"` : '';");
+        self.emit_line("    return `<textarea${styleAttr}${placeholderAttr}${rowsAttr} data-input=\"true\">${value || ''}</textarea>`;");
         self.emit_line("  }");
         self.emit_line("  if (children) {");
         self.emit_line("    const inner = children.map(c => typeof c === 'function' ? renderVdom(c()) : renderVdom(c)).join('');");
@@ -285,7 +359,14 @@ impl JsCodegen {
         self.emit_line("  });");
         self.emit_line("  el.querySelectorAll('[data-input]').forEach((input, i) => {");
         self.emit_line("    const handler = findInputHandler(vdom, i);");
-        self.emit_line("    if (handler) input.oninput = (e) => handler(e.target.value);");
+        self.emit_line("    if (handler) {");
+        self.emit_line("      // Use 'input' event for text inputs and textareas, 'change' for selects");
+        self.emit_line("      if (input.tagName === 'SELECT') {");
+        self.emit_line("        input.onchange = (e) => handler(e.target.value);");
+        self.emit_line("      } else {");
+        self.emit_line("        input.oninput = (e) => handler(e.target.value);");
+        self.emit_line("      }");
+        self.emit_line("    }");
         self.emit_line("  });");
         self.emit_line("  el.querySelectorAll('[data-link]').forEach((link) => {");
         self.emit_line("    link.onclick = (e) => {");
@@ -1298,9 +1379,21 @@ impl JsCodegen {
             Expression::ActionRef { store, action, args } => {
                 let args_str: Vec<String> = args.iter().map(|a| self.generate_expression(a)).collect();
                 if args_str.is_empty() {
-                    // For input handlers, pass the value as argument
+                    // For input handlers, use dispatchField for efficient updates
                     if self.is_input_event_handler() {
-                        format!("(value) => dispatch('{}', '{}', value)", store, action)
+                        // Extract field name from action (e.g., SetEmail -> email)
+                        let field_name = if action.starts_with("Set") && action.len() > 3 {
+                            let name = &action[3..];
+                            // Convert to camelCase (first letter lowercase)
+                            let mut chars = name.chars();
+                            match chars.next() {
+                                Some(c) => format!("{}{}", c.to_lowercase(), chars.collect::<String>()),
+                                None => name.to_string(),
+                            }
+                        } else {
+                            action.clone()
+                        };
+                        format!("(value) => dispatchField('{}', '{}', value, '{}')", store, action, field_name)
                     } else {
                         format!("() => dispatch('{}', '{}')", store, action)
                     }
@@ -1348,9 +1441,20 @@ impl JsCodegen {
                 // In event handler context, treat Store.Action as ActionRef
                 if self.is_event_handler() {
                     if let Expression::Identifier { name: store } = object.as_ref() {
-                        // For input handlers, pass the value as argument
+                        // For input handlers, use dispatchField for efficient updates
                         if self.is_input_event_handler() {
-                            return format!("(value) => dispatch('{}', '{}', value)", store, property);
+                            // Extract field name from action (e.g., SetEmail -> email)
+                            let field_name = if property.starts_with("Set") && property.len() > 3 {
+                                let name = &property[3..];
+                                let mut chars = name.chars();
+                                match chars.next() {
+                                    Some(c) => format!("{}{}", c.to_lowercase(), chars.collect::<String>()),
+                                    None => name.to_string(),
+                                }
+                            } else {
+                                property.clone()
+                            };
+                            return format!("(value) => dispatchField('{}', '{}', value, '{}')", store, property, field_name);
                         } else {
                             return format!("() => dispatch('{}', '{}')", store, property);
                         }
@@ -1376,22 +1480,45 @@ impl JsCodegen {
                             // Clone param_names to avoid borrow conflict
                             let param_names_opt = self.component_params.get(name).cloned();
                             if let Some(param_names) = param_names_opt {
+                                // Check for error Reference props and collect their paths
+                                let mut auto_data_error: Option<String> = None;
+                                for p in properties {
+                                    if let Expression::Reference { store, path } = &p.value {
+                                        if let Some(last) = path.last() {
+                                            if last.ends_with("Error") {
+                                                // Build the data-error path: StoreName.fieldNameError
+                                                let error_path = format!("{}.{}", store, path.join("."));
+                                                auto_data_error = Some(error_path);
+                                            }
+                                        }
+                                    }
+                                }
+
                                 // Convert object props to positional args in param order
                                 let mut positional_args: Vec<String> = Vec::new();
                                 for param_name in &param_names {
-                                    let value = properties
+                                    // Check if this param is 'dataError' and should be auto-filled
+                                    let explicit_value = properties
                                         .iter()
-                                        .find(|p| &p.key == param_name)
-                                        .map(|p| {
-                                            // Set property key context for event handler detection
-                                            self.current_property_key = Some(p.key.clone());
-                                            let val = self.generate_expression(&p.value);
-                                            self.current_property_key = None;
-                                            val
-                                        })
-                                        .unwrap_or_else(|| "undefined".to_string());
+                                        .find(|p| &p.key == param_name);
+
+                                    let value = if let Some(p) = explicit_value {
+                                        // Set property key context for event handler detection
+                                        self.current_property_key = Some(p.key.clone());
+                                        let val = self.generate_expression(&p.value);
+                                        self.current_property_key = None;
+                                        val
+                                    } else if param_name == "dataError" {
+                                        // Auto-fill dataError if we detected an error Reference
+                                        auto_data_error.as_ref()
+                                            .map(|path| format!("'{}'", path))
+                                            .unwrap_or_else(|| "undefined".to_string())
+                                    } else {
+                                        "undefined".to_string()
+                                    };
                                     positional_args.push(value);
                                 }
+
                                 return format!("{}({})", c, positional_args.join(", "));
                             }
                         }
