@@ -117,6 +117,8 @@ impl Parser {
         let mut headers = None;
         let mut auth = None;
         let mut timeout = None;
+        let mut subscribe = None;
+        let mut event_handlers = Vec::new();
 
         while !self.check(TokenKind::RBrace) && !self.is_at_end() {
             if self.check(TokenKind::Rest) {
@@ -125,6 +127,45 @@ impl Parser {
                 if let Expression::String { value } = self.expression()? {
                     rest = Some(value);
                 }
+            } else if self.check(TokenKind::Subscribe) {
+                self.advance();
+                self.expect(TokenKind::Colon)?;
+                if let Expression::String { value } = self.expression()? {
+                    subscribe = Some(value);
+                }
+            } else if self.check(TokenKind::On) {
+                // Event handler: on message => ActionName
+                self.advance();
+                let event = match self.peek().kind {
+                    TokenKind::Message => {
+                        self.advance();
+                        EventType::Message
+                    }
+                    TokenKind::Error => {
+                        self.advance();
+                        EventType::Error
+                    }
+                    TokenKind::Open => {
+                        self.advance();
+                        EventType::Open
+                    }
+                    TokenKind::Close => {
+                        self.advance();
+                        EventType::Close
+                    }
+                    _ => {
+                        let token = self.peek();
+                        return Err(ParseError::UnexpectedToken {
+                            expected: "event type (message, error, open, close)".to_string(),
+                            found: token.lexeme.clone(),
+                            line: token.line,
+                            column: token.column,
+                        });
+                    }
+                };
+                self.expect(TokenKind::FatArrow)?;
+                let action = self.expect_identifier()?;
+                event_handlers.push(EventHandler { event, action });
             } else if self.check(TokenKind::Headers) {
                 self.advance();
                 self.expect(TokenKind::Colon)?;
@@ -163,6 +204,8 @@ impl Parser {
             headers,
             auth,
             timeout,
+            subscribe,
+            event_handlers,
         })
     }
 
@@ -290,7 +333,7 @@ impl Parser {
             if self.check(TokenKind::LParen) {
                 self.advance();
                 while !self.check(TokenKind::RParen) && !self.is_at_end() {
-                    let param_name = self.expect_identifier()?;
+                    let param_name = self.expect_identifier_or_keyword()?;
                     let type_annotation = if self.check(TokenKind::Colon) {
                         self.advance();
                         Some(self.expect_identifier()?)
@@ -342,7 +385,7 @@ impl Parser {
         if self.check(TokenKind::LParen) {
             self.advance();
             while !self.check(TokenKind::RParen) && !self.is_at_end() {
-                params.push(self.expect_identifier()?);
+                params.push(self.expect_identifier_or_keyword()?);
                 if !self.check(TokenKind::RParen) {
                     let _ = self.match_token(TokenKind::Comma);
                 }
@@ -391,7 +434,7 @@ impl Parser {
         if self.check(TokenKind::LParen) {
             self.advance();
             while !self.check(TokenKind::RParen) && !self.is_at_end() {
-                params.push(self.expect_identifier()?);
+                params.push(self.expect_identifier_or_keyword()?);
                 if !self.check(TokenKind::RParen) {
                     let _ = self.match_token(TokenKind::Comma);
                 }
@@ -491,7 +534,7 @@ impl Parser {
 
         self.expect(TokenKind::Catch)?;
         self.expect(TokenKind::LParen)?;
-        let catch_param = self.expect_identifier()?;
+        let catch_param = self.expect_identifier_or_keyword()?;
         self.expect(TokenKind::RParen)?;
 
         self.expect(TokenKind::LBrace)?;
@@ -510,11 +553,52 @@ impl Parser {
     // ========================================================================
 
     fn property(&mut self) -> Result<Property, ParseError> {
-        let key = self.expect_identifier()?;
+        let key = self.expect_property_key()?;
         self.expect(TokenKind::Colon)?;
         let value = self.expression()?;
 
         Ok(Property { key, value })
+    }
+
+    /// Accept identifiers or keywords as property keys
+    fn expect_property_key(&mut self) -> Result<String, ParseError> {
+        let token = self.peek().clone();
+        // Allow keywords to be used as property keys
+        let is_valid_key = matches!(
+            token.kind,
+            TokenKind::Identifier
+                | TokenKind::Error
+                | TokenKind::Message
+                | TokenKind::Open
+                | TokenKind::Close
+                | TokenKind::State
+                | TokenKind::Actions
+                | TokenKind::Reducers
+                | TokenKind::Effects
+                | TokenKind::Selectors
+                | TokenKind::Rest
+                | TokenKind::Get
+                | TokenKind::Post
+                | TokenKind::Put
+                | TokenKind::Patch
+                | TokenKind::Delete
+                | TokenKind::Headers
+                | TokenKind::Auth
+                | TokenKind::Timeout
+                | TokenKind::Subscribe
+        );
+
+        if is_valid_key {
+            self.advance();
+            Ok(token.lexeme)
+        } else {
+            Err(ParseError::UnexpectedToken {
+                expected: "property key".to_string(),
+                found: token.lexeme,
+                line: token.line,
+                column: token.column,
+            })
+        }
     }
 
     // ========================================================================
@@ -863,6 +947,46 @@ impl Parser {
     fn expect_identifier(&mut self) -> Result<String, ParseError> {
         let token = self.peek().clone();
         if token.kind == TokenKind::Identifier {
+            self.advance();
+            Ok(token.lexeme)
+        } else {
+            Err(ParseError::UnexpectedToken {
+                expected: "identifier".to_string(),
+                found: token.lexeme,
+                line: token.line,
+                column: token.column,
+            })
+        }
+    }
+
+    /// Accept identifiers or keywords as valid names (for parameters, etc.)
+    fn expect_identifier_or_keyword(&mut self) -> Result<String, ParseError> {
+        let token = self.peek().clone();
+        let is_valid = matches!(
+            token.kind,
+            TokenKind::Identifier
+                | TokenKind::Error
+                | TokenKind::Message
+                | TokenKind::Open
+                | TokenKind::Close
+                | TokenKind::State
+                | TokenKind::Actions
+                | TokenKind::Reducers
+                | TokenKind::Effects
+                | TokenKind::Selectors
+                | TokenKind::Rest
+                | TokenKind::Get
+                | TokenKind::Post
+                | TokenKind::Put
+                | TokenKind::Patch
+                | TokenKind::Delete
+                | TokenKind::Headers
+                | TokenKind::Auth
+                | TokenKind::Timeout
+                | TokenKind::Subscribe
+        );
+
+        if is_valid {
             self.advance();
             Ok(token.lexeme)
         } else {

@@ -115,6 +115,8 @@ impl<'a> Lexer<'a> {
             '=' => {
                 if self.match_char('=') {
                     TokenKind::EqEq // ==
+                } else if self.match_char('>') {
+                    TokenKind::FatArrow // =>
                 } else {
                     TokenKind::Eq
                 }
@@ -352,6 +354,12 @@ impl<'a> Lexer<'a> {
             "headers" => TokenKind::Headers,
             "auth" => TokenKind::Auth,
             "timeout" => TokenKind::Timeout,
+            // Subscribe (WebSocket/SSE)
+            "subscribe" => TokenKind::Subscribe,
+            "message" => TokenKind::Message,
+            "error" => TokenKind::Error,
+            "open" => TokenKind::Open,
+            "close" => TokenKind::Close,
             _ => TokenKind::Identifier,
         }
     }

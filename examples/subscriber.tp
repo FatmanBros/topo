@@ -1,0 +1,62 @@
+// WebSocket Subscriber Example
+
+// Notification store to handle incoming messages
+Notifications | {
+    State {
+        messages: []
+        connected: false
+        error: null
+    }
+
+    Actions {
+        Add(data)
+        Connected
+        Disconnected
+        Error(err)
+    }
+
+    Reducers {
+        on Add(data) {
+            messages: messages
+        }
+        on Connected {
+            connected: true
+            error: null
+        }
+        on Disconnected {
+            connected: false
+        }
+        on Error(err) {
+            error: err
+        }
+    }
+}
+
+// WebSocket subscriber
+NotificationStream :: {
+    subscribe: "wss://api.example.com/events"
+
+    on message => Add
+    on open => Connected
+    on close => Disconnected
+    on error => Error
+}
+
+// SSE subscriber example
+LiveUpdates :: {
+    subscribe: "https://api.example.com/sse/updates"
+
+    on message => Add
+    on open => Connected
+    on error => Error
+}
+
+// Display component
+MessageList -> {
+    type: text
+    value: $Notifications.messages
+}
+
+App -> {
+    children: [MessageList]
+}

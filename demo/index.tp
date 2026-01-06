@@ -1,61 +1,269 @@
-// Counter example
+// topo Documentation Site
 
-Counter | {
-    State {
-        count: 0
-    }
+// ============================================
+// Navigation Components
+// ============================================
 
-    Actions {
-        Increment
-        Decrement
-        Reset
-    }
-
-    Reducers {
-        on Increment { count: count + 1 }
-        on Decrement { count: count - 1 }
-        on Reset { count: 0 }
-    }
-
-    Selectors {
-        isZero { count == 0 }
-    }
-}
-
-Header -> {
+Logo -> {
     type: text
-    content: "Counter App"
-    style: "text-2xl font-bold mb-4"
+    content: "topo"
+    style: "text-3xl font-bold text-indigo-600 mb-8"
 }
 
-CounterDisplay -> {
+NavHome -> {
     type: text
-    value: $Counter.count
-    style: "text-6xl font-mono"
+    content: "Home"
+    style: "text-gray-700 hover:text-indigo-600 cursor-pointer mb-2"
 }
 
-IncrementBtn -> {
-    type: button
-    content: "+"
-    click: Counter.Increment
-    style: "px-6 py-2 bg-green-500 text-white rounded"
+NavStart -> {
+    type: text
+    content: "Getting Started"
+    style: "text-gray-700 hover:text-indigo-600 cursor-pointer mb-2"
 }
 
-DecrementBtn -> {
-    type: button
-    content: "-"
-    click: Counter.Decrement
-    style: "px-6 py-2 bg-red-500 text-white rounded"
+NavSyntax -> {
+    type: text
+    content: "Syntax"
+    style: "text-gray-700 hover:text-indigo-600 cursor-pointer mb-2"
 }
 
-ButtonGroup -> {
-    align: horizontal
-    style: "gap-4 mt-4"
-    children: [DecrementBtn, IncrementBtn]
+NavComponents -> {
+    type: text
+    content: "Components"
+    style: "text-gray-700 hover:text-indigo-600 cursor-pointer mb-2"
 }
+
+NavState -> {
+    type: text
+    content: "State"
+    style: "text-gray-700 hover:text-indigo-600 cursor-pointer mb-2"
+}
+
+NavApi -> {
+    type: text
+    content: "API Services"
+    style: "text-gray-700 hover:text-indigo-600 cursor-pointer mb-2"
+}
+
+Sidebar -> {
+    style: "w-56 bg-white border-r border-gray-200 p-6 min-h-screen fixed left-0 top-0"
+    align: vertical
+    children: [Logo, NavHome, NavStart, NavSyntax, NavComponents, NavState, NavApi]
+}
+
+// ============================================
+// Hero Section
+// ============================================
+
+HeroTitle -> {
+    type: text
+    content: "topo"
+    style: "text-7xl font-black text-gray-900 mb-4"
+}
+
+HeroTagline -> {
+    type: text
+    content: "A UI framework that eliminates nesting hell"
+    style: "text-2xl text-gray-600 mb-6"
+}
+
+HeroDesc -> {
+    type: text
+    content: "Write flat, readable UI code. No more callback pyramids or deeply nested components."
+    style: "text-lg text-gray-500 mb-10 max-w-xl"
+}
+
+Hero -> {
+    style: "mb-16"
+    align: vertical
+    children: [HeroTitle, HeroTagline, HeroDesc]
+}
+
+// ============================================
+// Features
+// ============================================
+
+Feature1Title -> {
+    type: text
+    content: "Flat Definitions"
+    style: "text-xl font-semibold text-gray-800 mb-2"
+}
+
+Feature1Desc -> {
+    type: text
+    content: "Define components at the top level. Compose by reference with children: [A, B, C]"
+    style: "text-gray-600"
+}
+
+Feature1 -> {
+    style: "bg-white p-6 rounded-xl shadow-sm border border-gray-100"
+    align: vertical
+    children: [Feature1Title, Feature1Desc]
+}
+
+Feature2Title -> {
+    type: text
+    content: "NgRx-style State"
+    style: "text-xl font-semibold text-gray-800 mb-2"
+}
+
+Feature2Desc -> {
+    type: text
+    content: "Built-in state with Actions, Reducers, Effects, and Selectors"
+    style: "text-gray-600"
+}
+
+Feature2 -> {
+    style: "bg-white p-6 rounded-xl shadow-sm border border-gray-100"
+    align: vertical
+    children: [Feature2Title, Feature2Desc]
+}
+
+Feature3Title -> {
+    type: text
+    content: "Auto API Services"
+    style: "text-xl font-semibold text-gray-800 mb-2"
+}
+
+Feature3Desc -> {
+    type: text
+    content: "Define REST endpoints, get CRUD methods auto-generated"
+    style: "text-gray-600"
+}
+
+Feature3 -> {
+    style: "bg-white p-6 rounded-xl shadow-sm border border-gray-100"
+    align: vertical
+    children: [Feature3Title, Feature3Desc]
+}
+
+Features -> {
+    style: "grid grid-cols-3 gap-6 mb-16"
+    children: [Feature1, Feature2, Feature3]
+}
+
+// ============================================
+// Syntax Section
+// ============================================
+
+SyntaxTitle -> {
+    type: text
+    content: "4 Definition Operators"
+    style: "text-3xl font-bold text-gray-900 mb-6"
+}
+
+Op1 -> {
+    type: text
+    content: "->  Component (UI)"
+    style: "font-mono text-lg bg-blue-50 text-blue-700 px-4 py-2 rounded mb-2"
+}
+
+Op2 -> {
+    type: text
+    content: "|   Store (State)"
+    style: "font-mono text-lg bg-purple-50 text-purple-700 px-4 py-2 rounded mb-2"
+}
+
+Op3 -> {
+    type: text
+    content: "::  API Service"
+    style: "font-mono text-lg bg-green-50 text-green-700 px-4 py-2 rounded mb-2"
+}
+
+Op4 -> {
+    type: text
+    content: "{}  Method (Logic)"
+    style: "font-mono text-lg bg-orange-50 text-orange-700 px-4 py-2 rounded mb-2"
+}
+
+Syntax -> {
+    style: "mb-16"
+    align: vertical
+    children: [SyntaxTitle, Op1, Op2, Op3, Op4]
+}
+
+// ============================================
+// Code Example
+// ============================================
+
+ExampleTitle -> {
+    type: text
+    content: "Example: Counter"
+    style: "text-3xl font-bold text-gray-900 mb-6"
+}
+
+ExampleCode -> {
+    type: text
+    content: "Counter | {\n    State { count: 0 }\n    Actions { Increment, Decrement }\n    Reducers {\n        on Increment { count: count + 1 }\n        on Decrement { count: count - 1 }\n    }\n}\n\nDisplay -> {\n    type: text\n    value: $Counter.count\n}\n\nButton -> {\n    type: button\n    content: \"+\"\n    click: Counter.Increment\n}"
+    style: "font-mono text-sm bg-gray-900 text-green-400 p-6 rounded-xl whitespace-pre-wrap"
+}
+
+Example -> {
+    style: "mb-16"
+    align: vertical
+    children: [ExampleTitle, ExampleCode]
+}
+
+// ============================================
+// Getting Started
+// ============================================
+
+StartTitle -> {
+    type: text
+    content: "Getting Started"
+    style: "text-3xl font-bold text-gray-900 mb-6"
+}
+
+Step1 -> {
+    type: text
+    content: "1. Install:  cargo install --path ."
+    style: "font-mono bg-gray-100 px-4 py-3 rounded mb-3"
+}
+
+Step2 -> {
+    type: text
+    content: "2. Create:   topo new my-app"
+    style: "font-mono bg-gray-100 px-4 py-3 rounded mb-3"
+}
+
+Step3 -> {
+    type: text
+    content: "3. Run:      cd my-app && topo start"
+    style: "font-mono bg-gray-100 px-4 py-3 rounded mb-3"
+}
+
+Start -> {
+    style: "mb-16"
+    align: vertical
+    children: [StartTitle, Step1, Step2, Step3]
+}
+
+// ============================================
+// Footer
+// ============================================
+
+Footer -> {
+    type: text
+    content: "Built with topo - MIT License"
+    style: "text-gray-400 text-sm mt-16 pt-8 border-t border-gray-200"
+}
+
+// ============================================
+// Main Content
+// ============================================
+
+Content -> {
+    style: "ml-56 p-12 bg-gray-50 min-h-screen"
+    align: vertical
+    children: [Hero, Features, Syntax, Example, Start, Footer]
+}
+
+// ============================================
+// App
+// ============================================
 
 App -> {
-    style: "p-8 flex flex-col items-center"
-    align: vertical
-    children: [Header, CounterDisplay, ButtonGroup]
+    style: "font-sans"
+    children: [Sidebar, Content]
 }

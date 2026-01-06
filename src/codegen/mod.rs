@@ -383,6 +383,15 @@ impl JsCodegen {
     }
 
     fn generate_api_service(&mut self, api: &ApiServiceDef) {
+        // Check if this is a subscriber-only service (no rest endpoints)
+        let is_subscriber_only = api.rest.is_none() && api.endpoints.is_empty() && api.subscribe.is_some();
+
+        if is_subscriber_only {
+            // Generate subscriber-only service
+            self.generate_subscriber(api);
+            return;
+        }
+
         // Use Api suffix to avoid name collision with same-name Store
         self.emit_line(&format!("const {}Api = {{", api.name));
         self.indent += 1;
@@ -441,8 +450,213 @@ impl JsCodegen {
             self.generate_endpoint(api, endpoint);
         }
 
+        // Generate subscriber methods if subscribe URL is present
+        if api.subscribe.is_some() {
+            self.emit_line("");
+            self.generate_subscriber_methods(api);
+        }
+
         self.indent -= 1;
         self.emit_line("};");
+    }
+
+    fn generate_subscriber(&mut self, api: &ApiServiceDef) {
+        let subscribe_url = api.subscribe.as_ref().unwrap();
+        let is_websocket = subscribe_url.starts_with("ws://") || subscribe_url.starts_with("wss://");
+
+        self.emit_line(&format!("const {}Subscriber = {{", api.name));
+        self.indent += 1;
+
+        self.emit_line("connection: null,");
+        self.emit_line("");
+
+        // connect() method
+        self.emit_line("connect() {");
+        self.indent += 1;
+
+        if is_websocket {
+            // WebSocket connection
+            self.emit_line(&format!("this.connection = new WebSocket('{}');", subscribe_url));
+            self.emit_line("");
+
+            // Generate event handlers
+            for handler in &api.event_handlers {
+                let event_name = match handler.event {
+                    EventType::Message => "onmessage",
+                    EventType::Error => "onerror",
+                    EventType::Open => "onopen",
+                    EventType::Close => "onclose",
+                };
+
+                if handler.event == EventType::Message {
+                    self.emit_line(&format!("this.connection.{} = (event) => {{", event_name));
+                    self.indent += 1;
+                    self.emit_line("const data = JSON.parse(event.data);");
+                    self.emit_line(&format!("dispatch('{}', '{}', data);", api.name, handler.action));
+                    self.indent -= 1;
+                    self.emit_line("};");
+                } else {
+                    self.emit_line(&format!("this.connection.{} = (event) => {{", event_name));
+                    self.indent += 1;
+                    self.emit_line(&format!("dispatch('{}', '{}', event);", api.name, handler.action));
+                    self.indent -= 1;
+                    self.emit_line("};");
+                }
+            }
+        } else {
+            // EventSource (SSE) connection
+            self.emit_line(&format!("this.connection = new EventSource('{}');", subscribe_url));
+            self.emit_line("");
+
+            // Generate event handlers
+            for handler in &api.event_handlers {
+                let event_name = match handler.event {
+                    EventType::Message => "onmessage",
+                    EventType::Error => "onerror",
+                    EventType::Open => "onopen",
+                    EventType::Close => "onclose", // Note: EventSource doesn't have onclose, but we handle it for consistency
+                };
+
+                if handler.event == EventType::Close {
+                    // EventSource doesn't have onclose, skip it
+                    continue;
+                }
+
+                if handler.event == EventType::Message {
+                    self.emit_line(&format!("this.connection.{} = (event) => {{", event_name));
+                    self.indent += 1;
+                    self.emit_line("const data = JSON.parse(event.data);");
+                    self.emit_line(&format!("dispatch('{}', '{}', data);", api.name, handler.action));
+                    self.indent -= 1;
+                    self.emit_line("};");
+                } else {
+                    self.emit_line(&format!("this.connection.{} = (event) => {{", event_name));
+                    self.indent += 1;
+                    self.emit_line(&format!("dispatch('{}', '{}', event);", api.name, handler.action));
+                    self.indent -= 1;
+                    self.emit_line("};");
+                }
+            }
+        }
+
+        self.indent -= 1;
+        self.emit_line("},");
+        self.emit_line("");
+
+        // disconnect() method
+        self.emit_line("disconnect() {");
+        self.indent += 1;
+        self.emit_line("if (this.connection) {");
+        self.indent += 1;
+        self.emit_line("this.connection.close();");
+        self.emit_line("this.connection = null;");
+        self.indent -= 1;
+        self.emit_line("}");
+        self.indent -= 1;
+        self.emit_line("},");
+        self.emit_line("");
+
+        // send() method (WebSocket only)
+        if is_websocket {
+            self.emit_line("send(data) {");
+            self.indent += 1;
+            self.emit_line("if (this.connection && this.connection.readyState === WebSocket.OPEN) {");
+            self.indent += 1;
+            self.emit_line("this.connection.send(JSON.stringify(data));");
+            self.indent -= 1;
+            self.emit_line("}");
+            self.indent -= 1;
+            self.emit_line("},");
+        }
+
+        self.indent -= 1;
+        self.emit_line("};");
+    }
+
+    fn generate_subscriber_methods(&mut self, api: &ApiServiceDef) {
+        let subscribe_url = api.subscribe.as_ref().unwrap();
+        let is_websocket = subscribe_url.starts_with("ws://") || subscribe_url.starts_with("wss://");
+
+        self.emit_line("_subscription: null,");
+        self.emit_line("");
+
+        // subscribe() method
+        self.emit_line("subscribe() {");
+        self.indent += 1;
+
+        if is_websocket {
+            self.emit_line(&format!("this._subscription = new WebSocket('{}');", subscribe_url));
+
+            for handler in &api.event_handlers {
+                let event_name = match handler.event {
+                    EventType::Message => "onmessage",
+                    EventType::Error => "onerror",
+                    EventType::Open => "onopen",
+                    EventType::Close => "onclose",
+                };
+
+                if handler.event == EventType::Message {
+                    self.emit_line(&format!("this._subscription.{} = (event) => {{", event_name));
+                    self.indent += 1;
+                    self.emit_line("const data = JSON.parse(event.data);");
+                    self.emit_line(&format!("dispatch('{}', '{}', data);", api.name, handler.action));
+                    self.indent -= 1;
+                    self.emit_line("};");
+                } else {
+                    self.emit_line(&format!("this._subscription.{} = (event) => {{", event_name));
+                    self.indent += 1;
+                    self.emit_line(&format!("dispatch('{}', '{}', event);", api.name, handler.action));
+                    self.indent -= 1;
+                    self.emit_line("};");
+                }
+            }
+        } else {
+            self.emit_line(&format!("this._subscription = new EventSource('{}');", subscribe_url));
+
+            for handler in &api.event_handlers {
+                if handler.event == EventType::Close {
+                    continue;
+                }
+
+                let event_name = match handler.event {
+                    EventType::Message => "onmessage",
+                    EventType::Error => "onerror",
+                    EventType::Open => "onopen",
+                    EventType::Close => continue,
+                };
+
+                if handler.event == EventType::Message {
+                    self.emit_line(&format!("this._subscription.{} = (event) => {{", event_name));
+                    self.indent += 1;
+                    self.emit_line("const data = JSON.parse(event.data);");
+                    self.emit_line(&format!("dispatch('{}', '{}', data);", api.name, handler.action));
+                    self.indent -= 1;
+                    self.emit_line("};");
+                } else {
+                    self.emit_line(&format!("this._subscription.{} = (event) => {{", event_name));
+                    self.indent += 1;
+                    self.emit_line(&format!("dispatch('{}', '{}', event);", api.name, handler.action));
+                    self.indent -= 1;
+                    self.emit_line("};");
+                }
+            }
+        }
+
+        self.indent -= 1;
+        self.emit_line("},");
+        self.emit_line("");
+
+        // unsubscribe() method
+        self.emit_line("unsubscribe() {");
+        self.indent += 1;
+        self.emit_line("if (this._subscription) {");
+        self.indent += 1;
+        self.emit_line("this._subscription.close();");
+        self.emit_line("this._subscription = null;");
+        self.indent -= 1;
+        self.emit_line("}");
+        self.indent -= 1;
+        self.emit_line("},");
     }
 
     fn generate_endpoint(&mut self, api: &ApiServiceDef, endpoint: &Endpoint) {
