@@ -16,6 +16,10 @@ pub struct JsCodegen {
     current_property_key: Option<String>,
     /// Known API service names (for adding Api suffix to references)
     api_service_names: HashSet<String>,
+    /// Theme color names (for color: primary -> var(--primary))
+    theme_colors: HashSet<String>,
+    /// Theme color values for CSS generation
+    theme_values: Vec<(String, String)>,
 }
 
 impl JsCodegen {
@@ -27,6 +31,8 @@ impl JsCodegen {
             local_params: HashSet::new(),
             current_property_key: None,
             api_service_names: HashSet::new(),
+            theme_colors: HashSet::new(),
+            theme_values: Vec::new(),
         }
     }
 
@@ -53,8 +59,26 @@ impl JsCodegen {
         }
     }
 
+    /// Check if current property is a style/color property where theme vars apply
+    fn is_style_property(&self) -> bool {
+        if let Some(key) = &self.current_property_key {
+            matches!(
+                key.as_str(),
+                "color" | "bg" | "background" | "backgroundColor" | "borderColor"
+                    | "textColor" | "fill" | "stroke"
+            )
+        } else {
+            false
+        }
+    }
+
+    /// Check if identifier is a theme color
+    fn is_theme_color(&self, name: &str) -> bool {
+        self.theme_colors.contains(name)
+    }
+
     pub fn generate(&mut self, program: &Program) -> String {
-        // First pass: collect API service names and find App component
+        // First pass: collect API service names, find App component, and collect theme
         let mut has_app = false;
         for decl in &program.declarations {
             if let Declaration::ApiService(api) = decl {
@@ -65,12 +89,26 @@ impl JsCodegen {
                     has_app = true;
                 }
             }
+            // Collect theme colors from Theme definition
+            if let Declaration::Theme(theme) = decl {
+                self.collect_theme_from_def(theme);
+            }
         }
 
         self.emit_runtime_imports();
         self.emit_line("");
 
+        // Generate theme CSS injection if theme is defined
+        if !self.theme_values.is_empty() {
+            self.emit_theme_css();
+            self.emit_line("");
+        }
+
         for decl in &program.declarations {
+            // Skip Theme - it's handled separately via CSS injection
+            if matches!(decl, Declaration::Theme(_)) {
+                continue;
+            }
             self.generate_declaration(decl);
             self.emit_line("");
         }
@@ -82,6 +120,48 @@ impl JsCodegen {
         }
 
         self.output.clone()
+    }
+
+    fn collect_theme_from_def(&mut self, theme: &ThemeDef) {
+        for prop in &theme.properties {
+            self.theme_colors.insert(prop.key.clone());
+            // Extract color value
+            let value = match &prop.value {
+                Expression::String { value } => value.clone(),
+                Expression::Identifier { name } => name.clone(),
+                _ => self.generate_expression(&prop.value),
+            };
+            self.theme_values.push((prop.key.clone(), value));
+        }
+    }
+
+    fn emit_theme_css(&mut self) {
+        self.emit_line("// Theme CSS variables");
+        self.emit_line("(function() {");
+        self.indent += 1;
+        self.emit_line("const style = document.createElement('style');");
+        self.emit_line("style.textContent = `");
+
+        // Generate :root CSS variables
+        self.emit_line(":root {");
+        let theme_values = self.theme_values.clone();
+        for (name, value) in &theme_values {
+            self.emit_line(&format!("  --{}: {};", name, value));
+        }
+        self.emit_line("}");
+
+        // Generate body background if defined
+        let has_background = theme_values.iter().any(|(k, _)| k == "background");
+        if has_background {
+            self.emit_line("body {");
+            self.emit_line("  background-color: var(--background);");
+            self.emit_line("}");
+        }
+
+        self.emit_line("`;");
+        self.emit_line("document.head.appendChild(style);");
+        self.indent -= 1;
+        self.emit_line("})();");
     }
 
     fn emit_runtime_imports(&mut self) {
@@ -183,6 +263,7 @@ impl JsCodegen {
             Declaration::Store(store) => self.generate_store(store),
             Declaration::ApiService(api) => self.generate_api_service(api),
             Declaration::Method(method) => self.generate_method(method),
+            Declaration::Theme(_) => {} // Handled separately via CSS injection
         }
     }
 
@@ -699,6 +780,9 @@ impl JsCodegen {
                 } else if self.state_fields.contains(name) {
                     // In reducer context, prefix state field names with "state."
                     format!("state.{}", name)
+                } else if self.is_style_property() && self.is_theme_color(name) {
+                    // Convert theme color to CSS variable: primary -> 'var(--primary)'
+                    format!("'var(--{})'", name)
                 } else if self.should_quote_identifier() {
                     // Quote identifier values for properties like type, align
                     format!("'{}'", name)
@@ -814,6 +898,8 @@ impl Default for JsCodegen {
             local_params: HashSet::new(),
             current_property_key: None,
             api_service_names: HashSet::new(),
+            theme_colors: HashSet::new(),
+            theme_values: Vec::new(),
         }
     }
 }

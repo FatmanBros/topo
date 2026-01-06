@@ -64,6 +64,10 @@ impl Parser {
             // Store: Name | { }
             self.advance();
             Ok(Declaration::Store(self.store_def(name)?))
+        } else if self.check(TokenKind::Star) {
+            // Theme: Name * { }
+            self.advance();
+            Ok(Declaration::Theme(self.theme_def(name)?))
         } else if self.check(TokenKind::LBrace) {
             // Method: Name { }
             Ok(Declaration::Method(self.method_def(name)?))
@@ -91,6 +95,23 @@ impl Parser {
         self.expect(TokenKind::RBrace)?;
 
         Ok(ComponentDef { name, properties })
+    }
+
+    // ========================================================================
+    // Theme Definition (*)
+    // ========================================================================
+
+    fn theme_def(&mut self, name: String) -> Result<ThemeDef, ParseError> {
+        self.expect(TokenKind::LBrace)?;
+
+        let mut properties = Vec::new();
+        while !self.check(TokenKind::RBrace) && !self.is_at_end() {
+            properties.push(self.property()?);
+        }
+
+        self.expect(TokenKind::RBrace)?;
+
+        Ok(ThemeDef { name, properties })
     }
 
     // ========================================================================

@@ -29,6 +29,9 @@ pub enum Declaration {
 
     /// Store definition: `Name | { ... }`
     Store(StoreDef),
+
+    /// Theme definition: `Name * { ... }`
+    Theme(ThemeDef),
 }
 
 // ============================================================================
@@ -45,6 +48,16 @@ pub struct ComponentDef {
 pub struct Property {
     pub key: String,
     pub value: Expression,
+}
+
+// ============================================================================
+// Theme Definition (*)
+// ============================================================================
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ThemeDef {
+    pub name: String,
+    pub properties: Vec<Property>,
 }
 
 // ============================================================================
