@@ -1,4 +1,6 @@
 // Organisms: Page sections
+import { Text, Heading, Code } from "../atoms/text.tp"
+import { Card, Step, Operator } from "../molecules/card.tp"
 
 Hero -> {
     style: "mb-16"
