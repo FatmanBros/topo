@@ -268,7 +268,19 @@ impl JsCodegen {
     }
 
     fn generate_component(&mut self, comp: &ComponentDef) {
-        self.emit_line(&format!("function {}() {{", comp.name));
+        // Store component params for expression generation
+        let old_params = std::mem::take(&mut self.local_params);
+        for param in &comp.params {
+            self.local_params.insert(param.clone());
+        }
+
+        let params_str = if comp.params.is_empty() {
+            String::new()
+        } else {
+            comp.params.join(", ")
+        };
+
+        self.emit_line(&format!("function {}({}) {{", comp.name, params_str));
         self.indent += 1;
 
         self.emit_line("return {");
@@ -288,6 +300,9 @@ impl JsCodegen {
 
         self.indent -= 1;
         self.emit_line("}");
+
+        // Restore old params
+        self.local_params = old_params;
     }
 
     fn generate_store(&mut self, store: &StoreDef) {
@@ -767,7 +782,7 @@ impl JsCodegen {
         self.emit_line(&format!("function {}() {{ return {}; }}", method.name, body));
     }
 
-    fn generate_expression(&self, expr: &Expression) -> String {
+    fn generate_expression(&mut self, expr: &Expression) -> String {
         match expr {
             Expression::String { value } => format!("'{}'", value.replace('\'', "\\'")),
             Expression::Number { value } => value.to_string(),
@@ -793,6 +808,14 @@ impl JsCodegen {
             Expression::Array { elements } => {
                 let elems: Vec<String> = elements.iter().map(|e| self.generate_expression(e)).collect();
                 format!("[{}]", elems.join(", "))
+            }
+            Expression::ForIn { item, items, body } => {
+                let items_str = self.generate_expression(items);
+                // Add item to local params for body generation
+                self.local_params.insert(item.clone());
+                let body_str = self.generate_expression(body);
+                self.local_params.remove(item);
+                format!("{}.map({} => {})", items_str, item, body_str)
             }
             Expression::Object { properties } => {
                 let props: Vec<String> = properties

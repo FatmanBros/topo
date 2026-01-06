@@ -1,0 +1,28 @@
+// Molecules: Card components
+
+Card(title, desc) -> {
+    style: "bg-white p-6 rounded-xl shadow-sm border border-gray-100"
+    align: vertical
+    children: [
+        Text(title, "text-xl font-semibold text-gray-800 mb-2"),
+        Text(desc, "text-gray-600")
+    ]
+}
+
+NavItem(label) -> {
+    type: text
+    content: label
+    style: "text-gray-700 hover:text-indigo-600 cursor-pointer mb-2"
+}
+
+Step(content) -> {
+    type: text
+    content: content
+    style: "font-mono bg-gray-100 px-4 py-3 rounded mb-3"
+}
+
+Operator(symbol, label, color) -> {
+    type: text
+    content: symbol
+    style: color
+}

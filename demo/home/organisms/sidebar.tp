@@ -1,0 +1,21 @@
+// Organisms: Sidebar navigation
+
+Logo -> {
+    type: text
+    content: "topo"
+    style: "text-3xl font-bold text-indigo-600 mb-8"
+}
+
+Sidebar -> {
+    style: "w-56 bg-white border-r border-gray-200 p-6 min-h-screen fixed left-0 top-0"
+    align: vertical
+    children: [
+        Logo,
+        NavItem("Home"),
+        NavItem("Getting Started"),
+        NavItem("Syntax"),
+        NavItem("Components"),
+        NavItem("State"),
+        NavItem("API Services")
+    ]
+}

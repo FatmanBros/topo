@@ -1,0 +1,25 @@
+// Atoms: Text components
+
+Text(content, style) -> {
+    type: text
+    content: content
+    style: style
+}
+
+Heading(content, level) -> {
+    type: text
+    content: content
+    style: level
+}
+
+Code(content) -> {
+    type: text
+    content: content
+    style: "font-mono text-sm bg-gray-900 text-green-400 p-6 rounded-xl whitespace-pre-wrap"
+}
+
+Badge(content, color) -> {
+    type: text
+    content: content
+    style: color
+}
