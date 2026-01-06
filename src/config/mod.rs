@@ -100,6 +100,32 @@ pub struct StyleConfig {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub config: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tailwind: Option<TailwindConfig>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TailwindConfig {
+    /// Enable/disable Tailwind CSS
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+
+    /// Tailwind version (e.g., "3.4.0")
+    #[serde(default = "default_tailwind_version")]
+    pub version: String,
+
+    /// Use CDN or local build
+    #[serde(default = "default_tailwind_cdn")]
+    pub cdn: bool,
+
+    /// Custom CDN URL (overrides default)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cdn_url: Option<String>,
+
+    /// Path to tailwind.config.js
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub config_path: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -156,6 +182,8 @@ fn default_target() -> String { "es2022".to_string() }
 fn default_port() -> u16 { 7090 }
 fn default_host() -> String { "localhost".to_string() }
 fn default_style_framework() -> String { "tailwind".to_string() }
+fn default_tailwind_version() -> String { "3.4.0".to_string() }
+fn default_tailwind_cdn() -> bool { true }
 fn default_pages_path() -> String { "src/pages".to_string() }
 fn default_components_path() -> String { "src/components".to_string() }
 fn default_stores_path() -> String { "src/stores".to_string() }
@@ -257,6 +285,19 @@ impl Default for StyleConfig {
         Self {
             framework: "tailwind".to_string(),
             config: None,
+            tailwind: Some(TailwindConfig::default()),
+        }
+    }
+}
+
+impl Default for TailwindConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            version: "3.4.0".to_string(),
+            cdn: true,
+            cdn_url: None,
+            config_path: None,
         }
     }
 }

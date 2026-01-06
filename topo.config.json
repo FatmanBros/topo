@@ -17,7 +17,12 @@
   },
   "style": {
     "framework": "tailwind",
-    "config": "tailwind.config.js"
+    "config": "tailwind.config.js",
+    "tailwind": {
+      "enabled": true,
+      "version": "3.4.0",
+      "cdn": true
+    }
   },
   "paths": {
     "pages": "demo",
