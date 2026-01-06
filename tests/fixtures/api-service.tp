@@ -1,0 +1,53 @@
+// API Service example with User store auto-link
+
+User :: {
+    rest: "/api/users"
+
+    getActive: get("/active")
+    updateProfile: post("/profile")
+}
+
+User | {
+    State {
+        list: []
+        current: null
+        loading: false
+        error: null
+    }
+
+    Actions {
+        Load
+        LoadSuccess(users)
+        LoadError(error)
+        SetCurrent(user)
+    }
+
+    Reducers {
+        on Load { loading: true }
+        on LoadSuccess(users) {
+            list: users
+            loading: false
+        }
+        on LoadError(error) {
+            error: error
+            loading: false
+        }
+        on SetCurrent(user) { current: user }
+    }
+
+    Effects {
+        on Load {
+            try {
+                data: await User.getAll()
+                dispatch: LoadSuccess(data)
+            } catch(e) {
+                dispatch: LoadError(e)
+            }
+        }
+    }
+
+    Selectors {
+        activeUsers { list }
+        hasError { error != null }
+    }
+}

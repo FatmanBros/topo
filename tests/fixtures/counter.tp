@@ -1,0 +1,61 @@
+// Counter example
+
+Counter | {
+    State {
+        count: 0
+    }
+
+    Actions {
+        Increment
+        Decrement
+        Reset
+    }
+
+    Reducers {
+        on Increment { count: count + 1 }
+        on Decrement { count: count - 1 }
+        on Reset { count: 0 }
+    }
+
+    Selectors {
+        isZero { count == 0 }
+    }
+}
+
+Header -> {
+    type: text
+    content: "Counter App"
+    style: "text-2xl font-bold mb-4"
+}
+
+CounterDisplay -> {
+    type: text
+    value: $Counter.count
+    style: "text-6xl font-mono"
+}
+
+IncrementBtn -> {
+    type: button
+    content: "+"
+    click: Counter.Increment
+    style: "px-6 py-2 bg-green-500 text-white rounded"
+}
+
+DecrementBtn -> {
+    type: button
+    content: "-"
+    click: Counter.Decrement
+    style: "px-6 py-2 bg-red-500 text-white rounded"
+}
+
+ButtonGroup -> {
+    align: horizontal
+    style: "gap-4 mt-4"
+    children: [DecrementBtn, IncrementBtn]
+}
+
+App -> {
+    style: "p-8 flex flex-col items-center"
+    align: vertical
+    children: [Header, CounterDisplay, ButtonGroup]
+}
