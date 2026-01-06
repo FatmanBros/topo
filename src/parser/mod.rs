@@ -166,13 +166,23 @@ impl Parser {
         self.expect(TokenKind::LBrace)?;
 
         let mut properties = Vec::new();
+        let mut init = None;
+        let mut destroy = None;
+
         while !self.check(TokenKind::RBrace) && !self.is_at_end() {
-            properties.push(self.property()?);
+            let prop = self.property()?;
+
+            // Handle lifecycle hooks specially
+            match prop.key.as_str() {
+                "init" => init = Some(prop.value),
+                "destroy" => destroy = Some(prop.value),
+                _ => properties.push(prop),
+            }
         }
 
         self.expect(TokenKind::RBrace)?;
 
-        Ok(ComponentDef { name, params, properties })
+        Ok(ComponentDef { name, params, properties, init, destroy })
     }
 
     // ========================================================================
