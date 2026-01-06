@@ -83,6 +83,7 @@ impl<'a> Lexer<'a> {
             '%' => TokenKind::Percent,
             '$' => TokenKind::Dollar,
             '@' => TokenKind::At,
+            '?' => TokenKind::Question,
 
             // Two character tokens
             '-' => {

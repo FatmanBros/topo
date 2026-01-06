@@ -51,12 +51,22 @@ impl Parser {
         // All declarations start with an identifier
         let name = self.expect_identifier()?;
 
-        // Check for optional parameters: Name(param1, param2)
+        // Check for optional typed parameters: Name(param1: type, param2: type)
         let params = if self.check(TokenKind::LParen) {
             self.advance();
             let mut params = Vec::new();
             while !self.check(TokenKind::RParen) && !self.is_at_end() {
-                params.push(self.expect_identifier_or_keyword()?);
+                let param_name = self.expect_identifier_or_keyword()?;
+                let type_annotation = if self.check(TokenKind::Colon) {
+                    self.advance();
+                    Some(self.parse_type_annotation()?)
+                } else {
+                    None
+                };
+                params.push(TypedParam {
+                    name: param_name,
+                    type_annotation,
+                });
                 if !self.check(TokenKind::RParen) {
                     let _ = self.match_token(TokenKind::Comma);
                 }
@@ -100,7 +110,7 @@ impl Parser {
     // Component Definition (->)
     // ========================================================================
 
-    fn component_def(&mut self, name: String, params: Vec<String>) -> Result<ComponentDef, ParseError> {
+    fn component_def(&mut self, name: String, params: Vec<TypedParam>) -> Result<ComponentDef, ParseError> {
         self.expect(TokenKind::LBrace)?;
 
         let mut properties = Vec::new();
@@ -373,7 +383,7 @@ impl Parser {
                     let param_name = self.expect_identifier_or_keyword()?;
                     let type_annotation = if self.check(TokenKind::Colon) {
                         self.advance();
-                        Some(self.expect_identifier()?)
+                        Some(self.parse_type_annotation()?)
                     } else {
                         None
                     };
@@ -595,13 +605,128 @@ impl Parser {
 
         let key = self.expect_property_key()?;
         self.expect(TokenKind::Colon)?;
-        let value = self.expression()?;
+
+        // Check for type annotation: key: type = value
+        let (type_annotation, value) = if self.is_type_start() {
+            let type_ann = self.parse_type_annotation()?;
+            self.expect(TokenKind::Eq)?;
+            let val = self.expression()?;
+            (Some(type_ann), val)
+        } else {
+            (None, self.expression()?)
+        };
 
         Ok(Property {
             key,
             value,
+            type_annotation,
             annotations,
         })
+    }
+
+    /// Check if the next token could start a type annotation
+    fn is_type_start(&self) -> bool {
+        let token = self.peek();
+        // Type annotations start with identifiers like "string", "number", "boolean", etc.
+        // We distinguish from values by checking if it's followed by = or []
+        if token.kind != TokenKind::Identifier {
+            return false;
+        }
+
+        // Check if this looks like a type (primitive type names or uppercase for references)
+        let name = &token.lexeme;
+        matches!(
+            name.as_str(),
+            "string" | "number" | "boolean" | "any" | "void" | "null" | "undefined"
+        ) || name.chars().next().map_or(false, |c| c.is_uppercase())
+    }
+
+    // ========================================================================
+    // Type Annotations
+    // ========================================================================
+
+    fn parse_type_annotation(&mut self) -> Result<TypeAnnotation, ParseError> {
+        let mut base_type = self.parse_primary_type()?;
+
+        // Check for array suffix: type[]
+        while self.check(TokenKind::LBracket) {
+            self.advance();
+            self.expect(TokenKind::RBracket)?;
+            base_type = TypeAnnotation::Array {
+                element_type: Box::new(base_type),
+            };
+        }
+
+        // Check for optional suffix: type?
+        if self.check(TokenKind::Question) {
+            self.advance();
+            base_type = TypeAnnotation::Optional {
+                inner_type: Box::new(base_type),
+            };
+        }
+
+        // Check for union: type | type
+        if self.check(TokenKind::Pipe) {
+            let mut types = vec![base_type];
+            while self.check(TokenKind::Pipe) {
+                self.advance();
+                let next_type = self.parse_primary_type()?;
+                types.push(next_type);
+            }
+            return Ok(TypeAnnotation::Union { types });
+        }
+
+        Ok(base_type)
+    }
+
+    fn parse_primary_type(&mut self) -> Result<TypeAnnotation, ParseError> {
+        let token = self.peek().clone();
+
+        match token.kind {
+            TokenKind::Identifier => {
+                self.advance();
+                let name = token.lexeme;
+
+                // Check if it's a primitive type
+                if matches!(
+                    name.as_str(),
+                    "string" | "number" | "boolean" | "any" | "void" | "null" | "undefined"
+                ) {
+                    Ok(TypeAnnotation::Primitive { name })
+                } else {
+                    // Otherwise it's a reference to another type
+                    Ok(TypeAnnotation::Reference { name })
+                }
+            }
+            TokenKind::LBrace => {
+                // Object type: { name: string, age: number }
+                self.advance();
+                let mut fields = Vec::new();
+
+                while !self.check(TokenKind::RBrace) && !self.is_at_end() {
+                    let field_name = self.expect_identifier()?;
+                    self.expect(TokenKind::Colon)?;
+                    let field_type = self.parse_type_annotation()?;
+                    fields.push(TypedField {
+                        name: field_name,
+                        type_annotation: field_type,
+                    });
+
+                    if !self.check(TokenKind::RBrace) {
+                        let _ = self.match_token(TokenKind::Comma);
+                    }
+                }
+
+                self.expect(TokenKind::RBrace)?;
+                Ok(TypeAnnotation::Object { fields })
+            }
+            _ => Err(ParseError::UnexpectedToken {
+                expected: "type".to_string(),
+                found: token.lexeme,
+                line: token.line,
+                column: token.column,
+            }),
+        }
     }
 
     // ========================================================================
@@ -1177,6 +1302,168 @@ mod tests {
             assert_eq!(api.rest, Some("/api/users".to_string()));
         } else {
             panic!("Expected API service declaration");
+        }
+    }
+
+    #[test]
+    fn test_parse_typed_component_params() {
+        let source = r#"
+            UserCard(name: string, age: number) -> {
+                type: div
+            }
+        "#;
+
+        let program = parse(source).unwrap();
+        if let Declaration::Component(comp) = &program.declarations[0] {
+            assert_eq!(comp.params.len(), 2);
+            assert_eq!(comp.params[0].name, "name");
+            assert!(matches!(
+                &comp.params[0].type_annotation,
+                Some(TypeAnnotation::Primitive { name }) if name == "string"
+            ));
+            assert_eq!(comp.params[1].name, "age");
+            assert!(matches!(
+                &comp.params[1].type_annotation,
+                Some(TypeAnnotation::Primitive { name }) if name == "number"
+            ));
+        } else {
+            panic!("Expected component declaration");
+        }
+    }
+
+    #[test]
+    fn test_parse_typed_property() {
+        let source = r#"
+            Form -> {
+                name: string = ""
+                count: number = 0
+            }
+        "#;
+
+        let program = parse(source).unwrap();
+        if let Declaration::Component(comp) = &program.declarations[0] {
+            assert_eq!(comp.properties.len(), 2);
+            assert!(matches!(
+                &comp.properties[0].type_annotation,
+                Some(TypeAnnotation::Primitive { name }) if name == "string"
+            ));
+            assert!(matches!(
+                &comp.properties[1].type_annotation,
+                Some(TypeAnnotation::Primitive { name }) if name == "number"
+            ));
+        } else {
+            panic!("Expected component declaration");
+        }
+    }
+
+    #[test]
+    fn test_parse_array_type() {
+        let source = r#"
+            List -> {
+                items: string[] = []
+            }
+        "#;
+
+        let program = parse(source).unwrap();
+        if let Declaration::Component(comp) = &program.declarations[0] {
+            assert!(matches!(
+                &comp.properties[0].type_annotation,
+                Some(TypeAnnotation::Array { element_type })
+                    if matches!(element_type.as_ref(), TypeAnnotation::Primitive { name } if name == "string")
+            ));
+        } else {
+            panic!("Expected component declaration");
+        }
+    }
+
+    #[test]
+    fn test_parse_optional_type() {
+        let source = r#"
+            Form -> {
+                name: string? = null
+            }
+        "#;
+
+        let program = parse(source).unwrap();
+        if let Declaration::Component(comp) = &program.declarations[0] {
+            assert!(matches!(
+                &comp.properties[0].type_annotation,
+                Some(TypeAnnotation::Optional { inner_type })
+                    if matches!(inner_type.as_ref(), TypeAnnotation::Primitive { name } if name == "string")
+            ));
+        } else {
+            panic!("Expected component declaration");
+        }
+    }
+
+    #[test]
+    fn test_parse_union_type() {
+        let source = r#"
+            Value -> {
+                data: string | number = ""
+            }
+        "#;
+
+        let program = parse(source).unwrap();
+        if let Declaration::Component(comp) = &program.declarations[0] {
+            if let Some(TypeAnnotation::Union { types }) = &comp.properties[0].type_annotation {
+                assert_eq!(types.len(), 2);
+                assert!(matches!(&types[0], TypeAnnotation::Primitive { name } if name == "string"));
+                assert!(matches!(&types[1], TypeAnnotation::Primitive { name } if name == "number"));
+            } else {
+                panic!("Expected union type");
+            }
+        } else {
+            panic!("Expected component declaration");
+        }
+    }
+
+    #[test]
+    fn test_parse_reference_type() {
+        let source = r#"
+            UserCard(user: User) -> {
+                type: div
+            }
+        "#;
+
+        let program = parse(source).unwrap();
+        if let Declaration::Component(comp) = &program.declarations[0] {
+            assert_eq!(comp.params.len(), 1);
+            assert!(matches!(
+                &comp.params[0].type_annotation,
+                Some(TypeAnnotation::Reference { name }) if name == "User"
+            ));
+        } else {
+            panic!("Expected component declaration");
+        }
+    }
+
+    #[test]
+    fn test_parse_action_with_typed_params() {
+        let source = r#"
+            Counter | {
+                State { count: 0 }
+                Actions {
+                    Add(amount: number)
+                    SetName(name: string)
+                }
+            }
+        "#;
+
+        let program = parse(source).unwrap();
+        if let Declaration::Store(store) = &program.declarations[0] {
+            let actions = store.actions.as_ref().unwrap();
+            assert_eq!(actions.actions.len(), 2);
+
+            let add_action = &actions.actions[0];
+            assert_eq!(add_action.name, "Add");
+            assert_eq!(add_action.params.len(), 1);
+            assert!(matches!(
+                &add_action.params[0].type_annotation,
+                Some(TypeAnnotation::Primitive { name }) if name == "number"
+            ));
+        } else {
+            panic!("Expected store declaration");
         }
     }
 }
