@@ -168,6 +168,29 @@ impl Parser {
     // ========================================================================
 
     fn component_def(&mut self, name: String, params: Vec<TypedParam>) -> Result<ComponentDef, ParseError> {
+        // Check if this is an alias: Alias(args) -> Base(args, defaultValue)
+        if self.check(TokenKind::Identifier) {
+            let base = self.expect_identifier()?;
+            self.expect(TokenKind::LParen)?;
+            let mut args = Vec::new();
+            while !self.check(TokenKind::RParen) && !self.is_at_end() {
+                args.push(self.expression()?);
+                if !self.check(TokenKind::RParen) {
+                    let _ = self.match_token(TokenKind::Comma);
+                }
+            }
+            self.expect(TokenKind::RParen)?;
+            return Ok(ComponentDef {
+                name,
+                params,
+                properties: Vec::new(),
+                init: None,
+                destroy: None,
+                alias: Some(ComponentAlias { base, args }),
+            });
+        }
+
+        // Regular component definition: Name(params) -> { ... }
         self.expect(TokenKind::LBrace)?;
 
         let mut properties = Vec::new();
@@ -187,7 +210,7 @@ impl Parser {
 
         self.expect(TokenKind::RBrace)?;
 
-        Ok(ComponentDef { name, params, properties, init, destroy })
+        Ok(ComponentDef { name, params, properties, init, destroy, alias: None })
     }
 
     // ========================================================================
@@ -863,6 +886,11 @@ impl Parser {
         let is_valid_key = matches!(
             token.kind,
             TokenKind::Identifier
+                | TokenKind::Type
+                | TokenKind::Button
+                | TokenKind::Submit
+                | TokenKind::Text
+                | TokenKind::Click
                 | TokenKind::Error
                 | TokenKind::Message
                 | TokenKind::Open
@@ -882,6 +910,10 @@ impl Parser {
                 | TokenKind::Auth
                 | TokenKind::Timeout
                 | TokenKind::Subscribe
+                | TokenKind::Visible
+                | TokenKind::Hidden
+                | TokenKind::Url
+                | TokenKind::Fill
         );
 
         if is_valid_key {
@@ -1328,7 +1360,11 @@ impl Parser {
                     body: Box::new(body),
                 })
             }
-            TokenKind::Identifier => {
+            TokenKind::Identifier
+            | TokenKind::Type
+            | TokenKind::Button
+            | TokenKind::Submit
+            | TokenKind::Text => {
                 self.advance();
                 Ok(Expression::Identifier {
                     name: token.lexeme.clone(),
@@ -1453,6 +1489,11 @@ impl Parser {
         let is_valid = matches!(
             token.kind,
             TokenKind::Identifier
+                | TokenKind::Type
+                | TokenKind::Text
+                | TokenKind::Button
+                | TokenKind::Submit
+                | TokenKind::Click
                 | TokenKind::Error
                 | TokenKind::Message
                 | TokenKind::Open
@@ -1472,6 +1513,10 @@ impl Parser {
                 | TokenKind::Auth
                 | TokenKind::Timeout
                 | TokenKind::Subscribe
+                | TokenKind::Visible
+                | TokenKind::Hidden
+                | TokenKind::Url
+                | TokenKind::Fill
         );
 
         if is_valid {

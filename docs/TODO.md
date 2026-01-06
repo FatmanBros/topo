@@ -20,7 +20,7 @@
 
 ### 構文
 
-- [ ] コンポーネントエイリアス構文（`Alias(args) -> Base(args, defaultValue)`）
+- [x] コンポーネントエイリアス構文（`Alias(args) -> Base(args, defaultValue)`）
 
 ### 設定
 

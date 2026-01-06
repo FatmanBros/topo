@@ -70,6 +70,18 @@ pub struct ComponentDef {
     /// Lifecycle hook: called when component is destroyed
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub destroy: Option<Expression>,
+    /// Component alias: `Alias(args) -> Base(args, defaultValue)`
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub alias: Option<ComponentAlias>,
+}
+
+/// Component alias definition
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ComponentAlias {
+    /// Base component name
+    pub base: String,
+    /// Arguments to pass to the base component
+    pub args: Vec<Expression>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

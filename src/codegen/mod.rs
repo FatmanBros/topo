@@ -657,6 +657,21 @@ impl JsCodegen {
             comp.params.iter().map(|p| p.name.clone()).collect::<Vec<_>>().join(", ")
         };
 
+        // Check if this is an alias component: Alias(args) -> Base(args, defaultValue)
+        if let Some(alias) = &comp.alias {
+            let args_str = alias.args.iter()
+                .map(|arg| self.generate_expression(arg))
+                .collect::<Vec<_>>()
+                .join(", ");
+            self.emit_line(&format!("function {}({}) {{", comp.name, params_str));
+            self.indent += 1;
+            self.emit_line(&format!("return {}({});", alias.base, args_str));
+            self.indent -= 1;
+            self.emit_line("}");
+            self.local_params = old_params;
+            return;
+        }
+
         self.emit_line(&format!("function {}({}) {{", comp.name, params_str));
         self.indent += 1;
 

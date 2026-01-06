@@ -1,5 +1,5 @@
 import { Heading } from "../atoms/heading.tp"
-import { Operator } from "../molecules/operator.tp"
+import { Operator } from "../atoms/operator.tp"
 
 Syntax -> {
     style: "mb-16"
