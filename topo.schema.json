@@ -1,0 +1,202 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "topo Configuration",
+  "description": "Configuration file for topo UI framework",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema reference"
+    },
+    "project": {
+      "type": "object",
+      "description": "Project information",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Project name"
+        },
+        "version": {
+          "type": "string",
+          "description": "Project version (semver)",
+          "pattern": "^\\d+\\.\\d+\\.\\d+(-[a-zA-Z0-9]+)?$"
+        },
+        "description": {
+          "type": "string",
+          "description": "Project description"
+        }
+      },
+      "required": ["name", "version"]
+    },
+    "build": {
+      "type": "object",
+      "description": "Build configuration",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["spa", "ssg", "ssr"],
+          "default": "spa",
+          "description": "Build mode: spa (Single Page App), ssg (Static Site Generation), ssr (Server Side Rendering)"
+        },
+        "output": {
+          "type": "string",
+          "default": "dist",
+          "description": "Output directory"
+        },
+        "minify": {
+          "type": "boolean",
+          "default": true,
+          "description": "Minify output"
+        },
+        "sourcemap": {
+          "type": "boolean",
+          "default": true,
+          "description": "Generate source maps"
+        },
+        "target": {
+          "type": "string",
+          "enum": ["es2020", "es2021", "es2022", "esnext"],
+          "default": "es2022",
+          "description": "JavaScript target version"
+        }
+      }
+    },
+    "dev": {
+      "type": "object",
+      "description": "Development server configuration",
+      "properties": {
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535,
+          "default": 3000,
+          "description": "Dev server port"
+        },
+        "host": {
+          "type": "string",
+          "default": "localhost",
+          "description": "Dev server host"
+        },
+        "open": {
+          "type": "boolean",
+          "default": true,
+          "description": "Open browser on start"
+        },
+        "hmr": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable Hot Module Replacement"
+        }
+      }
+    },
+    "style": {
+      "type": "object",
+      "description": "Style configuration",
+      "properties": {
+        "framework": {
+          "type": "string",
+          "enum": ["tailwind", "none"],
+          "default": "tailwind",
+          "description": "CSS framework"
+        },
+        "config": {
+          "type": "string",
+          "description": "Path to CSS framework config file"
+        }
+      }
+    },
+    "paths": {
+      "type": "object",
+      "description": "Project paths",
+      "properties": {
+        "pages": {
+          "type": "string",
+          "default": "src/pages",
+          "description": "Pages directory (file-based routing)"
+        },
+        "components": {
+          "type": "string",
+          "default": "src/components",
+          "description": "Shared components directory"
+        },
+        "stores": {
+          "type": "string",
+          "default": "src/stores",
+          "description": "Store definitions directory"
+        },
+        "services": {
+          "type": "string",
+          "default": "src/services",
+          "description": "API service definitions directory"
+        },
+        "layouts": {
+          "type": "string",
+          "default": "src/layouts",
+          "description": "Layout components directory"
+        },
+        "public": {
+          "type": "string",
+          "default": "public",
+          "description": "Static assets directory"
+        }
+      }
+    },
+    "runtime": {
+      "type": "object",
+      "description": "Runtime configuration",
+      "properties": {
+        "api": {
+          "type": "object",
+          "description": "API client configuration",
+          "properties": {
+            "baseUrl": {
+              "type": "string",
+              "default": "/api",
+              "description": "Base URL for API requests"
+            },
+            "timeout": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 5000,
+              "description": "Request timeout in milliseconds"
+            },
+            "headers": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              },
+              "description": "Default headers for API requests"
+            }
+          }
+        }
+      }
+    },
+    "plugins": {
+      "type": "array",
+      "description": "List of plugins",
+      "items": {
+        "oneOf": [
+          {
+            "type": "string",
+            "description": "Plugin name"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Plugin name"
+              },
+              "options": {
+                "type": "object",
+                "description": "Plugin options"
+              }
+            },
+            "required": ["name"]
+          }
+        ]
+      }
+    }
+  },
+  "required": ["project"]
+}
