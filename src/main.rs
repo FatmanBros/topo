@@ -333,10 +333,12 @@ fn build_project(input: &PathBuf, output: &PathBuf, mode: &str) -> Result<()> {
     let mut all_output = String::new();
     let mut codegen = JsCodegen::new();
 
-    // First pass: collect all component params from all files for cross-file param detection
+    // First pass: collect all component params and store state fields from all files
+    // This enables cross-file param detection and store state access
     for file in &compile_order {
         if let Some(program) = parsed_files.get(file) {
             codegen.collect_component_params(program);
+            codegen.collect_store_state_fields(program);
         }
     }
 
@@ -419,10 +421,12 @@ fn build_project_dev(input: &PathBuf, output: &PathBuf, _mode: &str, ws_port: u1
     let mut all_output = String::new();
     let mut codegen = JsCodegen::new();
 
-    // First pass: collect all component params from all files for cross-file param detection
+    // First pass: collect all component params and store state fields from all files
+    // This enables cross-file param detection and store state access
     for file in &compile_order {
         if let Some(program) = parsed_files.get(file) {
             codegen.collect_component_params(program);
+            codegen.collect_store_state_fields(program);
         }
     }
 
