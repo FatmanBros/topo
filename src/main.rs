@@ -1046,7 +1046,7 @@ fn start_dev_server(port: u16, config: &Config) -> Result<()> {
                         if let Ok(mut clients) = ws_clients_for_watcher.lock() {
                             clients.retain(|client| {
                                 if let Ok(mut ws) = accept(client.try_clone().unwrap_or_else(|_| client.try_clone().unwrap())) {
-                                    ws.send(Message::Text("reload".to_string())).is_ok()
+                                    ws.send(Message::Text("reload".into())).is_ok()
                                 } else {
                                     false
                                 }
