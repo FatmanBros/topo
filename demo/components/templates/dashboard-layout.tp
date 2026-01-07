@@ -1,0 +1,13 @@
+// Dashboard layout template - wraps content with sidebar
+import { DashboardSidebar } from "../organisms/dashboard-sidebar.tp"
+
+DashboardLayout(children) -> {
+    style: "min-h-screen bg-gray-50"
+    children: [DashboardSidebar, DashboardLayoutMain({ children: children })]
+}
+
+DashboardLayoutMain(children) -> {
+    style: "ml-64 p-8"
+    align: vertical
+    children: children
+}

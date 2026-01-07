@@ -1,0 +1,98 @@
+// Settings page template
+import { DashboardLayout } from "./dashboard-layout.tp"
+
+SettingsPage -> DashboardLayout([SettingsHeader, SettingsContent])
+
+SettingsHeader -> {
+    style: "mb-8"
+    children: [SettingsTitle]
+}
+
+SettingsTitle -> {
+    type: text
+    content: "Settings"
+    style: "text-2xl font-bold text-gray-900"
+}
+
+SettingsContent -> {
+    style: "grid grid-cols-1 lg:grid-cols-3 gap-6"
+    children: [SettingsNav, SettingsMain]
+}
+
+SettingsNav -> {
+    style: "bg-white rounded-xl shadow-sm border border-gray-100 p-4 h-fit"
+    children: [SettingsNavList]
+}
+
+SettingsNavList -> {
+    align: vertical
+    style: "space-y-1"
+    children: [
+        SettingsNavItem({ label: "Profile", active: true }),
+        SettingsNavItem({ label: "Account", active: false }),
+        SettingsNavItem({ label: "Notifications", active: false }),
+        SettingsNavItem({ label: "Security", active: false }),
+        SettingsNavItem({ label: "Billing", active: false })
+    ]
+}
+
+SettingsNavItem(label, active) -> {
+    type: button
+    content: label
+    style: active ? "w-full text-left px-4 py-2 rounded-lg bg-indigo-50 text-indigo-600 font-medium" : "w-full text-left px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-50"
+}
+
+SettingsMain -> {
+    style: "lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 p-6"
+    children: [ProfileSettings]
+}
+
+ProfileSettings -> {
+    align: vertical
+    style: "space-y-6"
+    children: [ProfileSettingsTitle, ProfileForm]
+}
+
+ProfileSettingsTitle -> {
+    type: text
+    content: "Profile Settings"
+    style: "text-lg font-semibold text-gray-900 pb-4 border-b border-gray-100"
+}
+
+ProfileForm -> {
+    align: vertical
+    style: "space-y-4 pt-4"
+    children: [
+        FormField({ label: "Full Name", value: "John Doe", type: "text" }),
+        FormField({ label: "Email", value: "john@example.com", type: "email" }),
+        FormField({ label: "Bio", value: "Software developer", type: "textarea" }),
+        SaveButton
+    ]
+}
+
+FormField(label, value, type) -> {
+    align: vertical
+    style: "space-y-2"
+    children: [
+        FormFieldLabel({ label: label }),
+        FormFieldInput({ value: value, type: type })
+    ]
+}
+
+FormFieldLabel(label) -> {
+    type: text
+    content: label
+    style: "text-sm font-medium text-gray-700"
+}
+
+FormFieldInput(value, type) -> {
+    type: input
+    inputType: type
+    style: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+}
+
+SaveButton -> {
+    type: button
+    content: "Save Changes"
+    style: "mt-4 px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 w-fit"
+}

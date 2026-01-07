@@ -1,20 +1,11 @@
 // Dashboard page template
+import { DashboardLayout } from "./dashboard-layout.tp"
 import { DashboardHeader } from "../organisms/dashboard-header.tp"
-import { DashboardSidebar } from "../organisms/dashboard-sidebar.tp"
 import { StatCards } from "../organisms/stat-cards.tp"
 import { ActivityFeed } from "../organisms/activity-feed.tp"
 import { QuickActions } from "../organisms/quick-actions.tp"
 
-DashboardPage -> {
-    style: "min-h-screen bg-gray-50"
-    children: [DashboardSidebar, DashboardMain]
-}
-
-DashboardMain -> {
-    style: "ml-64 p-8"
-    align: vertical
-    children: [DashboardHeader, StatCards, DashboardContent]
-}
+DashboardPage -> DashboardLayout([DashboardHeader, StatCards, DashboardContent])
 
 DashboardContent -> {
     style: "grid grid-cols-1 lg:grid-cols-3 gap-6"

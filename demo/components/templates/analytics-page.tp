@@ -1,0 +1,145 @@
+// Analytics page template
+import { DashboardLayout } from "./dashboard-layout.tp"
+
+AnalyticsPage -> DashboardLayout([AnalyticsHeader, AnalyticsContent])
+
+AnalyticsHeader -> {
+    style: "mb-8"
+    children: [AnalyticsTitle, AnalyticsPeriod]
+}
+
+AnalyticsTitle -> {
+    type: text
+    content: "Analytics"
+    style: "text-2xl font-bold text-gray-900"
+}
+
+AnalyticsPeriod -> {
+    type: text
+    content: "Last 30 days"
+    style: "text-gray-500 mt-2"
+}
+
+AnalyticsContent -> {
+    align: vertical
+    style: "space-y-6"
+    children: [AnalyticsStats, AnalyticsCharts]
+}
+
+AnalyticsStats -> {
+    style: "grid grid-cols-1 md:grid-cols-4 gap-6"
+    children: [
+        AnalyticsStat({ label: "Page Views", value: "124,532", change: "+12.3%" }),
+        AnalyticsStat({ label: "Unique Visitors", value: "45,234", change: "+8.1%" }),
+        AnalyticsStat({ label: "Bounce Rate", value: "32.4%", change: "-2.4%" }),
+        AnalyticsStat({ label: "Avg. Session", value: "4m 23s", change: "+18.2%" })
+    ]
+}
+
+AnalyticsStat(label, value, change) -> {
+    style: "bg-white rounded-xl shadow-sm border border-gray-100 p-6"
+    children: [
+        AnalyticsStatLabel({ label: label }),
+        AnalyticsStatValue({ value: value }),
+        AnalyticsStatChange({ change: change })
+    ]
+}
+
+AnalyticsStatLabel(label) -> {
+    type: text
+    content: label
+    style: "text-sm text-gray-500"
+}
+
+AnalyticsStatValue(value) -> {
+    type: text
+    content: value
+    style: "text-2xl font-bold text-gray-900 mt-2"
+}
+
+AnalyticsStatChange(change) -> {
+    type: text
+    content: change
+    style: "text-sm text-green-600 mt-1"
+}
+
+AnalyticsCharts -> {
+    style: "grid grid-cols-1 lg:grid-cols-2 gap-6"
+    children: [TrafficChart, SourcesChart]
+}
+
+TrafficChart -> {
+    style: "bg-white rounded-xl shadow-sm border border-gray-100 p-6"
+    children: [TrafficChartTitle, TrafficChartPlaceholder]
+}
+
+TrafficChartTitle -> {
+    type: text
+    content: "Traffic Overview"
+    style: "text-lg font-semibold text-gray-900 mb-4"
+}
+
+TrafficChartPlaceholder -> {
+    style: "h-64 bg-gray-50 rounded-lg flex items-center justify-center"
+    children: [TrafficChartText]
+}
+
+TrafficChartText -> {
+    type: text
+    content: "Chart visualization"
+    style: "text-gray-400"
+}
+
+SourcesChart -> {
+    style: "bg-white rounded-xl shadow-sm border border-gray-100 p-6"
+    children: [SourcesChartTitle, SourcesList]
+}
+
+SourcesChartTitle -> {
+    type: text
+    content: "Traffic Sources"
+    style: "text-lg font-semibold text-gray-900 mb-4"
+}
+
+SourcesList -> {
+    align: vertical
+    style: "space-y-4"
+    children: [
+        SourceItem({ name: "Direct", value: "42%", color: "bg-indigo-600" }),
+        SourceItem({ name: "Organic Search", value: "28%", color: "bg-blue-500" }),
+        SourceItem({ name: "Social Media", value: "18%", color: "bg-green-500" }),
+        SourceItem({ name: "Referral", value: "12%", color: "bg-yellow-500" })
+    ]
+}
+
+SourceItem(name, value, color) -> {
+    style: "flex items-center justify-between"
+    children: [
+        SourceItemLeft({ name: name, color: color }),
+        SourceItemValue({ value: value })
+    ]
+}
+
+SourceItemLeft(name, color) -> {
+    style: "flex items-center gap-3"
+    children: [
+        SourceItemDot({ color: color }),
+        SourceItemName({ name: name })
+    ]
+}
+
+SourceItemDot(color) -> {
+    style: color + " w-3 h-3 rounded-full"
+}
+
+SourceItemName(name) -> {
+    type: text
+    content: name
+    style: "text-gray-700"
+}
+
+SourceItemValue(value) -> {
+    type: text
+    content: value
+    style: "font-semibold text-gray-900"
+}
