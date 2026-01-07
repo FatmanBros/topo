@@ -1,8 +1,8 @@
-// Team page template
-import { DashboardLayout } from "./dashboard-layout.tp"
-import { Team } from "../../stores/team-store.tp"
+// Team template
+import { DashboardLayout } from "../../../components/templates/dashboard-layout.tp"
+import { Team } from "./index.tp"
 
-TeamPage -> DashboardLayout([TeamHeader, TeamGrid])
+TeamTemplate -> DashboardLayout([TeamHeader, TeamGrid])
 
 TeamHeader -> {
     style: "mb-8"

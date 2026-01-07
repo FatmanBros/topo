@@ -1,8 +1,8 @@
-// Analytics page template
-import { DashboardLayout } from "./dashboard-layout.tp"
-import { Analytics } from "../../stores/analytics-store.tp"
+// Analytics template
+import { DashboardLayout } from "../../../components/templates/dashboard-layout.tp"
+import { Analytics } from "./index.tp"
 
-AnalyticsPage -> DashboardLayout([AnalyticsHeader, AnalyticsContent])
+AnalyticsTemplate -> DashboardLayout([AnalyticsHeader, AnalyticsContent])
 
 AnalyticsHeader -> {
     style: "mb-8"

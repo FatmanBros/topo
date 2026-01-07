@@ -1,8 +1,8 @@
-// Settings page template
-import { DashboardLayout } from "./dashboard-layout.tp"
-import { Settings } from "../../stores/settings-store.tp"
+// Settings template
+import { DashboardLayout } from "../../../components/templates/dashboard-layout.tp"
+import { Settings } from "./index.tp"
 
-SettingsPage -> DashboardLayout([SettingsHeader, SettingsContent])
+SettingsTemplate -> DashboardLayout([SettingsHeader, SettingsContent])
 
 SettingsHeader -> {
     style: "mb-8"

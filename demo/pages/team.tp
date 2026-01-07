@@ -1,2 +1,0 @@
-// Team page - exports TeamPage for router
-import { TeamPage } from "../components/templates/team-page.tp"

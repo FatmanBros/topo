@@ -1,2 +1,0 @@
-// Analytics page - exports AnalyticsPage for router
-import { AnalyticsPage } from "../components/templates/analytics-page.tp"

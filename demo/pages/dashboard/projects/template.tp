@@ -1,8 +1,8 @@
-// Projects page template
-import { DashboardLayout } from "./dashboard-layout.tp"
-import { Projects } from "../../stores/projects-store.tp"
+// Projects template
+import { DashboardLayout } from "../../../components/templates/dashboard-layout.tp"
+import { Projects } from "./index.tp"
 
-ProjectsPage -> DashboardLayout([ProjectsHeader, ProjectsGrid])
+ProjectsTemplate -> DashboardLayout([ProjectsHeader, ProjectsGrid])
 
 ProjectsHeader -> {
     style: "mb-8"
