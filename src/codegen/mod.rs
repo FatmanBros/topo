@@ -47,10 +47,12 @@ impl JsCodegen {
         if let Some(key) = &self.current_property_key {
             matches!(
                 key.as_str(),
-                "click" | "submit" | "change" | "input" | "focus" | "blur"
-                    | "keydown" | "keyup" | "keypress" | "mousedown" | "mouseup"
-                    | "mouseover" | "mouseout" | "mouseenter" | "mouseleave"
-                    | "onInput"
+                "click" | "onClick" | "submit" | "onSubmit" | "change" | "onChange"
+                    | "input" | "onInput" | "focus" | "onFocus" | "blur" | "onBlur"
+                    | "keydown" | "onKeydown" | "keyup" | "onKeyup" | "keypress" | "onKeypress"
+                    | "mousedown" | "onMousedown" | "mouseup" | "onMouseup"
+                    | "mouseover" | "onMouseover" | "mouseout" | "onMouseout"
+                    | "mouseenter" | "onMouseenter" | "mouseleave" | "onMouseleave"
             )
         } else {
             false
@@ -60,7 +62,7 @@ impl JsCodegen {
     /// Check if current property is an input event handler that receives a value
     fn is_input_event_handler(&self) -> bool {
         if let Some(key) = &self.current_property_key {
-            matches!(key.as_str(), "onInput" | "input" | "change")
+            matches!(key.as_str(), "onInput" | "input" | "onChange" | "change")
         } else {
             false
         }
@@ -108,6 +110,19 @@ impl JsCodegen {
         self.emit_runtime_imports();
         self.emit_line("");
         std::mem::take(&mut self.output)
+    }
+
+    /// Pre-collect component parameter names from a program
+    /// Call this for all files before generating code to enable cross-file param detection
+    pub fn collect_component_params(&mut self, program: &Program) {
+        for decl in &program.declarations {
+            if let Declaration::Component(comp) = decl {
+                if !comp.params.is_empty() {
+                    let param_names: Vec<String> = comp.params.iter().map(|p| p.name.clone()).collect();
+                    self.component_params.insert(comp.name.clone(), param_names);
+                }
+            }
+        }
     }
 
     pub fn generate(&mut self, program: &Program) -> String {
@@ -678,8 +693,24 @@ impl JsCodegen {
 
         // Check if this is an alias component: Alias(args) -> Base(args, defaultValue)
         if let Some(alias) = &comp.alias {
-            let args_str = alias.args.iter()
-                .map(|arg| self.generate_expression(arg))
+            // Get base component's parameter names to detect event handler params
+            let base_params = self.component_params.get(&alias.base).cloned();
+
+            let args_str = alias.args.iter().enumerate()
+                .map(|(i, arg)| {
+                    // Check if this arg corresponds to an event handler param
+                    if let Some(ref params) = base_params {
+                        if let Some(param_name) = params.get(i) {
+                            if matches!(param_name.as_str(), "onClick" | "click" | "onInput" | "input" | "onChange" | "change" | "onSubmit" | "submit") {
+                                self.current_property_key = Some(param_name.clone());
+                                let val = self.generate_expression(arg);
+                                self.current_property_key = None;
+                                return val;
+                            }
+                        }
+                    }
+                    self.generate_expression(arg)
+                })
                 .collect::<Vec<_>>()
                 .join(", ");
             self.emit_line(&format!("function {}({}) {{", comp.name, params_str));
