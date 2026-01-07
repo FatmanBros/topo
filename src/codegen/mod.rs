@@ -731,6 +731,10 @@ impl JsCodegen {
             Declaration::Method(method) => self.generate_method(method),
             Declaration::Theme(_) => {} // Handled separately via CSS injection
             Declaration::Test(_) => {}  // Handled separately for Playwright test generation
+            Declaration::BeforeEach(_) => {} // Handled separately for Playwright test generation
+            Declaration::AfterEach(_) => {}  // Handled separately for Playwright test generation
+            Declaration::BeforeOnce(_) => {} // Handled separately for Playwright test generation
+            Declaration::AfterOnce(_) => {}  // Handled separately for Playwright test generation
         }
     }
 
@@ -1933,6 +1937,10 @@ impl TsCodegen {
             Declaration::Theme(theme) => self.generate_theme_types(theme),
             Declaration::Method(_) => {} // Methods don't need type exports
             Declaration::Test(_) => {}   // Tests don't need type exports
+            Declaration::BeforeEach(_) => {} // Tests don't need type exports
+            Declaration::AfterEach(_) => {}  // Tests don't need type exports
+            Declaration::BeforeOnce(_) => {} // Tests don't need type exports
+            Declaration::AfterOnce(_) => {}  // Tests don't need type exports
         }
     }
 

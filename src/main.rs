@@ -1168,97 +1168,138 @@ fn compile_test_files() -> Result<()> {
 }
 
 fn generate_playwright_test(ast: &Program) -> Result<String> {
-    use topo::ast::{TestStatement, TestTarget, TestAssertion};
+    use topo::ast::{TestStatement, TestTarget, TestAssertion, TestHookDef};
 
     let mut output = String::new();
     output.push_str("import { test, expect } from '@playwright/test';\n\n");
 
-    for decl in &ast.declarations {
-        if let Declaration::Test(test_def) = decl {
-            output.push_str(&format!("test('{}', async ({{ page }}) => {{\n", test_def.name));
-
-            for stmt in &test_def.statements {
-                match stmt {
-                    TestStatement::Goto { path } => {
-                        output.push_str(&format!("  await page.goto('{}');\n", path));
-                    }
-                    TestStatement::Click { target } => {
-                        let selector = target_to_selector(target);
-                        output.push_str(&format!("  await page.locator('{}').click();\n", selector));
-                    }
-                    TestStatement::Fill { target, value } => {
-                        let selector = target_to_selector(target);
-                        let val = expression_to_string(value);
-                        output.push_str(&format!("  await page.locator('{}').fill({});\n", selector, val));
-                    }
-                    TestStatement::Type { target, value } => {
-                        let selector = target_to_selector(target);
-                        let val = expression_to_string(value);
-                        output.push_str(&format!("  await page.locator('{}').type({});\n", selector, val));
-                    }
-                    TestStatement::Expect { target, assertion } => {
-                        match target {
-                            TestTarget::Url => {
-                                match assertion {
-                                    TestAssertion::Equals { value } | TestAssertion::Value { value } => {
-                                        output.push_str(&format!("  await expect(page).toHaveURL('{}');\n", value));
-                                    }
-                                    _ => {}
+    // Helper to generate test statements
+    fn generate_test_statements(statements: &[TestStatement], output: &mut String) {
+        for stmt in statements {
+            match stmt {
+                TestStatement::Goto { path } => {
+                    output.push_str(&format!("  await page.goto('{}');\n", path));
+                }
+                TestStatement::Click { target } => {
+                    let selector = target_to_selector(target);
+                    output.push_str(&format!("  await page.locator('{}').click();\n", selector));
+                }
+                TestStatement::Fill { target, value } => {
+                    let selector = target_to_selector(target);
+                    let val = expression_to_string(value);
+                    output.push_str(&format!("  await page.locator('{}').fill({});\n", selector, val));
+                }
+                TestStatement::Type { target, value } => {
+                    let selector = target_to_selector(target);
+                    let val = expression_to_string(value);
+                    output.push_str(&format!("  await page.locator('{}').type({});\n", selector, val));
+                }
+                TestStatement::Expect { target, assertion } => {
+                    match target {
+                        TestTarget::Url => {
+                            match assertion {
+                                TestAssertion::Equals { value } | TestAssertion::Value { value } => {
+                                    output.push_str(&format!("  await expect(page).toHaveURL('{}');\n", value));
                                 }
+                                _ => {}
                             }
-                            TestTarget::PageProperty { property } if property == "url" => {
-                                match assertion {
-                                    TestAssertion::Equals { value } | TestAssertion::Value { value } => {
-                                        output.push_str(&format!("  await expect(page).toHaveURL('{}');\n", value));
-                                    }
-                                    _ => {}
+                        }
+                        TestTarget::PageProperty { property } if property == "url" => {
+                            match assertion {
+                                TestAssertion::Equals { value } | TestAssertion::Value { value } => {
+                                    output.push_str(&format!("  await expect(page).toHaveURL('{}');\n", value));
                                 }
+                                _ => {}
                             }
-                            _ => {
-                                let selector = target_to_selector(target);
-                                match assertion {
-                                    TestAssertion::Visible => {
-                                        output.push_str(&format!("  await expect(page.locator('{}')).toBeVisible();\n", selector));
-                                    }
-                                    TestAssertion::Hidden => {
-                                        output.push_str(&format!("  await expect(page.locator('{}')).toBeHidden();\n", selector));
-                                    }
-                                    TestAssertion::Disabled => {
-                                        output.push_str(&format!("  await expect(page.locator('{}')).toBeDisabled();\n", selector));
-                                    }
-                                    TestAssertion::Empty => {
-                                        output.push_str(&format!("  await expect(page.locator('{}')).toBeEmpty();\n", selector));
-                                    }
-                                    TestAssertion::HasText { value } => {
-                                        output.push_str(&format!("  await expect(page.locator('{}')).toHaveText('{}');\n", selector, value));
-                                    }
-                                    TestAssertion::Value { value } => {
-                                        output.push_str(&format!("  await expect(page.locator('{}')).toHaveValue('{}');\n", selector, value));
-                                    }
-                                    TestAssertion::Equals { value } => {
-                                        output.push_str(&format!("  await expect(page.locator('{}')).toHaveText('{}');\n", selector, value));
-                                    }
-                                    TestAssertion::Contains { value } => {
-                                        output.push_str(&format!("  await expect(page.locator('{}')).toContainText('{}');\n", selector, value));
-                                    }
+                        }
+                        _ => {
+                            let selector = target_to_selector(target);
+                            match assertion {
+                                TestAssertion::Visible => {
+                                    output.push_str(&format!("  await expect(page.locator('{}')).toBeVisible();\n", selector));
+                                }
+                                TestAssertion::Hidden => {
+                                    output.push_str(&format!("  await expect(page.locator('{}')).toBeHidden();\n", selector));
+                                }
+                                TestAssertion::Disabled => {
+                                    output.push_str(&format!("  await expect(page.locator('{}')).toBeDisabled();\n", selector));
+                                }
+                                TestAssertion::Empty => {
+                                    output.push_str(&format!("  await expect(page.locator('{}')).toBeEmpty();\n", selector));
+                                }
+                                TestAssertion::HasText { value } => {
+                                    output.push_str(&format!("  await expect(page.locator('{}')).toHaveText('{}');\n", selector, value));
+                                }
+                                TestAssertion::Value { value } => {
+                                    output.push_str(&format!("  await expect(page.locator('{}')).toHaveValue('{}');\n", selector, value));
+                                }
+                                TestAssertion::Equals { value } => {
+                                    output.push_str(&format!("  await expect(page.locator('{}')).toHaveText('{}');\n", selector, value));
+                                }
+                                TestAssertion::Contains { value } => {
+                                    output.push_str(&format!("  await expect(page.locator('{}')).toContainText('{}');\n", selector, value));
                                 }
                             }
                         }
                     }
-                    TestStatement::Mock { service, method, response } => {
-                        // Generate route mock based on service/method
-                        let response_str = expression_to_string(response);
-                        let route_pattern = format!("**/api/{}/**", service.to_lowercase());
-                        output.push_str(&format!(
-                            "  // Mock {}.{}\n  await page.route('{}', route => route.fulfill({{ json: {} }}));\n",
-                            service, method, route_pattern, response_str
-                        ));
-                    }
-                    TestStatement::Wait { ms } => {
-                        output.push_str(&format!("  await page.waitForTimeout({});\n", ms));
-                    }
+                }
+                TestStatement::Mock { service, method, response } => {
+                    // Generate route mock based on service/method
+                    let response_str = expression_to_string(response);
+                    let route_pattern = format!("**/api/{}/**", service.to_lowercase());
+                    output.push_str(&format!(
+                        "  // Mock {}.{}\n  await page.route('{}', route => route.fulfill({{ json: {} }}));\n",
+                        service, method, route_pattern, response_str
+                    ));
+                }
+                TestStatement::Wait { ms } => {
+                    output.push_str(&format!("  await page.waitForTimeout({});\n", ms));
                 }
             }
+        }
+    }
+
+    // Helper to generate hook
+    fn generate_hook(hook_name: &str, hook_def: &TestHookDef, output: &mut String) {
+        output.push_str(&format!("test.{}(async ({{ page }}) => {{\n", hook_name));
+        generate_test_statements(&hook_def.statements, output);
+        output.push_str("});\n\n");
+    }
+
+    // First pass: generate beforeAll/afterAll hooks (BeforeOnce/AfterOnce)
+    for decl in &ast.declarations {
+        match decl {
+            Declaration::BeforeOnce(hook_def) => {
+                generate_hook("beforeAll", hook_def, &mut output);
+            }
+            Declaration::AfterOnce(hook_def) => {
+                generate_hook("afterAll", hook_def, &mut output);
+            }
+            _ => {}
+        }
+    }
+
+    // Second pass: generate beforeEach/afterEach hooks
+    for decl in &ast.declarations {
+        match decl {
+            Declaration::BeforeEach(hook_def) => {
+                generate_hook("beforeEach", hook_def, &mut output);
+            }
+            Declaration::AfterEach(hook_def) => {
+                generate_hook("afterEach", hook_def, &mut output);
+            }
+            _ => {}
+        }
+    }
+
+    // Second pass: generate tests
+    for decl in &ast.declarations {
+        if let Declaration::Test(test_def) = decl {
+            // Use test.skip for skipped tests
+            let test_fn = if test_def.skip { "test.skip" } else { "test" };
+            output.push_str(&format!("{}('{}', async ({{ page }}) => {{\n", test_fn, test_def.name));
+
+            generate_test_statements(&test_def.statements, &mut output);
 
             output.push_str("});\n\n");
         }

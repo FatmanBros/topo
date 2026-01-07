@@ -103,6 +103,11 @@ pub enum TokenKind {
 
     // Keywords - Testing
     Test,
+    XTest,      // xTest (skipped test)
+    BeforeEach,
+    AfterEach,
+    BeforeOnce, // beforeAll in Playwright
+    AfterOnce,  // afterAll in Playwright
     Goto,
     Click,
     Fill,
@@ -199,6 +204,11 @@ impl std::fmt::Display for TokenKind {
             TokenKind::Close => write!(f, "close"),
             TokenKind::FatArrow => write!(f, "=>"),
             TokenKind::Test => write!(f, "Test"),
+            TokenKind::XTest => write!(f, "xTest"),
+            TokenKind::BeforeEach => write!(f, "BeforeEach"),
+            TokenKind::AfterEach => write!(f, "AfterEach"),
+            TokenKind::BeforeOnce => write!(f, "BeforeOnce"),
+            TokenKind::AfterOnce => write!(f, "AfterOnce"),
             TokenKind::Goto => write!(f, "goto"),
             TokenKind::Click => write!(f, "click"),
             TokenKind::Fill => write!(f, "fill"),
