@@ -194,6 +194,8 @@ pub struct StoreDef {
     pub name: String,
     pub state: Option<StateBlock>,
     pub actions: Option<ActionsBlock>,
+    /// Commands are public actions accessible from outside (e.g., from Templates)
+    pub commands: Option<CommandsBlock>,
     pub reducers: Option<ReducersBlock>,
     pub effects: Option<EffectsBlock>,
     pub selectors: Option<SelectorsBlock>,
@@ -207,6 +209,12 @@ pub struct StateBlock {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ActionsBlock {
     pub actions: Vec<ActionDef>,
+}
+
+/// Commands block - public actions accessible from outside the store
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CommandsBlock {
+    pub commands: Vec<ActionDef>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

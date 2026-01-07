@@ -76,6 +76,7 @@ pub enum TokenKind {
     // Keywords - Store blocks
     State,
     Actions,
+    Commands,
     Reducers,
     Effects,
     Selectors,
@@ -176,6 +177,7 @@ impl std::fmt::Display for TokenKind {
             TokenKind::Layout => write!(f, "layout"),
             TokenKind::State => write!(f, "State"),
             TokenKind::Actions => write!(f, "Actions"),
+            TokenKind::Commands => write!(f, "Commands"),
             TokenKind::Reducers => write!(f, "Reducers"),
             TokenKind::Effects => write!(f, "Effects"),
             TokenKind::Selectors => write!(f, "Selectors"),

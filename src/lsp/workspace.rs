@@ -4,6 +4,7 @@ use tower_lsp::lsp_types::*;
 use walkdir::WalkDir;
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct ComponentInfo {
     pub name: String,
     pub params: Vec<ParamInfo>,
@@ -15,6 +16,7 @@ pub struct ComponentInfo {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct ParamInfo {
     pub name: String,
     pub param_type: Option<String>,
@@ -22,12 +24,14 @@ pub struct ParamInfo {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct ImportInfo {
     pub names: Vec<String>,
     pub path: String,
     pub line: u32,
 }
 
+#[allow(dead_code)]
 pub struct WorkspaceManager {
     /// Component name -> ComponentInfo
     components: DashMap<String, ComponentInfo>,
@@ -35,7 +39,7 @@ pub struct WorkspaceManager {
     file_exports: DashMap<PathBuf, Vec<String>>,
     /// File path -> list of imports in that file
     file_imports: DashMap<PathBuf, Vec<ImportInfo>>,
-    /// Root directory
+    /// Root directory (for future use)
     root: Option<PathBuf>,
 }
 
@@ -239,6 +243,7 @@ impl WorkspaceManager {
         self.components.iter().map(|r| r.value().clone()).collect()
     }
 
+    #[allow(dead_code)]
     pub fn get_imports(&self, path: &Path) -> Vec<ImportInfo> {
         self.file_imports
             .get(&path.to_path_buf())
@@ -246,6 +251,7 @@ impl WorkspaceManager {
             .unwrap_or_default()
     }
 
+    #[allow(dead_code)]
     pub fn is_imported(&self, name: &str, current_file: &Path) -> bool {
         if let Some(imports) = self.file_imports.get(&current_file.to_path_buf()) {
             return imports.iter().any(|i| i.names.contains(&name.to_string()));

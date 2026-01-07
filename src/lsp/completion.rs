@@ -242,8 +242,8 @@ impl CompletionProvider {
 
     fn store_action_completions(
         &self,
-        store_name: &str,
-        workspace: &WorkspaceManager,
+        _store_name: &str,
+        _workspace: &WorkspaceManager,
     ) -> Vec<CompletionItem> {
         // For now, return common action patterns
         vec![
@@ -390,7 +390,7 @@ impl CompletionProvider {
 
     fn import_path_completions(
         &self,
-        text: &str,
+        _text: &str,
         workspace: &WorkspaceManager,
     ) -> Vec<CompletionItem> {
         // Return available .tp files
