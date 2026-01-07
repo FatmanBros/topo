@@ -1,0 +1,177 @@
+// i18n docs page
+import { DocsTemplate } from "../template.tp"
+import { DocsSection, DocsText, DocsDescription } from "../../../components/molecules/docs-section.tp"
+import { CodeBlock } from "../../../components/molecules/code-block.tp"
+import { CodePreview } from "../../../components/molecules/code-preview.tp"
+import { Text } from "../../../components/atoms/text.tp"
+
+Page -> DocsTemplate({ children: [I18nContent] })
+
+I18nContent -> {
+    align: vertical
+    style: "space-y-8"
+    children: [
+        PageHeader,
+        SetupSection,
+        TranslationsSection,
+        UsageSection,
+        SwitchingSection
+    ]
+}
+
+PageHeader -> DocsSection({
+    id: "i18n",
+    title: "Internationalization (i18n)",
+    children: [HeaderDesc]
+})
+
+HeaderDesc -> DocsDescription({
+    text: "Built-in internationalization support. Define translations once and use them anywhere in your app."
+})
+
+// Setup
+SetupSection -> {
+    align: vertical
+    style: "space-y-4"
+    children: [
+        SectionTitle({ text: "Setup" }),
+        DocsText({ text: "Configure i18n in your project:" }),
+        SetupExample
+    ]
+}
+
+SectionTitle(props) -> DocsText({
+    text: props.text,
+    style: "text-xl font-semibold text-gray-900"
+})
+
+SetupExample -> CodePreview({
+    filename: "topo.config.json",
+    code: "{\n    \"i18n\": {\n        \"defaultLocale\": \"en\",\n        \"locales\": [\"en\", \"ja\", \"ko\", \"zh\"],\n        \"directory\": \"./locales\"\n    }\n}",
+    preview: [SetupPreview]
+})
+
+SetupPreview -> {
+    align: vertical
+    style: "space-y-2"
+    children: [
+        LocaleItem({ code: "en", name: "English", flag: "🇺🇸" }),
+        LocaleItem({ code: "ja", name: "Japanese", flag: "🇯🇵" }),
+        LocaleItem({ code: "ko", name: "Korean", flag: "🇰🇷" }),
+        LocaleItem({ code: "zh", name: "Chinese", flag: "🇨🇳" })
+    ]
+}
+
+LocaleItem(props) -> {
+    style: "flex items-center gap-2"
+    children: [
+        Text({ text: props.flag, style: "text-lg" }),
+        Text({ text: props.code, style: "font-mono text-sm text-pink-600" }),
+        Text({ text: props.name, style: "text-gray-600 text-sm" })
+    ]
+}
+
+// Translations
+TranslationsSection -> {
+    align: vertical
+    style: "space-y-4"
+    children: [
+        SectionTitle({ text: "Translation Files" }),
+        DocsText({ text: "Create JSON files for each locale:" }),
+        TranslationsExample
+    ]
+}
+
+TranslationsExample -> CodePreview({
+    filename: "locales/en.json",
+    code: "// locales/en.json\n{\n    \"common\": {\n        \"welcome\": \"Welcome\",\n        \"login\": \"Log in\",\n        \"logout\": \"Log out\"\n    },\n    \"home\": {\n        \"title\": \"Build UIs faster\",\n        \"subtitle\": \"The flat UI framework\"\n    },\n    \"errors\": {\n        \"required\": \"{field} is required\",\n        \"minLength\": \"Must be at least {min} characters\"\n    }\n}\n\n// locales/ja.json\n{\n    \"common\": {\n        \"welcome\": \"ようこそ\",\n        \"login\": \"ログイン\",\n        \"logout\": \"ログアウト\"\n    },\n    \"home\": {\n        \"title\": \"UIをより速く構築\",\n        \"subtitle\": \"フラットなUIフレームワーク\"\n    }\n}",
+    preview: [TranslationsPreview]
+})
+
+TranslationsPreview -> {
+    style: "grid grid-cols-2 gap-4"
+    children: [
+        TranslationCard({ lang: "English", welcome: "Welcome", login: "Log in" }),
+        TranslationCard({ lang: "日本語", welcome: "ようこそ", login: "ログイン" })
+    ]
+}
+
+TranslationCard(props) -> {
+    style: "p-3 bg-gray-50 rounded-lg"
+    align: vertical
+    children: [
+        Text({ text: props.lang, style: "font-medium text-sm text-gray-700 mb-2" }),
+        Text({ text: props.welcome, style: "text-lg" }),
+        Text({ text: props.login, style: "text-sm text-pink-500" })
+    ]
+}
+
+// Usage
+UsageSection -> {
+    align: vertical
+    style: "space-y-4"
+    children: [
+        SectionTitle({ text: "Using Translations" }),
+        DocsText({ text: "Access translations with the t() function:" }),
+        UsageExample
+    ]
+}
+
+UsageExample -> CodePreview({
+    filename: "home.tp",
+    code: "// Simple key\nTitle -> {\n    type: text\n    content: t(\"home.title\")\n    style: \"text-3xl font-bold\"\n}\n\n// With interpolation\nErrorMessage(props) -> {\n    type: text\n    content: t(\"errors.required\", { field: props.field })\n    style: \"text-red-500 text-sm\"\n}\n\n// Nested keys\nNavItems -> {\n    children: [\n        NavLink({ text: t(\"common.login\"), href: \"/login\" }),\n        NavLink({ text: t(\"common.logout\"), href: \"/logout\" })\n    ]\n}",
+    preview: [UsagePreview]
+})
+
+UsagePreview -> {
+    align: vertical
+    style: "space-y-3"
+    children: [
+        Text({ text: "Build UIs faster", style: "text-xl font-bold" }),
+        Text({ text: "Email is required", style: "text-red-500 text-sm" }),
+        UsageNav
+    ]
+}
+
+UsageNav -> {
+    style: "flex gap-4"
+    children: [
+        Text({ text: "Log in", style: "text-pink-500" }),
+        Text({ text: "Log out", style: "text-gray-500" })
+    ]
+}
+
+// Switching
+SwitchingSection -> {
+    align: vertical
+    style: "space-y-4"
+    children: [
+        SectionTitle({ text: "Language Switching" }),
+        DocsText({ text: "Change locale at runtime:" }),
+        SwitchingExample
+    ]
+}
+
+SwitchingExample -> CodePreview({
+    filename: "locale-switcher.tp",
+    code: "LocaleSwitcher -> {\n    style: \"flex gap-2\"\n    children: locales.for(locale => {\n        LocaleButton({\n            code: locale,\n            active: i18n.locale == locale\n        })\n    })\n}\n\nLocaleButton(props) -> {\n    type: button\n    content: props.code.toUpperCase()\n    onClick: () => i18n.setLocale(props.code)\n    style: props.active\n        ? \"px-3 py-1 bg-pink-500 text-white rounded\"\n        : \"px-3 py-1 bg-gray-200 rounded hover:bg-gray-300\"\n}",
+    preview: [SwitchingPreview]
+})
+
+SwitchingPreview -> {
+    style: "flex gap-2"
+    children: [
+        LangButton({ code: "EN", active: true }),
+        LangButton({ code: "JA", active: false }),
+        LangButton({ code: "KO", active: false }),
+        LangButton({ code: "ZH", active: false })
+    ]
+}
+
+LangButton(props) -> {
+    type: button
+    content: props.code
+    style: props.active
+        ? "px-3 py-1 bg-pink-500 text-white rounded text-sm font-medium"
+        : "px-3 py-1 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300"
+}

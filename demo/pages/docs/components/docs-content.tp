@@ -13,7 +13,11 @@ DocsContent -> {
         QuickStartSection,
         ComponentsSection,
         StoreSection,
-        APISection
+        APISection,
+        RoutingSection,
+        StylingSection,
+        FormsSection,
+        I18nSection
     ]
 }
 
@@ -129,7 +133,9 @@ StoreFeatures -> {
     children: [
         StoreFeaturesTitle,
         StoreFeature1,
-        StoreFeature2
+        StoreFeature2,
+        StoreEffectsSection,
+        StoreTestingSection
     ]
 }
 
@@ -145,6 +151,84 @@ StoreFeature1 -> DocsDescription({
 StoreFeature2 -> DocsDescription({
     text: "Cross-component access: Parent components can access and dispatch actions to child component stores. This enables coordinated state management across your component tree."
 })
+
+StoreEffectsSection -> {
+    align: vertical
+    style: "space-y-4 mt-6"
+    children: [
+        StoreEffectsTitle,
+        StoreEffectsExample
+    ]
+}
+
+StoreEffectsTitle -> DocsText({
+    text: "Effects (Async Operations):",
+    style: "font-semibold text-gray-900"
+})
+
+StoreEffectsExample -> CodePreview({
+    filename: "user-store.tp",
+    code: "UserStore | {\n    State {\n        users: []\n        isLoading: false\n        error: null\n    }\n    Actions {\n        FetchUsers\n        SetUsers(users)\n        SetError(error)\n    }\n    Reducers {\n        on FetchUsers { isLoading: true }\n        on SetUsers(users) {\n            users: users\n            isLoading: false\n        }\n        on SetError(error) {\n            error: error\n            isLoading: false\n        }\n    }\n    Effects {\n        on FetchUsers {\n            try {\n                users: await UserApi.getAll()\n                dispatch: SetUsers(users)\n            } catch(e) {\n                dispatch: SetError(e.message)\n            }\n        }\n    }\n}",
+    preview: [EffectsPreview]
+})
+
+EffectsPreview -> {
+    align: vertical
+    style: "space-y-3 text-sm"
+    children: [
+        EffectsFeature({ icon: "⚡", text: "Async/await support for API calls" }),
+        EffectsFeature({ icon: "🔄", text: "Automatic loading state management" }),
+        EffectsFeature({ icon: "❌", text: "Built-in error handling with try/catch" }),
+        EffectsFeature({ icon: "📡", text: "Seamless API integration" })
+    ]
+}
+
+EffectsFeature(props) -> {
+    style: "flex items-center gap-2"
+    children: [
+        Text({ text: props.icon, style: "text-lg" }),
+        Text({ text: props.text, style: "text-gray-600" })
+    ]
+}
+
+StoreTestingSection -> {
+    align: vertical
+    style: "space-y-4 mt-6"
+    children: [
+        StoreTestingTitle,
+        StoreTestingExample
+    ]
+}
+
+StoreTestingTitle -> DocsText({
+    text: "Easy Testing:",
+    style: "font-semibold text-gray-900"
+})
+
+StoreTestingExample -> CodePreview({
+    filename: "counter.test.tp",
+    code: "test \"Counter increments\" {\n    // Initialize store\n    store: Counter.init()\n    \n    // Dispatch action\n    store.dispatch(Increment)\n    \n    // Assert state\n    expect(store.state.count).toBe(1)\n}\n\ntest \"Counter decrements\" {\n    store: Counter.init({ count: 5 })\n    store.dispatch(Decrement)\n    expect(store.state.count).toBe(4)\n}",
+    preview: [TestingPreview]
+})
+
+TestingPreview -> {
+    align: vertical
+    style: "space-y-3 text-sm"
+    children: [
+        TestingFeature({ icon: "🧪", text: "Simple test syntax" }),
+        TestingFeature({ icon: "🎯", text: "Direct state initialization" }),
+        TestingFeature({ icon: "📦", text: "Isolated store instances" }),
+        TestingFeature({ icon: "✅", text: "Built-in assertions" })
+    ]
+}
+
+TestingFeature(props) -> {
+    style: "flex items-center gap-2"
+    children: [
+        Text({ text: props.icon, style: "text-lg" }),
+        Text({ text: props.text, style: "text-gray-600" })
+    ]
+}
 
 StoreExample -> CodePreview({
     filename: "counter.tp",

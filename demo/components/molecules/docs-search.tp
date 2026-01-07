@@ -1,0 +1,43 @@
+// Docs search molecule
+import { Text } from "../atoms/text.tp"
+
+DocsSearch | {
+    State {
+        query: ""
+        isOpen: false
+    }
+    Actions {
+        SetQuery(value)
+        Toggle
+    }
+    Reducers {
+        on SetQuery(value) { query: value }
+        on Toggle { isOpen: !isOpen }
+    }
+}
+
+DocsSearchBox -> {
+    style: "relative mb-6"
+    children: [
+        DocsSearchInput,
+        DocsSearchIcon
+    ]
+}
+
+DocsSearchInput -> {
+    type: input
+    placeholder: "Search docs..."
+    value: DocsSearch.query
+    onChange: DocsSearch.SetQuery
+    style: "w-full px-4 py-2 pl-10 text-sm bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-300 focus:border-transparent"
+}
+
+DocsSearchIcon -> {
+    style: "absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+    children: [SearchIconSvg]
+}
+
+SearchIconSvg -> Text({
+    text: "🔍",
+    style: "text-sm opacity-60"
+})
