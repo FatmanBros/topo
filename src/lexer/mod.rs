@@ -77,7 +77,13 @@ impl<'a> Lexer<'a> {
             '(' => TokenKind::LParen,
             ')' => TokenKind::RParen,
             ',' => TokenKind::Comma,
-            '.' => TokenKind::Dot,
+            '.' => {
+                if self.match_char('.') && self.match_char('.') {
+                    TokenKind::DotDotDot // ...
+                } else {
+                    TokenKind::Dot
+                }
+            }
             '+' => TokenKind::Plus,
             '*' => TokenKind::Star,
             '%' => TokenKind::Percent,

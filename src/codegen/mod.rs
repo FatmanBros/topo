@@ -337,9 +337,19 @@ impl JsCodegen {
         self.emit_line("  render();");
         self.emit_line("}");
         self.emit_line("");
+        self.emit_line("// Resolve { t: 'key' } translation objects");
+        self.emit_line("function resolveText(val) {");
+        self.emit_line("  if (val && typeof val === 'object' && val.t) {");
+        self.emit_line("    return typeof t === 'function' ? t(val.t) : val.t;");
+        self.emit_line("  }");
+        self.emit_line("  return val;");
+        self.emit_line("}");
+        self.emit_line("");
         self.emit_line("function renderVdom(vdom) {");
         self.emit_line("  if (!vdom) return '';");
         self.emit_line("  const { type, content, value, style, children, align, inputType, placeholder, dataError, dataBind, dataField, options, rows } = vdom;");
+        self.emit_line("  const resolvedContent = resolveText(content);");
+        self.emit_line("  const resolvedPlaceholder = resolveText(placeholder);");
         self.emit_line("  const styleAttr = style ? ` class=\"${style}\"` : '';");
         self.emit_line("  const flexClass = align === 'horizontal' ? ' flex flex-row' : align === 'vertical' ? ' flex flex-col' : '';");
         self.emit_line("  const dataErrorAttr = dataError ? ` data-error=\"${dataError}\"` : '';");
@@ -347,44 +357,59 @@ impl JsCodegen {
         self.emit_line("  const dataFieldAttr = dataField ? ` data-field=\"${dataField}\"` : '';");
         self.emit_line("  ");
         self.emit_line("  if (type === 'text') {");
-        self.emit_line("    return `<span${styleAttr}${dataErrorAttr}${dataBindAttr}>${content || value || ''}</span>`;");
+        self.emit_line("    return `<span${styleAttr}${dataErrorAttr}${dataBindAttr}>${resolvedContent || value || ''}</span>`;");
         self.emit_line("  }");
         self.emit_line("  if (type === 'button') {");
-        self.emit_line("    return `<button${styleAttr} data-click=\"true\">${content || ''}</button>`;");
+        self.emit_line("    return `<button${styleAttr} data-click=\"true\">${resolvedContent || ''}</button>`;");
         self.emit_line("  }");
         self.emit_line("  if (type === 'submit') {");
-        self.emit_line("    return `<button type=\"submit\"${styleAttr} data-click=\"true\">${content || ''}</button>`;");
+        self.emit_line("    return `<button type=\"submit\"${styleAttr} data-click=\"true\">${resolvedContent || ''}</button>`;");
         self.emit_line("  }");
         self.emit_line("  if (type === 'link') {");
         self.emit_line("    const href = vdom.href || '#';");
-        self.emit_line("    return `<a href=\"${href}\"${styleAttr} data-link=\"true\">${content || ''}</a>`;");
+        self.emit_line("    return `<a href=\"${href}\"${styleAttr} data-link=\"true\">${resolvedContent || ''}</a>`;");
         self.emit_line("  }");
         self.emit_line("  if (type === 'input') {");
         self.emit_line("    const inputTypeAttr = inputType || 'text';");
-        self.emit_line("    const placeholderAttr = placeholder ? ` placeholder=\"${placeholder}\"` : '';");
+        self.emit_line("    const placeholderAttr = resolvedPlaceholder ? ` placeholder=\"${resolvedPlaceholder}\"` : '';");
         self.emit_line("    const valueAttr = value !== undefined ? ` value=\"${value}\"` : '';");
         self.emit_line("    return `<input type=\"${inputTypeAttr}\"${styleAttr}${placeholderAttr}${valueAttr}${dataFieldAttr} data-input=\"true\" />`;");
         self.emit_line("  }");
         self.emit_line("  if (type === 'select') {");
-        self.emit_line("    const placeholderOpt = placeholder ? `<option value=\"\" disabled selected>${placeholder}</option>` : '';");
+        self.emit_line("    const placeholderOpt = resolvedPlaceholder ? `<option value=\"\" disabled selected>${resolvedPlaceholder}</option>` : '';");
         self.emit_line("    const opts = (options || []).map(o => {");
         self.emit_line("      const optVal = typeof o === 'object' ? o.value : o;");
-        self.emit_line("      const optLabel = typeof o === 'object' ? o.label : o;");
+        self.emit_line("      const optLabel = typeof o === 'object' ? resolveText(o.label) : o;");
         self.emit_line("      const selected = optVal === value ? ' selected' : '';");
         self.emit_line("      return `<option value=\"${optVal}\"${selected}>${optLabel}</option>`;");
         self.emit_line("    }).join('');");
         self.emit_line("    return `<select${styleAttr}${dataFieldAttr} data-input=\"true\">${placeholderOpt}${opts}</select>`;");
         self.emit_line("  }");
         self.emit_line("  if (type === 'textarea') {");
-        self.emit_line("    const placeholderAttr = placeholder ? ` placeholder=\"${placeholder}\"` : '';");
+        self.emit_line("    const placeholderAttr = resolvedPlaceholder ? ` placeholder=\"${resolvedPlaceholder}\"` : '';");
         self.emit_line("    const rowsAttr = rows ? ` rows=\"${rows}\"` : '';");
         self.emit_line("    return `<textarea${styleAttr}${placeholderAttr}${rowsAttr}${dataFieldAttr} data-input=\"true\">${value || ''}</textarea>`;");
+        self.emit_line("  }");
+        self.emit_line("  if (type === 'formfield') {");
+        self.emit_line("    const { label, inputType, placeholder, value, errorMsg, dataError, dataField } = vdom;");
+        self.emit_line("    const labelText = resolveText(label);");
+        self.emit_line("    const placeholderText = resolveText(placeholder);");
+        self.emit_line("    const inputTypeAttr = inputType || 'text';");
+        self.emit_line("    const placeholderAttr = placeholderText ? ` placeholder=\"${placeholderText}\"` : '';");
+        self.emit_line("    const valueAttr = value !== undefined ? ` value=\"${value}\"` : '';");
+        self.emit_line("    const dataFieldAttr = dataField ? ` data-field=\"${dataField}\"` : '';");
+        self.emit_line("    const dataErrorAttr = dataError ? ` data-error=\"${dataError}\"` : '';");
+        self.emit_line("    return `<div class=\"mb-4 flex flex-col\"><label class=\"block text-sm font-medium text-gray-700 mb-2\">${labelText || ''}</label><input type=\"${inputTypeAttr}\" class=\"w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition\"${placeholderAttr}${valueAttr}${dataFieldAttr} data-input=\"true\" /><span class=\"text-red-500 text-sm mt-1\"${dataErrorAttr}>${errorMsg || ''}</span></div>`;");
+        self.emit_line("  }");
+        self.emit_line("  if (type === 'form') {");
+        self.emit_line("    const inner = (children || []).map(c => typeof c === 'function' ? renderVdom(c()) : renderVdom(c)).join('');");
+        self.emit_line("    return `<form${styleAttr} class=\"${(style || '') + flexClass}\" data-form=\"true\">${inner}</form>`;");
         self.emit_line("  }");
         self.emit_line("  if (children) {");
         self.emit_line("    const inner = children.map(c => typeof c === 'function' ? renderVdom(c()) : renderVdom(c)).join('');");
         self.emit_line("    return `<div class=\"${(style || '') + flexClass}\">${inner}</div>`;");
         self.emit_line("  }");
-        self.emit_line("  return `<div${styleAttr}>${content || value || ''}</div>`;");
+        self.emit_line("  return `<div${styleAttr}>${resolvedContent || value || ''}</div>`;");
         self.emit_line("}");
         self.emit_line("");
         self.emit_line("function bindEvents(el, vdom) {");
@@ -409,6 +434,15 @@ impl JsCodegen {
         self.emit_line("      navigate(link.getAttribute('href'));");
         self.emit_line("    };");
         self.emit_line("  });");
+        self.emit_line("  el.querySelectorAll('[data-form]').forEach((form, i) => {");
+        self.emit_line("    const handler = findSubmitHandler(vdom, i);");
+        self.emit_line("    if (handler) {");
+        self.emit_line("      form.onsubmit = (e) => {");
+        self.emit_line("        e.preventDefault();");
+        self.emit_line("        handler();");
+        self.emit_line("      };");
+        self.emit_line("    }");
+        self.emit_line("  });");
         self.emit_line("}");
         self.emit_line("");
         self.emit_line("function findClickHandler(vdom, index, count = { n: 0 }) {");
@@ -426,11 +460,24 @@ impl JsCodegen {
         self.emit_line("");
         self.emit_line("function findInputHandler(vdom, index, count = { n: 0 }) {");
         self.emit_line("  if (!vdom) return null;");
-        self.emit_line("  if (vdom.input && count.n++ === index) return vdom.input;");
+        self.emit_line("  if ((vdom.input || vdom.onInput) && count.n++ === index) return vdom.input || vdom.onInput;");
         self.emit_line("  if (vdom.children) {");
         self.emit_line("    for (const c of vdom.children) {");
         self.emit_line("      const child = typeof c === 'function' ? c() : c;");
         self.emit_line("      const h = findInputHandler(child, index, count);");
+        self.emit_line("      if (h) return h;");
+        self.emit_line("    }");
+        self.emit_line("  }");
+        self.emit_line("  return null;");
+        self.emit_line("}");
+        self.emit_line("");
+        self.emit_line("function findSubmitHandler(vdom, index, count = { n: 0 }) {");
+        self.emit_line("  if (!vdom) return null;");
+        self.emit_line("  if (vdom.type === 'form' && vdom.onSubmit && count.n++ === index) return vdom.onSubmit;");
+        self.emit_line("  if (vdom.children) {");
+        self.emit_line("    for (const c of vdom.children) {");
+        self.emit_line("      const child = typeof c === 'function' ? c() : c;");
+        self.emit_line("      const h = findSubmitHandler(child, index, count);");
         self.emit_line("      if (h) return h;");
         self.emit_line("    }");
         self.emit_line("  }");
@@ -806,7 +853,8 @@ impl JsCodegen {
         // Generate validation rules from annotations
         if let Some(state) = &store.state {
             let validation_rules = self.collect_validation_rules(&state.fields);
-            let field_labels = self.collect_field_labels(&state.fields);
+            let field_keys = self.collect_field_keys(&state.fields);
+            let form_fields = self.collect_form_fields(&state.fields);
 
             if !validation_rules.is_empty() {
                 self.emit_line(&format!("const {}ValidationRules = {{", var_name));
@@ -819,19 +867,19 @@ impl JsCodegen {
                 self.emit_line("};");
                 self.emit_line("");
 
-                // Generate field labels map
-                self.emit_line(&format!("const {}FieldLabels = {{", var_name));
+                // Generate field keys map (for i18n)
+                self.emit_line(&format!("const {}FieldKeys = {{", var_name));
                 self.indent += 1;
-                for (i, (field, label)) in field_labels.iter().enumerate() {
-                    let comma = if i < field_labels.len() - 1 { "," } else { "" };
-                    self.emit_line(&format!("{}: '{}'{}", field, label, comma));
+                for (i, (field, key)) in field_keys.iter().enumerate() {
+                    let comma = if i < field_keys.len() - 1 { "," } else { "" };
+                    self.emit_line(&format!("{}: '{}'{}", field, key, comma));
                 }
                 self.indent -= 1;
                 self.emit_line("};");
                 self.emit_line("");
 
-                // Attach labels to store object for runtime access ($Store.label.field)
-                self.emit_line(&format!("{}.labels = {}FieldLabels;", var_name, var_name));
+                // Attach keys to store object for runtime access ($Store.keys.field)
+                self.emit_line(&format!("{}.keys = {}FieldKeys;", var_name, var_name));
 
                 // Generate validate helper for this store with custom labels
                 self.emit_line(&format!("function validate{}(data) {{", var_name));
@@ -840,7 +888,7 @@ impl JsCodegen {
                 self.emit_line(&format!("for (const [field, fieldRules] of Object.entries({}ValidationRules)) {{", var_name));
                 self.indent += 1;
                 self.emit_line("const value = data[field];");
-                self.emit_line(&format!("const label = {}FieldLabels[field] || field;", var_name));
+                self.emit_line(&format!("const label = typeof t === 'function' ? t({}FieldKeys[field]) : ({}FieldKeys[field] || field);", var_name, var_name));
                 self.emit_line("for (const rule of fieldRules) {");
                 self.indent += 1;
                 self.emit_line("const validator = validators[rule.name];");
@@ -867,7 +915,7 @@ impl JsCodegen {
 
             // Auto-generate Set actions with validation for annotated fields
             for field in &state.fields {
-                if !field.annotations.is_empty() && !field.annotations.iter().all(|a| a.name == "label") {
+                if !field.annotations.is_empty() && !field.annotations.iter().all(|a| a.name == "key" || a.name == "hidden") {
                     let field_name = &field.key;
                     let capitalized = capitalize_first(field_name);
 
@@ -891,7 +939,7 @@ impl JsCodegen {
 
             // Auto-generate Submit action handler that validates all fields
             let validated_fields: Vec<&str> = state.fields.iter()
-                .filter(|f| !f.annotations.is_empty() && !f.annotations.iter().all(|a| a.name == "label"))
+                .filter(|f| !f.annotations.is_empty() && !f.annotations.iter().all(|a| a.name == "key" || a.name == "hidden"))
                 .map(|f| f.key.as_str())
                 .collect();
 
@@ -932,6 +980,38 @@ impl JsCodegen {
         if let Some(selectors) = &store.selectors {
             for selector in &selectors.selectors {
                 self.generate_selector(store, selector);
+            }
+        }
+
+        // Generate .Fields getter for automatic form generation
+        if let Some(state) = &store.state {
+            let form_fields = self.collect_form_fields(&state.fields);
+            if !form_fields.is_empty() {
+                self.emit_line(&format!("Object.defineProperty({}, 'Fields', {{", var_name));
+                self.indent += 1;
+                self.emit_line("get() {");
+                self.indent += 1;
+                self.emit_line("return [");
+                self.indent += 1;
+                for (field_name, i18n_key, input_type) in &form_fields {
+                    let capitalized = capitalize_first(field_name);
+                    self.emit_line(&format!(
+                        "{{ type: 'formfield', label: {{ t: '{}' }}, inputType: '{}', placeholder: {{ t: '{}_placeholder' }}, value: {}.state.{}, onInput: (v) => dispatchField('{}', 'Set{}', v, '{}'), errorMsg: {}.state.{}Error, dataError: '{}.{}Error', dataField: '{}.{}' }},",
+                        i18n_key, input_type, i18n_key,
+                        var_name, field_name,
+                        store.name, capitalized, field_name,
+                        var_name, field_name,
+                        store.name, field_name,
+                        store.name, field_name
+                    ));
+                }
+                self.indent -= 1;
+                self.emit_line("];");
+                self.indent -= 1;
+                self.emit_line("}");
+                self.indent -= 1;
+                self.emit_line("});");
+                self.emit_line("");
             }
         }
     }
@@ -1404,6 +1484,9 @@ impl JsCodegen {
                 let elems: Vec<String> = elements.iter().map(|e| self.generate_expression(e)).collect();
                 format!("[{}]", elems.join(", "))
             }
+            Expression::Spread { expr } => {
+                format!("...{}", self.generate_expression(expr))
+            }
             Expression::ForIn { item, items, body } => {
                 let items_str = self.generate_expression(items);
                 // Add item to local params for body generation
@@ -1415,7 +1498,12 @@ impl JsCodegen {
             Expression::Object { properties } => {
                 let props: Vec<String> = properties
                     .iter()
-                    .map(|p| format!("{}: {}", p.key, self.generate_expression(&p.value)))
+                    .map(|p| {
+                        self.current_property_key = Some(p.key.clone());
+                        let value = self.generate_expression(&p.value);
+                        self.current_property_key = None;
+                        format!("{}: {}", p.key, value)
+                    })
                     .collect();
                 format!("{{ {} }}", props.join(", "))
             }
@@ -1540,6 +1628,10 @@ impl JsCodegen {
                 if let Expression::Identifier { name } = object.as_ref() {
                     if self.api_service_names.contains(name) {
                         return format!("{}Api.{}", name, property);
+                    }
+                    // Check if accessing .Fields on a store with same-name component
+                    if property == "Fields" && self.stores_with_components.contains(name) {
+                        return format!("_{}Store.Fields", name);
                     }
                 }
                 let obj = self.generate_expression(object);
@@ -1697,14 +1789,14 @@ impl JsCodegen {
         result
     }
 
-    /// Collect field labels from @label annotations
-    fn collect_field_labels(&mut self, fields: &[Property]) -> Vec<(String, String)> {
+    /// Collect field keys from @key annotations (for i18n and form generation)
+    fn collect_field_keys(&mut self, fields: &[Property]) -> Vec<(String, String)> {
         let mut result = Vec::new();
 
         for field in fields {
-            // Look for @label annotation
-            let label = field.annotations.iter()
-                .find(|a| a.name == "label")
+            // Look for @key annotation
+            let key = field.annotations.iter()
+                .find(|a| a.name == "key")
                 .and_then(|a| a.args.first())
                 .map(|arg| {
                     if let Expression::String { value } = arg {
@@ -1715,7 +1807,51 @@ impl JsCodegen {
                 })
                 .unwrap_or_else(|| field.key.clone());
 
-            result.push((field.key.clone(), label));
+            result.push((field.key.clone(), key));
+        }
+
+        result
+    }
+
+    /// Check if a field has @hidden annotation
+    fn is_hidden_field(&self, field: &Property) -> bool {
+        field.annotations.iter().any(|a| a.name == "hidden")
+    }
+
+    /// Collect form field info: (field_name, i18n_key, input_type)
+    fn collect_form_fields(&mut self, fields: &[Property]) -> Vec<(String, String, String)> {
+        let mut result = Vec::new();
+
+        for field in fields {
+            // Skip hidden fields
+            if self.is_hidden_field(field) {
+                continue;
+            }
+
+            // Only include fields with @key annotation
+            let key = field.annotations.iter()
+                .find(|a| a.name == "key")
+                .and_then(|a| a.args.first())
+                .and_then(|arg| {
+                    if let Expression::String { value } = arg {
+                        Some(value.clone())
+                    } else {
+                        None
+                    }
+                });
+
+            if let Some(i18n_key) = key {
+                // Determine input type from annotations
+                let input_type = if field.annotations.iter().any(|a| a.name == "email") {
+                    "email".to_string()
+                } else if field.key.contains("password") || field.annotations.iter().any(|a| a.name == "password") {
+                    "password".to_string()
+                } else {
+                    "text".to_string()
+                };
+
+                result.push((field.key.clone(), i18n_key, input_type));
+            }
         }
 
         result

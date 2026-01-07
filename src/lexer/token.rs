@@ -29,6 +29,7 @@ pub enum TokenKind {
     RParen,     // )
     Comma,      // ,
     Dot,        // .
+    DotDotDot,  // ... (spread)
     Colon,      // :
     ColonColon, // ::
     Arrow,      // ->
@@ -138,6 +139,7 @@ impl std::fmt::Display for TokenKind {
             TokenKind::RParen => write!(f, ")"),
             TokenKind::Comma => write!(f, ","),
             TokenKind::Dot => write!(f, "."),
+            TokenKind::DotDotDot => write!(f, "..."),
             TokenKind::Colon => write!(f, ":"),
             TokenKind::ColonColon => write!(f, "::"),
             TokenKind::Arrow => write!(f, "->"),
