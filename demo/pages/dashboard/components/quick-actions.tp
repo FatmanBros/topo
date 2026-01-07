@@ -1,0 +1,18 @@
+// Quick Actions component
+import { Card } from "../../../components/atoms/card.tp"
+import { ActionButton } from "../../../components/atoms/button.tp"
+
+QuickActionsCard -> Card({
+    title: "Quick Actions",
+    children: [QuickActionButtons]
+})
+
+QuickActionButtons -> {
+    style: "grid grid-cols-2 gap-3"
+    children: [
+        ActionButton({ label: "New Project" }),
+        ActionButton({ label: "Add User" }),
+        ActionButton({ label: "Generate Report" }),
+        ActionButton({ label: "Settings" })
+    ]
+}
