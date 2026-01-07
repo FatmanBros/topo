@@ -402,6 +402,7 @@ impl Parser {
 
         let mut state = None;
         let mut actions = None;
+        let mut commands = None;
         let mut reducers = None;
         let mut effects = None;
         let mut selectors = None;
@@ -415,6 +416,10 @@ impl Parser {
                 TokenKind::Actions => {
                     self.advance();
                     actions = Some(self.actions_block()?);
+                }
+                TokenKind::Commands => {
+                    self.advance();
+                    commands = Some(self.commands_block()?);
                 }
                 TokenKind::Reducers => {
                     self.advance();
@@ -440,6 +445,7 @@ impl Parser {
             name,
             state,
             actions,
+            commands,
             reducers,
             effects,
             selectors,
@@ -495,6 +501,44 @@ impl Parser {
         self.expect(TokenKind::RBrace)?;
 
         Ok(ActionsBlock { actions })
+    }
+
+    fn commands_block(&mut self) -> Result<CommandsBlock, ParseError> {
+        self.expect(TokenKind::LBrace)?;
+
+        let mut commands = Vec::new();
+        while !self.check(TokenKind::RBrace) && !self.is_at_end() {
+            let name = self.expect_identifier()?;
+            let mut params = Vec::new();
+
+            if self.check(TokenKind::LParen) {
+                self.advance();
+                while !self.check(TokenKind::RParen) && !self.is_at_end() {
+                    let param_name = self.expect_identifier_or_keyword()?;
+                    let type_annotation = if self.check(TokenKind::Colon) {
+                        self.advance();
+                        Some(self.parse_type_annotation()?)
+                    } else {
+                        None
+                    };
+                    params.push(Param {
+                        name: param_name,
+                        type_annotation,
+                    });
+
+                    if !self.check(TokenKind::RParen) {
+                        self.expect(TokenKind::Comma)?;
+                    }
+                }
+                self.expect(TokenKind::RParen)?;
+            }
+
+            commands.push(ActionDef { name, params });
+        }
+
+        self.expect(TokenKind::RBrace)?;
+
+        Ok(CommandsBlock { commands })
     }
 
     fn reducers_block(&mut self) -> Result<ReducersBlock, ParseError> {

@@ -65,7 +65,10 @@ pub struct TypeEnv {
 #[derive(Debug, Clone)]
 pub struct StoreType {
     pub state_fields: HashMap<String, TypeAnnotation>,
+    /// Internal actions (private - only accessible within the same component/store)
     pub actions: HashMap<String, Vec<Param>>,
+    /// Commands (public - accessible from Templates and external components)
+    pub commands: HashMap<String, Vec<Param>>,
 }
 
 /// Type checker
@@ -113,6 +116,7 @@ impl TypeChecker {
     fn collect_store_type(&mut self, store: &StoreDef) {
         let mut state_fields = HashMap::new();
         let mut actions = HashMap::new();
+        let mut commands = HashMap::new();
 
         // Collect state fields
         if let Some(state) = &store.state {
@@ -125,10 +129,17 @@ impl TypeChecker {
             }
         }
 
-        // Collect actions
+        // Collect actions (internal/private)
         if let Some(actions_block) = &store.actions {
             for action in &actions_block.actions {
                 actions.insert(action.name.clone(), action.params.clone());
+            }
+        }
+
+        // Collect commands (external/public)
+        if let Some(commands_block) = &store.commands {
+            for command in &commands_block.commands {
+                commands.insert(command.name.clone(), command.params.clone());
             }
         }
 
@@ -137,6 +148,7 @@ impl TypeChecker {
             StoreType {
                 state_fields,
                 actions,
+                commands,
             },
         );
     }
@@ -304,17 +316,23 @@ impl TypeChecker {
                 args,
             } => {
                 if let Some(store_type) = self.env.stores.get(store) {
-                    if let Some(action_params) = store_type.actions.get(action) {
+                    // Check both actions (internal) and commands (public)
+                    let action_params = store_type
+                        .actions
+                        .get(action)
+                        .or_else(|| store_type.commands.get(action));
+
+                    if let Some(params) = action_params {
                         // Check argument count
-                        if args.len() != action_params.len() {
+                        if args.len() != params.len() {
                             self.errors.push(TypeError::ArgumentCountMismatch {
-                                expected: action_params.len(),
+                                expected: params.len(),
                                 found: args.len(),
                                 location: format!("{}.{} in {}", store, action, context),
                             });
                         }
                         // Check argument types
-                        for (i, (arg, param)) in args.iter().zip(action_params.iter()).enumerate() {
+                        for (i, (arg, param)) in args.iter().zip(params.iter()).enumerate() {
                             if let Some(expected_type) = &param.type_annotation {
                                 let actual_type = self.infer_type(arg);
                                 if !self.types_compatible(expected_type, &actual_type) {
@@ -396,12 +414,14 @@ impl TypeChecker {
             }
         }
 
-        // Check reducers reference valid actions
+        // Check reducers reference valid actions or commands
         if let Some(reducers) = &store.reducers {
             let store_type = self.env.stores.get(&store.name);
             for handler in &reducers.handlers {
                 if let Some(st) = store_type {
-                    if !st.actions.contains_key(&handler.action) {
+                    let action_exists = st.actions.contains_key(&handler.action)
+                        || st.commands.contains_key(&handler.action);
+                    if !action_exists {
                         self.errors.push(TypeError::UnknownAction {
                             store: store.name.clone(),
                             action: handler.action.clone(),
@@ -412,12 +432,14 @@ impl TypeChecker {
             }
         }
 
-        // Check effects reference valid actions
+        // Check effects reference valid actions or commands
         if let Some(effects) = &store.effects {
             let store_type = self.env.stores.get(&store.name);
             for handler in &effects.handlers {
                 if let Some(st) = store_type {
-                    if !st.actions.contains_key(&handler.action) {
+                    let action_exists = st.actions.contains_key(&handler.action)
+                        || st.commands.contains_key(&handler.action);
+                    if !action_exists {
                         self.errors.push(TypeError::UnknownAction {
                             store: store.name.clone(),
                             action: handler.action.clone(),
