@@ -5,6 +5,7 @@
   "patterns": [
     { "include": "#comments" },
     { "include": "#imports" },
+    { "include": "#test-definition" },
     { "include": "#store-definition" },
     { "include": "#api-service-definition" },
     { "include": "#component-definition" },
@@ -24,6 +25,43 @@
         {
           "name": "comment.line.double-slash.topo",
           "match": "//.*$"
+        }
+      ]
+    },
+    "test-definition": {
+      "patterns": [
+        {
+          "comment": "Test block: Test \"name\" { ... }",
+          "match": "^\\s*(Test)\\s+(\"[^\"]*\")",
+          "captures": {
+            "1": { "name": "keyword.control.test.topo" },
+            "2": { "name": "string.quoted.double.test-name.topo" }
+          }
+        },
+        {
+          "comment": "Test functions: goto, expect, fill, click, wait, mock",
+          "match": "\\b(goto|expect|fill|click|wait|mock)\\s*\\(",
+          "captures": {
+            "1": { "name": "support.function.test.topo" }
+          }
+        },
+        {
+          "comment": "Test targets: submit, button",
+          "name": "constant.language.test-target.topo",
+          "match": "\\b(submit)\\b"
+        },
+        {
+          "comment": "Test conditions: visible, hidden, disabled, empty",
+          "name": "constant.language.test-condition.topo",
+          "match": "\\b(visible|hidden|disabled|empty)\\b"
+        },
+        {
+          "comment": "Page property: page.url",
+          "match": "\\b(page)\\.(url|title)\\b",
+          "captures": {
+            "1": { "name": "variable.language.page.topo" },
+            "2": { "name": "variable.other.property.topo" }
+          }
         }
       ]
     },
