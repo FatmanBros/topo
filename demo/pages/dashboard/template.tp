@@ -5,7 +5,7 @@ import { Card } from "../../components/atoms/card.tp"
 import { StatCard } from "../../components/atoms/stat-card.tp"
 import { ActionButton } from "../../components/atoms/button.tp"
 import { ActivityItem } from "../../components/molecules/activity-item.tp"
-import { Dashboard } from "./store.tp"
+import { Dashboard } from "./index.tp"
 
 DashboardPage -> DashboardLayout([DashboardHeader, StatCardsGrid, DashboardContent])
 

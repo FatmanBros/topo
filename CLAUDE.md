@@ -12,6 +12,72 @@ git worktree add ../topo-feature feature-branch
 git worktree remove ../topo-feature
 ```
 
+## ページ設計: Feature-based Structure
+
+ページは機能単位でディレクトリにまとめる。Store は index.tp に内包するのがベストプラクティス。
+
+```
+demo/pages/
+└── dashboard/
+    ├── index.tp      # Store + Page定義（エントリポイント）
+    ├── template.tp   # UIテンプレート
+    └── mocks/        # API mockデータ
+        ├── stats.json
+        └── activities.json
+```
+
+### index.tp の構造
+
+```topo
+// Dashboard page
+import { DashboardPage } from "./template.tp"
+
+// Store定義をページに内包
+Dashboard | {
+    State {
+        items: []
+        isLoading: true
+    }
+
+    Actions {
+        Load
+        SetItems(items)
+    }
+
+    Reducers {
+        on Load { isLoading: true }
+        on SetItems(items) { items: items, isLoading: false }
+    }
+
+    Effects {
+        on Load {
+            try {
+                items: await http.get("/api/items")
+                dispatch: SetItems(items)
+            } catch(e) {
+                dispatch: SetItems([])
+            }
+        }
+    }
+}
+
+// ページ定義（initでデータ取得）
+Page -> {
+    init: Dashboard.Load
+    children: DashboardPage
+}
+```
+
+### template.tp からの Store 参照
+
+```topo
+import { Dashboard } from "./index.tp"
+
+ItemList -> Dashboard.items.for(item => {
+    ItemCard({ title: item.title })
+})
+```
+
 ## コンポーネント設計: Atomic Design
 
 コンポーネントは Atomic Design パターンに従って構成する。
