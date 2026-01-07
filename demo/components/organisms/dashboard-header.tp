@@ -1,44 +1,33 @@
 // Dashboard header with title and user info
-DashboardHeader -> {
+import { Heading } from "../atoms/heading.tp"
+import { Text } from "../atoms/text.tp"
+import { Button } from "../atoms/button.tp"
+
+DashboardHeader(props) -> {
     style: "flex items-center justify-between mb-8"
-    children: [HeaderLeft, HeaderRight]
+    children: [
+        HeaderLeft({ title: props.title, subtitle: props.subtitle }),
+        HeaderRight({ userName: props.userName })
+    ]
 }
 
-HeaderLeft -> {
+HeaderLeft(props) -> {
     align: vertical
-    children: [HeaderTitle, HeaderSubtitle]
+    children: [
+        Heading({ text: props.title, level: 2, style: "text-2xl font-bold text-gray-900" }),
+        Text({ text: props.subtitle, style: "text-gray-500 mt-1" })
+    ]
 }
 
-HeaderTitle -> {
-    type: text
-    content: "Dashboard"
-    style: "text-2xl font-bold text-gray-900"
-}
-
-HeaderSubtitle -> {
-    type: text
-    content: "Welcome back! Here's what's happening."
-    style: "text-gray-500 mt-1"
-}
-
-HeaderRight -> {
+HeaderRight(props) -> {
     style: "flex items-center gap-4"
-    children: [NotificationButton, UserAvatar]
+    children: [
+        Button("Notifications", null, "p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition", "button"),
+        UserAvatar({ initial: props.userName ? props.userName.charAt(0) : "U" })
+    ]
 }
 
-NotificationButton -> {
-    type: button
-    content: "Notifications"
-    style: "p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition"
-}
-
-UserAvatar -> {
+UserAvatar(props) -> {
     style: "w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center"
-    children: [UserInitial]
-}
-
-UserInitial -> {
-    type: text
-    content: "T"
-    style: "text-white font-semibold"
+    children: [Text({ text: props.initial, style: "text-white font-semibold" })]
 }

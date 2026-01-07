@@ -5,7 +5,13 @@ import { StatCardsGrid } from "./components/stat-cards.tp"
 import { RecentActivityCard } from "./components/recent-activity.tp"
 import { QuickActionsCard } from "./components/quick-actions.tp"
 
-DashboardTemplate -> DashboardLayout([DashboardHeader, StatCardsGrid, DashboardContent])
+DashboardTemplate -> DashboardLayout([DashboardHeaderSection, StatCardsGrid, DashboardContent])
+
+DashboardHeaderSection -> DashboardHeader({
+    title: "Dashboard",
+    subtitle: "Welcome back! Here's what's happening.",
+    userName: "Takuma"
+})
 
 DashboardContent -> {
     style: "grid grid-cols-1 lg:grid-cols-3 gap-6"
