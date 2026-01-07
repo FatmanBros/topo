@@ -1150,15 +1150,18 @@ fn compile_test_files() -> Result<()> {
         let mut parser = TopoParser::new(tokens);
         let ast = parser.parse()?;
 
-        // Generate Playwright test code
-        let playwright_code = generate_playwright_test(&ast)?;
-
-        // Write to tests directory
-        let output_name = test_file
+        // Get test name from file (e.g., "login" from "login.test.tp")
+        let test_name = test_file
             .file_stem()
             .and_then(|s| s.to_str())
-            .unwrap_or("test");
-        let output_path = format!("tests/{}.spec.ts", output_name.replace(".test", ""));
+            .unwrap_or("test")
+            .replace(".test", "");
+
+        // Generate Playwright test code
+        let playwright_code = generate_playwright_test(&ast, &test_name)?;
+
+        // Write to tests directory
+        let output_path = format!("tests/{}.spec.ts", test_name);
 
         fs::write(&output_path, playwright_code)?;
         println!("  Generated: {}", output_path);
@@ -1167,14 +1170,14 @@ fn compile_test_files() -> Result<()> {
     Ok(())
 }
 
-fn generate_playwright_test(ast: &Program) -> Result<String> {
+fn generate_playwright_test(ast: &Program, test_file_name: &str) -> Result<String> {
     use topo::ast::{TestStatement, TestTarget, TestAssertion, TestHookDef};
 
     let mut output = String::new();
     output.push_str("import { test, expect } from '@playwright/test';\n\n");
 
     // Helper to generate test statements (test_num=0 for hooks)
-    fn generate_test_statements(statements: &[TestStatement], output: &mut String, test_num: usize, capture_counter: &mut usize) {
+    fn generate_test_statements(statements: &[TestStatement], output: &mut String, test_file_name: &str, test_num: usize, capture_counter: &mut usize) {
         for stmt in statements {
             match stmt {
                 TestStatement::Goto { path } => {
@@ -1259,10 +1262,10 @@ fn generate_playwright_test(ast: &Program) -> Result<String> {
                     *capture_counter += 1;
                     match filename {
                         Some(name) => {
-                            output.push_str(&format!("  await page.screenshot({{ path: 'screenshots/{}' }});\n", name));
+                            output.push_str(&format!("  await page.screenshot({{ path: 'screenshots/{}/{}' }});\n", test_file_name, name));
                         }
                         None => {
-                            output.push_str(&format!("  await page.screenshot({{ path: 'screenshots/{}-{}.png' }});\n", test_num, capture_counter));
+                            output.push_str(&format!("  await page.screenshot({{ path: 'screenshots/{}/{}-{}.png' }});\n", test_file_name, test_num, capture_counter));
                         }
                     }
                 }
@@ -1271,9 +1274,9 @@ fn generate_playwright_test(ast: &Program) -> Result<String> {
     }
 
     // Helper to generate hook (test_num=0 for hooks)
-    fn generate_hook(hook_name: &str, hook_def: &TestHookDef, output: &mut String, capture_counter: &mut usize) {
+    fn generate_hook(hook_name: &str, hook_def: &TestHookDef, output: &mut String, test_file_name: &str, capture_counter: &mut usize) {
         output.push_str(&format!("test.{}(async ({{ page }}) => {{\n", hook_name));
-        generate_test_statements(&hook_def.statements, output, 0, capture_counter);
+        generate_test_statements(&hook_def.statements, output, test_file_name, 0, capture_counter);
         output.push_str("});\n\n");
     }
 
@@ -1283,10 +1286,10 @@ fn generate_playwright_test(ast: &Program) -> Result<String> {
     for decl in &ast.declarations {
         match decl {
             Declaration::BeforeOnce(hook_def) => {
-                generate_hook("beforeAll", hook_def, &mut output, &mut hook_capture_counter);
+                generate_hook("beforeAll", hook_def, &mut output, test_file_name, &mut hook_capture_counter);
             }
             Declaration::AfterOnce(hook_def) => {
-                generate_hook("afterAll", hook_def, &mut output, &mut hook_capture_counter);
+                generate_hook("afterAll", hook_def, &mut output, test_file_name, &mut hook_capture_counter);
             }
             _ => {}
         }
@@ -1296,10 +1299,10 @@ fn generate_playwright_test(ast: &Program) -> Result<String> {
     for decl in &ast.declarations {
         match decl {
             Declaration::BeforeEach(hook_def) => {
-                generate_hook("beforeEach", hook_def, &mut output, &mut hook_capture_counter);
+                generate_hook("beforeEach", hook_def, &mut output, test_file_name, &mut hook_capture_counter);
             }
             Declaration::AfterEach(hook_def) => {
-                generate_hook("afterEach", hook_def, &mut output, &mut hook_capture_counter);
+                generate_hook("afterEach", hook_def, &mut output, test_file_name, &mut hook_capture_counter);
             }
             _ => {}
         }
@@ -1315,7 +1318,7 @@ fn generate_playwright_test(ast: &Program) -> Result<String> {
             let test_fn = if test_def.skip { "test.skip" } else { "test" };
             output.push_str(&format!("{}('{}', async ({{ page }}) => {{\n", test_fn, test_def.name));
 
-            generate_test_statements(&test_def.statements, &mut output, test_num, &mut capture_counter);
+            generate_test_statements(&test_def.statements, &mut output, test_file_name, test_num, &mut capture_counter);
 
             output.push_str("});\n\n");
         }

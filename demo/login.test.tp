@@ -16,15 +16,19 @@ Test("空のメールでバリデーションエラー") {
     fill(LoginFormCard.email, "")
     click(submit)
     expect(LoginFormCard.emailError, { visible })
+    capture()
 }
 
 Test("正常なログインフロー") {
+    capture()
     fill(LoginFormCard.email, "test@example.com")
     fill(LoginFormCard.password, "password123")
+    capture()
 
     // フォームの値が正しく入力されていることを確認
     expect(LoginFormCard.email, "test@example.com")
     expect(LoginFormCard.password, "password123")
+    capture()
 }
 
 xTest("未実装テスト") {
