@@ -1,49 +1,75 @@
-import { LoginForm } from "../stores/login.tp"
 import { FormField } from "../molecules/form-field.tp"
 import { LangSwitcher } from "../molecules/lang-switcher.tp"
 import { SubmitButton } from "../atoms/button.tp"
+import { Heading } from "../atoms/heading.tp"
 import { Text } from "../atoms/text.tp"
 
-LoginTitle -> {
-    type: text
-    content: t("sign_in")
-    style: "text-2xl font-bold text-gray-900 mb-6 text-center"
+// ─── Store定義 ───
+LoginFormCard | {
+    State {
+        @label("メールアドレス")
+        @required
+        @email
+        email: ""
+
+        @label("パスワード")
+        @required
+        @minLength(8)
+        password: ""
+
+        isSubmitting: false
+    }
+
+    // 外部公開コマンド（Templatesからアクセス可能）
+    Commands {
+        Submit
+        Reset
+    }
+
+    // 内部アクション（このOrganism内でのみ使用）
+    Actions {
+        SetEmail(value)
+        SetPassword(value)
+        SetSubmitting(value)
+    }
+
+    Reducers {
+        on SetEmail(value) {
+            email: value
+        }
+        on SetPassword(value) {
+            password: value
+        }
+        on SetSubmitting(value) {
+            isSubmitting: value
+        }
+    }
 }
 
-DebugInfo -> {
-    type: text
-    content: $LoginForm.email
-    style: "text-sm text-gray-500 mt-4 text-center"
-}
-
+// ─── Component定義 ───
 LoginFormCard -> {
     style: "bg-white p-8 rounded-xl shadow-lg max-w-md w-full"
     align: vertical
     children: [
         LangSwitcher,
-        LoginTitle,
+        Heading(t("sign_in"), "text-2xl font-bold text-gray-900 mb-6 text-center"),
         FormField({
             label: t("email")
             inputType: "email"
             placeholder: t("email_placeholder")
-            value: $LoginForm.email
-            onInput: LoginForm.SetEmail
-            errorMsg: $LoginForm.emailError
+            value: $LoginFormCard.email
+            onInput: LoginFormCard.SetEmail
+            errorMsg: $LoginFormCard.emailError
         }),
         FormField({
             label: t("password")
             inputType: "password"
             placeholder: t("password_placeholder")
-            value: $LoginForm.password
-            onInput: LoginForm.SetPassword
-            errorMsg: $LoginForm.passwordError
+            value: $LoginFormCard.password
+            onInput: LoginFormCard.SetPassword
+            errorMsg: $LoginFormCard.passwordError
         }),
-        SubmitButton(t("sign_in"), LoginForm.Submit),
-        DebugInfo
+        SubmitButton(t("sign_in"), LoginFormCard.Submit),
+        Text($LoginFormCard.email, "text-sm text-gray-500 mt-4 text-center")
     ]
-}
-
-LoginApp -> {
-    style: "min-h-screen bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center p-4"
-    children: [LoginFormCard]
 }

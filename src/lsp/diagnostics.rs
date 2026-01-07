@@ -203,36 +203,26 @@ impl DiagnosticsProvider {
     }
 
     fn check_syntax(&self, line: &str, line_num: u32, diagnostics: &mut Vec<Diagnostic>) {
-        // Check for unbalanced braces/brackets in single line
-        let mut brace_count = 0;
-        let mut bracket_count = 0;
-        let mut paren_count = 0;
+        // Only check for unclosed strings on a single line
         let mut in_string = false;
         let mut string_char = ' ';
+        let chars: Vec<char> = line.chars().collect();
 
-        for c in line.chars() {
+        for (i, &c) in chars.iter().enumerate() {
             if !in_string && (c == '"' || c == '\'') {
                 in_string = true;
                 string_char = c;
             } else if in_string && c == string_char {
-                in_string = false;
-            }
-
-            if !in_string {
-                match c {
-                    '{' => brace_count += 1,
-                    '}' => brace_count -= 1,
-                    '[' => bracket_count += 1,
-                    ']' => bracket_count -= 1,
-                    '(' => paren_count += 1,
-                    ')' => paren_count -= 1,
-                    _ => {}
+                // Check if escaped
+                let escaped = i > 0 && chars[i - 1] == '\\';
+                if !escaped {
+                    in_string = false;
                 }
             }
         }
 
-        // Check for unclosed string
-        if in_string {
+        // Check for unclosed string (only if line doesn't end with the opening quote on purpose)
+        if in_string && !line.trim().ends_with("\"") && !line.trim().ends_with("'") {
             diagnostics.push(Diagnostic {
                 range: Range::new(
                     Position::new(line_num, 0),
@@ -245,45 +235,7 @@ impl DiagnosticsProvider {
             });
         }
 
-        // Negative counts indicate more closers than openers (usually an error)
-        if brace_count < 0 {
-            diagnostics.push(Diagnostic {
-                range: Range::new(
-                    Position::new(line_num, 0),
-                    Position::new(line_num, line.len() as u32),
-                ),
-                severity: Some(DiagnosticSeverity::ERROR),
-                source: Some("topo".to_string()),
-                message: "Unexpected closing brace '}'".to_string(),
-                ..Default::default()
-            });
-        }
-
-        if bracket_count < 0 {
-            diagnostics.push(Diagnostic {
-                range: Range::new(
-                    Position::new(line_num, 0),
-                    Position::new(line_num, line.len() as u32),
-                ),
-                severity: Some(DiagnosticSeverity::ERROR),
-                source: Some("topo".to_string()),
-                message: "Unexpected closing bracket ']'".to_string(),
-                ..Default::default()
-            });
-        }
-
-        if paren_count < 0 {
-            diagnostics.push(Diagnostic {
-                range: Range::new(
-                    Position::new(line_num, 0),
-                    Position::new(line_num, line.len() as u32),
-                ),
-                severity: Some(DiagnosticSeverity::ERROR),
-                source: Some("topo".to_string()),
-                message: "Unexpected closing parenthesis ')'".to_string(),
-                ..Default::default()
-            });
-        }
+        // Note: Multi-line bracket balance is checked at document level, not per-line
     }
 
     fn check_style_issues(&self, line: &str, line_num: u32, diagnostics: &mut Vec<Diagnostic>) {
@@ -329,46 +281,9 @@ impl DiagnosticsProvider {
         }
     }
 
-    fn check_common_mistakes(&self, line: &str, line_num: u32, diagnostics: &mut Vec<Diagnostic>) {
-        // Check for missing colon in properties
-        let prop_pattern = regex::Regex::new(r#"^\s+(\w+)\s+["'\[\{$A-Z]"#).unwrap();
-        if let Some(caps) = prop_pattern.captures(line) {
-            let prop_name = &caps[1];
-            // Skip if it's a keyword
-            if !["on", "State", "Actions", "Reducers", "import", "from"].contains(&prop_name) {
-                let col = line.find(prop_name).unwrap_or(0) as u32;
-                diagnostics.push(Diagnostic {
-                    range: Range::new(
-                        Position::new(line_num, col),
-                        Position::new(line_num, col + prop_name.len() as u32),
-                    ),
-                    severity: Some(DiagnosticSeverity::ERROR),
-                    source: Some("topo".to_string()),
-                    message: format!("Missing colon after property '{}'. Did you mean '{}: ...'?", prop_name, prop_name),
-                    ..Default::default()
-                });
-            }
-        }
-
-        // Check for = instead of :
-        if line.contains(" = ") && !line.contains("//") {
-            let trimmed = line.trim();
-            // Skip if it's in a comment or string
-            if !trimmed.starts_with("//") {
-                if let Some(eq_pos) = line.find(" = ") {
-                    diagnostics.push(Diagnostic {
-                        range: Range::new(
-                            Position::new(line_num, eq_pos as u32),
-                            Position::new(line_num, (eq_pos + 3) as u32),
-                        ),
-                        severity: Some(DiagnosticSeverity::WARNING),
-                        source: Some("topo".to_string()),
-                        message: "Use ':' instead of '=' for property assignment in Topo".to_string(),
-                        ..Default::default()
-                    });
-                }
-            }
-        }
+    fn check_common_mistakes(&self, _line: &str, _line_num: u32, _diagnostics: &mut Vec<Diagnostic>) {
+        // Disabled for now to avoid false positives
+        // TODO: Implement more accurate checks using the actual parser
     }
 
     fn check_unused_imports(

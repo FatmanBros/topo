@@ -1,0 +1,5 @@
+sign_in=ログイン
+email=メールアドレス
+email_placeholder=example@email.com
+password=パスワード
+password_placeholder=8文字以上
