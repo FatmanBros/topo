@@ -1173,8 +1173,8 @@ fn generate_playwright_test(ast: &Program) -> Result<String> {
     let mut output = String::new();
     output.push_str("import { test, expect } from '@playwright/test';\n\n");
 
-    // Helper to generate test statements
-    fn generate_test_statements(statements: &[TestStatement], output: &mut String) {
+    // Helper to generate test statements (test_num=0 for hooks)
+    fn generate_test_statements(statements: &[TestStatement], output: &mut String, test_num: usize, capture_counter: &mut usize) {
         for stmt in statements {
             match stmt {
                 TestStatement::Goto { path } => {
@@ -1256,12 +1256,13 @@ fn generate_playwright_test(ast: &Program) -> Result<String> {
                     output.push_str(&format!("  await page.waitForTimeout({});\n", ms));
                 }
                 TestStatement::Capture { filename } => {
+                    *capture_counter += 1;
                     match filename {
                         Some(name) => {
                             output.push_str(&format!("  await page.screenshot({{ path: 'screenshots/{}' }});\n", name));
                         }
                         None => {
-                            output.push_str("  await page.screenshot({ path: `screenshots/capture-${Date.now()}.png` });\n");
+                            output.push_str(&format!("  await page.screenshot({{ path: 'screenshots/{}-{}.png' }});\n", test_num, capture_counter));
                         }
                     }
                 }
@@ -1269,21 +1270,23 @@ fn generate_playwright_test(ast: &Program) -> Result<String> {
         }
     }
 
-    // Helper to generate hook
-    fn generate_hook(hook_name: &str, hook_def: &TestHookDef, output: &mut String) {
+    // Helper to generate hook (test_num=0 for hooks)
+    fn generate_hook(hook_name: &str, hook_def: &TestHookDef, output: &mut String, capture_counter: &mut usize) {
         output.push_str(&format!("test.{}(async ({{ page }}) => {{\n", hook_name));
-        generate_test_statements(&hook_def.statements, output);
+        generate_test_statements(&hook_def.statements, output, 0, capture_counter);
         output.push_str("});\n\n");
     }
+
+    let mut hook_capture_counter: usize = 0;
 
     // First pass: generate beforeAll/afterAll hooks (BeforeOnce/AfterOnce)
     for decl in &ast.declarations {
         match decl {
             Declaration::BeforeOnce(hook_def) => {
-                generate_hook("beforeAll", hook_def, &mut output);
+                generate_hook("beforeAll", hook_def, &mut output, &mut hook_capture_counter);
             }
             Declaration::AfterOnce(hook_def) => {
-                generate_hook("afterAll", hook_def, &mut output);
+                generate_hook("afterAll", hook_def, &mut output, &mut hook_capture_counter);
             }
             _ => {}
         }
@@ -1293,23 +1296,26 @@ fn generate_playwright_test(ast: &Program) -> Result<String> {
     for decl in &ast.declarations {
         match decl {
             Declaration::BeforeEach(hook_def) => {
-                generate_hook("beforeEach", hook_def, &mut output);
+                generate_hook("beforeEach", hook_def, &mut output, &mut hook_capture_counter);
             }
             Declaration::AfterEach(hook_def) => {
-                generate_hook("afterEach", hook_def, &mut output);
+                generate_hook("afterEach", hook_def, &mut output, &mut hook_capture_counter);
             }
             _ => {}
         }
     }
 
-    // Second pass: generate tests
+    // Third pass: generate tests
+    let mut test_num: usize = 0;
     for decl in &ast.declarations {
         if let Declaration::Test(test_def) = decl {
+            test_num += 1;
+            let mut capture_counter: usize = 0;
             // Use test.skip for skipped tests
             let test_fn = if test_def.skip { "test.skip" } else { "test" };
             output.push_str(&format!("{}('{}', async ({{ page }}) => {{\n", test_fn, test_def.name));
 
-            generate_test_statements(&test_def.statements, &mut output);
+            generate_test_statements(&test_def.statements, &mut output, test_num, &mut capture_counter);
 
             output.push_str("});\n\n");
         }
