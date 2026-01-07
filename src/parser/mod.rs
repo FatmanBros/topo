@@ -1136,7 +1136,7 @@ impl Parser {
                 self.expect(TokenKind::LParen)?;
                 let target = self.test_target()?;
                 self.expect(TokenKind::Comma)?;
-                let assertion = self.test_assertion_new()?;
+                let assertion = self.test_assertion()?;
                 self.expect(TokenKind::RParen)?;
                 Ok(TestStatement::Expect { target, assertion })
             }
@@ -1242,33 +1242,8 @@ impl Parser {
         }
     }
 
+    /// Parse assertion: { visible } or "value"
     fn test_assertion(&mut self) -> Result<TestAssertion, ParseError> {
-        let token = self.peek().clone();
-
-        match token.kind {
-            TokenKind::Visible => {
-                self.advance();
-                Ok(TestAssertion::Visible)
-            }
-            TokenKind::Hidden => {
-                self.advance();
-                Ok(TestAssertion::Hidden)
-            }
-            TokenKind::String => {
-                let value = self.expect_string()?;
-                Ok(TestAssertion::Equals { value })
-            }
-            _ => Err(ParseError::UnexpectedToken {
-                expected: "assertion (visible, hidden, or string value)".to_string(),
-                found: token.lexeme,
-                line: token.line,
-                column: token.column,
-            }),
-        }
-    }
-
-    /// Parse new-style assertion: { visible } or "value"
-    fn test_assertion_new(&mut self) -> Result<TestAssertion, ParseError> {
         let token = self.peek().clone();
 
         match token.kind {
