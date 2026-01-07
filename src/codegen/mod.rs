@@ -863,7 +863,6 @@ impl JsCodegen {
         if let Some(state) = &store.state {
             let validation_rules = self.collect_validation_rules(&state.fields);
             let field_keys = self.collect_field_keys(&state.fields);
-            let form_fields = self.collect_form_fields(&state.fields);
 
             if !validation_rules.is_empty() {
                 self.emit_line(&format!("const {}ValidationRules = {{", var_name));

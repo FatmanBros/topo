@@ -39,6 +39,7 @@
   "i18n": {
     "locales": ["ja", "en"],
     "defaultLocale": "ja",
+    "translationsDir": "demo/locales",
     "translations": {
       "sign_in": { "ja": "サインイン", "en": "Sign In" },
       "email": { "ja": "メールアドレス", "en": "Email" },
@@ -48,7 +49,14 @@
       "welcome": { "ja": "topoへようこそ！", "en": "Welcome to topo!" },
       "about": { "ja": "topoについて", "en": "About topo" },
       "users": { "ja": "ユーザー", "en": "Users" },
-      "back_home": { "ja": "ホームに戻る", "en": "Back to Home" }
+      "back_home": { "ja": "ホームに戻る", "en": "Back to Home" },
+      "validation_required": { "ja": "{{field}}は必須です", "en": "{{field}} is required" },
+      "validation_min_length": { "ja": "{{field}}は{{min}}文字以上で入力してください", "en": "{{field}} must be at least {{min}} characters" },
+      "validation_max_length": { "ja": "{{field}}は{{max}}文字以下で入力してください", "en": "{{field}} must be at most {{max}} characters" },
+      "validation_min_value": { "ja": "{{field}}は{{min}}以上で入力してください", "en": "{{field}} must be at least {{min}}" },
+      "validation_max_value": { "ja": "{{field}}は{{max}}以下で入力してください", "en": "{{field}} must be at most {{max}}" },
+      "validation_email": { "ja": "{{field}}は有効なメールアドレスを入力してください", "en": "{{field}} must be a valid email address" },
+      "validation_pattern": { "ja": "{{field}}の形式が正しくありません", "en": "{{field}} does not match the required pattern" }
     }
   }
 }
