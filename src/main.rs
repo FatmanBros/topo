@@ -1699,6 +1699,11 @@ fn generate_routes(files: &[PathBuf], base_dir: &PathBuf) -> Result<Vec<(String,
         let relative = file.strip_prefix(&pages_dir)?;
         let path_str = relative.to_string_lossy();
 
+        // Skip files inside components/ directory (not routes)
+        if path_str.contains("/components/") || path_str.starts_with("components/") {
+            continue;
+        }
+
         // Convert file path to route pattern
         let route_pattern = file_path_to_route(&path_str);
 
