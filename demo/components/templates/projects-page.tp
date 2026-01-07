@@ -1,5 +1,6 @@
 // Projects page template
 import { DashboardLayout } from "./dashboard-layout.tp"
+import { Projects } from "../../stores/projects-store.tp"
 
 ProjectsPage -> DashboardLayout([ProjectsHeader, ProjectsGrid])
 
@@ -27,14 +28,13 @@ NewProjectButton -> {
 
 ProjectsGrid -> {
     style: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-    children: [
-        ProjectCard({ name: "Website Redesign", status: "In Progress", progress: 65 }),
-        ProjectCard({ name: "Mobile App", status: "Planning", progress: 20 }),
-        ProjectCard({ name: "API Integration", status: "Completed", progress: 100 }),
-        ProjectCard({ name: "Dashboard v2", status: "In Progress", progress: 45 }),
-        ProjectCard({ name: "Documentation", status: "In Progress", progress: 80 }),
-        ProjectCard({ name: "Testing Suite", status: "Planning", progress: 10 })
-    ]
+    children: Projects.projects.for(project => {
+        ProjectCard({
+            name: project.name,
+            status: project.status,
+            progress: project.progress
+        })
+    })
 }
 
 ProjectCard(name, status, progress) -> {

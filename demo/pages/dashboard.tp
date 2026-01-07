@@ -1,2 +1,8 @@
-// Dashboard page - exports DashboardPage for router
+// Dashboard page
 import { DashboardPage } from "../components/templates/dashboard-page.tp"
+import { Dashboard } from "../stores/dashboard-store.tp"
+
+Page -> {
+    init: Dashboard.Load
+    children: DashboardPage
+}

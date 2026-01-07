@@ -1,0 +1,24 @@
+// Team store - manages team members data
+Team | {
+    State {
+        members: [
+            { name: "Alice Johnson", role: "Project Manager", email: "alice@example.com" },
+            { name: "Bob Smith", role: "Developer", email: "bob@example.com" },
+            { name: "Carol Williams", role: "Designer", email: "carol@example.com" },
+            { name: "Dave Brown", role: "Developer", email: "dave@example.com" },
+            { name: "Eve Davis", role: "QA Engineer", email: "eve@example.com" },
+            { name: "Frank Miller", role: "DevOps", email: "frank@example.com" }
+        ]
+        isLoading: false
+    }
+
+    Actions {
+        SetMembers(members)
+        SetLoading(loading)
+    }
+
+    Reducers {
+        on SetMembers(members) { members: members }
+        on SetLoading(loading) { isLoading: loading }
+    }
+}

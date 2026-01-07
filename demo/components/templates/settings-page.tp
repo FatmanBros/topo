@@ -1,5 +1,6 @@
 // Settings page template
 import { DashboardLayout } from "./dashboard-layout.tp"
+import { Settings } from "../../stores/settings-store.tp"
 
 SettingsPage -> DashboardLayout([SettingsHeader, SettingsContent])
 
@@ -63,9 +64,9 @@ ProfileForm -> {
     align: vertical
     style: "space-y-4 pt-4"
     children: [
-        FormField({ label: "Full Name", value: "John Doe", type: "text" }),
-        FormField({ label: "Email", value: "john@example.com", type: "email" }),
-        FormField({ label: "Bio", value: "Software developer", type: "textarea" }),
+        FormField({ label: "Full Name", value: Settings.fullName, type: "text" }),
+        FormField({ label: "Email", value: Settings.email, type: "email" }),
+        FormField({ label: "Bio", value: Settings.bio, type: "textarea" }),
         SaveButton
     ]
 }

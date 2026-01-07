@@ -217,7 +217,15 @@
       "patterns": [
         {
           "name": "keyword.control.topo",
-          "match": "\\b(import|from)\\b"
+          "match": "\\b(import|from|for|if|else|try|catch|return)\\b"
+        },
+        {
+          "name": "keyword.control.async.topo",
+          "match": "\\b(async|await)\\b"
+        },
+        {
+          "name": "keyword.other.dispatch.topo",
+          "match": "\\b(dispatch)\\b"
         },
         {
           "name": "constant.language.topo",
@@ -236,6 +244,10 @@
     "operators": {
       "patterns": [
         {
+          "name": "keyword.operator.fat-arrow.topo",
+          "match": "=>"
+        },
+        {
           "name": "keyword.operator.arrow.topo",
           "match": "->"
         },
@@ -246,6 +258,10 @@
         {
           "name": "keyword.operator.double-colon.topo",
           "match": "::"
+        },
+        {
+          "name": "keyword.operator.spread.topo",
+          "match": "\\.\\.\\."
         }
       ]
     },
@@ -277,6 +293,13 @@
           "match": "\\b(t)\\s*\\(",
           "captures": {
             "1": { "name": "support.function.i18n.topo" }
+          }
+        },
+        {
+          "comment": "Iterator method: .for()",
+          "match": "\\.(for)\\s*\\(",
+          "captures": {
+            "1": { "name": "support.function.iterator.topo" }
           }
         },
         {

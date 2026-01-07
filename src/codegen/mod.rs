@@ -273,6 +273,30 @@ impl JsCodegen {
         self.emit_line("  if (store) store.dispatch(action, ...args);");
         self.emit_line("}");
         self.emit_line("");
+        self.emit_line("// HTTP helpers for API calls");
+        self.emit_line("const http = {");
+        self.emit_line("  async get(url) {");
+        self.emit_line("    const res = await fetch(url);");
+        self.emit_line("    if (!res.ok) throw new Error(`HTTP ${res.status}`);");
+        self.emit_line("    return res.json();");
+        self.emit_line("  },");
+        self.emit_line("  async post(url, data) {");
+        self.emit_line("    const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });");
+        self.emit_line("    if (!res.ok) throw new Error(`HTTP ${res.status}`);");
+        self.emit_line("    return res.json();");
+        self.emit_line("  },");
+        self.emit_line("  async put(url, data) {");
+        self.emit_line("    const res = await fetch(url, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });");
+        self.emit_line("    if (!res.ok) throw new Error(`HTTP ${res.status}`);");
+        self.emit_line("    return res.json();");
+        self.emit_line("  },");
+        self.emit_line("  async del(url) {");
+        self.emit_line("    const res = await fetch(url, { method: 'DELETE' });");
+        self.emit_line("    if (!res.ok) throw new Error(`HTTP ${res.status}`);");
+        self.emit_line("    return res.json();");
+        self.emit_line("  }");
+        self.emit_line("};");
+        self.emit_line("");
         self.emit_line("// Silent dispatch for form field handlers - no re-render, just update related elements");
         self.emit_line("function dispatchField(storeName, action, value, fieldName) {");
         self.emit_line("  const store = stores.get(storeName);");
@@ -295,6 +319,7 @@ impl JsCodegen {
         self.emit_line("function mount(componentFn, container) {");
         self.emit_line("  const el = document.querySelector(container);");
         self.emit_line("  if (!el) return;");
+        self.emit_line("  let lastPage = null;");
         self.emit_line("  const render = () => {");
         self.emit_line("    // Save focus state before re-render");
         self.emit_line("    const activeEl = document.activeElement;");
@@ -312,9 +337,15 @@ impl JsCodegen {
         self.emit_line("    });");
         self.emit_line("    // Use routed page if available, otherwise use provided component");
         self.emit_line("    const page = currentPage || componentFn;");
+        self.emit_line("    const pageChanged = page !== lastPage;");
+        self.emit_line("    lastPage = page;");
         self.emit_line("    const vdom = typeof page === 'function' ? page() : page;");
         self.emit_line("    el.innerHTML = renderVdom(vdom);");
         self.emit_line("    bindEvents(el, vdom);");
+        self.emit_line("    // Call lifecycle init on page change");
+        self.emit_line("    if (pageChanged && vdom && vdom.lifecycle && vdom.lifecycle.init) {");
+        self.emit_line("      vdom.lifecycle.init();");
+        self.emit_line("    }");
         self.emit_line("    // Restore focus after re-render");
         self.emit_line("    if (focusIndex >= 0) {");
         self.emit_line("      const newInputs = el.querySelectorAll('input, textarea, select');");
@@ -1026,6 +1057,7 @@ impl JsCodegen {
                 self.emit_line("");
             }
         }
+
     }
 
     fn generate_reducer(&mut self, store: &StoreDef, handler: &ReducerHandler) {
@@ -1505,13 +1537,23 @@ impl JsCodegen {
                 let else_expr = self.generate_expression(else_branch);
                 format!("({} ? {} : {})", cond, then_expr, else_expr)
             }
-            Expression::ForIn { item, items, body } => {
+            Expression::ForIn { item, index, items, body } => {
                 let items_str = self.generate_expression(items);
-                // Add item to local params for body generation
+                // Add item and index to local params for body generation
                 self.local_params.insert(item.clone());
+                if let Some(ref idx) = index {
+                    self.local_params.insert(idx.clone());
+                }
                 let body_str = self.generate_expression(body);
                 self.local_params.remove(item);
-                format!("{}.map({} => {})", items_str, item, body_str)
+                if let Some(ref idx) = index {
+                    self.local_params.remove(idx);
+                }
+                // Generate .map() with or without index
+                match index {
+                    Some(idx) => format!("{}.map(({}, {}) => {})", items_str, item, idx, body_str),
+                    None => format!("{}.map({} => {})", items_str, item, body_str),
+                }
             }
             Expression::Object { properties } => {
                 let props: Vec<String> = properties

@@ -11,16 +11,14 @@ DashboardPage -> DashboardLayout([DashboardHeader, StatCardsGrid, DashboardConte
 
 StatCardsGrid -> {
     style: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
-    children: [
-        for stat in $Dashboard.stats {
-            StatCard({
-                label: stat.label,
-                value: stat.value,
-                change: stat.change,
-                positive: stat.positive
-            })
-        }
-    ]
+    children: Dashboard.stats.for(stat => {
+        StatCard({
+            label: stat.label,
+            value: stat.value,
+            change: stat.change,
+            positive: stat.positive
+        })
+    })
 }
 
 DashboardContent -> {
@@ -41,15 +39,13 @@ RecentActivityCard -> {
 ActivityList -> {
     align: vertical
     style: "space-y-0"
-    children: [
-        for activity in $Dashboard.activities {
-            ActivityItem({
-                user: activity.user,
-                action: activity.action,
-                time: activity.time
-            })
-        }
-    ]
+    children: Dashboard.activities.for(activity => {
+        ActivityItem({
+            user: activity.user,
+            action: activity.action,
+            time: activity.time
+        })
+    })
 }
 
 QuickActionsCard -> Card({
