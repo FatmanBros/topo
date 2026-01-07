@@ -1,0 +1,7 @@
+// Dashboard API service
+DashboardApi :: {
+    rest: "/api/dashboard"
+
+    get stats() -> "/stats"
+    get activities() -> "/activities"
+}

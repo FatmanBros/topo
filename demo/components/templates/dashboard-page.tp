@@ -5,16 +5,21 @@ import { Card } from "../atoms/card.tp"
 import { StatCard } from "../atoms/stat-card.tp"
 import { ActionButton } from "../atoms/button.tp"
 import { ActivityItem } from "../molecules/activity-item.tp"
+import { Dashboard } from "../../stores/dashboard-store.tp"
 
 DashboardPage -> DashboardLayout([DashboardHeader, StatCardsGrid, DashboardContent])
 
 StatCardsGrid -> {
     style: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
     children: [
-        StatCard({ label: "Total Users", value: "12,345", change: "+12.5%", positive: true }),
-        StatCard({ label: "Revenue", value: "$45,678", change: "+8.2%", positive: true }),
-        StatCard({ label: "Active Sessions", value: "1,234", change: "-3.1%", positive: false }),
-        StatCard({ label: "Conversion Rate", value: "3.24%", change: "+0.8%", positive: true })
+        for stat in $Dashboard.stats {
+            StatCard({
+                label: stat.label,
+                value: stat.value,
+                change: stat.change,
+                positive: stat.positive
+            })
+        }
     ]
 }
 
@@ -37,10 +42,13 @@ ActivityList -> {
     align: vertical
     style: "space-y-0"
     children: [
-        ActivityItem({ user: "Alice", action: "created a new project", time: "2 minutes ago" }),
-        ActivityItem({ user: "Bob", action: "updated the dashboard", time: "15 minutes ago" }),
-        ActivityItem({ user: "Carol", action: "completed a task", time: "1 hour ago" }),
-        ActivityItem({ user: "Dave", action: "joined the team", time: "3 hours ago" })
+        for activity in $Dashboard.activities {
+            ActivityItem({
+                user: activity.user,
+                action: activity.action,
+                time: activity.time
+            })
+        }
     ]
 }
 
@@ -58,4 +66,3 @@ QuickActionButtons -> {
         ActionButton({ label: "Settings" })
     ]
 }
-
