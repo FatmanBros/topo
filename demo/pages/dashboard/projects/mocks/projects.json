@@ -1,0 +1,8 @@
+[
+    { "name": "Website Redesign", "status": "In Progress", "progress": 65 },
+    { "name": "Mobile App", "status": "Planning", "progress": 20 },
+    { "name": "API Integration", "status": "Completed", "progress": 100 },
+    { "name": "Dashboard v2", "status": "In Progress", "progress": 45 },
+    { "name": "Documentation", "status": "In Progress", "progress": 80 },
+    { "name": "Testing Suite", "status": "Planning", "progress": 10 }
+]

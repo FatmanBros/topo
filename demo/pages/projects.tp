@@ -1,2 +1,0 @@
-// Projects page - exports ProjectsPage for router
-import { ProjectsPage } from "../components/templates/projects-page.tp"

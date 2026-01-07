@@ -1,0 +1,43 @@
+// Settings page
+import { SettingsTemplate } from "./template.tp"
+
+Settings | {
+    State {
+        fullName: ""
+        email: ""
+        bio: ""
+        isLoading: true
+    }
+
+    Actions {
+        Load
+        SetProfile(profile)
+        SetFullName(name)
+        SetEmail(email)
+        SetBio(bio)
+    }
+
+    Reducers {
+        on Load { isLoading: true }
+        on SetProfile(profile) { fullName: profile.fullName, email: profile.email, bio: profile.bio }
+        on SetFullName(name) { fullName: name }
+        on SetEmail(email) { email: email }
+        on SetBio(bio) { bio: bio }
+    }
+
+    Effects {
+        on Load {
+            try {
+                profile: await http.get("/api/settings/profile")
+                dispatch: SetProfile(profile)
+            } catch(e) {
+                dispatch: SetProfile({ fullName: "", email: "", bio: "" })
+            }
+        }
+    }
+}
+
+Page -> {
+    init: Settings.Load
+    children: SettingsTemplate
+}

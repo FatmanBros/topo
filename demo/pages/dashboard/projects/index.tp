@@ -1,0 +1,35 @@
+// Projects page
+import { ProjectsTemplate } from "./template.tp"
+
+Projects | {
+    State {
+        projects: []
+        isLoading: true
+    }
+
+    Actions {
+        Load
+        SetProjects(projects)
+    }
+
+    Reducers {
+        on Load { isLoading: true }
+        on SetProjects(projects) { projects: projects }
+    }
+
+    Effects {
+        on Load {
+            try {
+                projects: await http.get("/api/projects")
+                dispatch: SetProjects(projects)
+            } catch(e) {
+                dispatch: SetProjects([])
+            }
+        }
+    }
+}
+
+Page -> {
+    init: Projects.Load
+    children: ProjectsTemplate
+}
