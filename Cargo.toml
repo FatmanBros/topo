@@ -31,6 +31,9 @@ notify = "6.1"
 # HTTP server (for start/dev commands)
 tiny_http = "0.12"
 
+# WebSocket (for hot reload)
+tungstenite = "0.21"
+
 # File globbing (for test discovery)
 glob = "0.3"
 
