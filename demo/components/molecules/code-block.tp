@@ -37,5 +37,5 @@ CodeBlockFilename(props) -> {
 CodeBlockContent(props) -> {
     type: text
     content: props.code
-    style: "p-6 font-mono text-sm text-green-400 whitespace-pre-wrap leading-relaxed"
+    style: "block p-6 font-mono text-sm text-green-400 whitespace-pre leading-relaxed overflow-x-auto"
 }

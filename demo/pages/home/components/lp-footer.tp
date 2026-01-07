@@ -35,7 +35,7 @@ FooterLinks -> {
     style: "flex gap-8"
     children: [
         FooterLink({ href: "https://github.com/FatmanBros/topo", label: "GitHub" }),
-        FooterLink({ href: "https://github.com/FatmanBros/topo", label: "Docs" }),
+        FooterLink({ href: "/docs", label: "Docs" }),
         FooterLink({ href: "/dashboard", label: "Demo" })
     ]
 }

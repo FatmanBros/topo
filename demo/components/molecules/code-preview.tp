@@ -1,0 +1,35 @@
+// Code preview molecule - code on left, preview on right
+import { CodeBlock } from "./code-block.tp"
+import { Text } from "../atoms/text.tp"
+
+CodePreview(props) -> {
+    style: "grid grid-cols-1 lg:grid-cols-2 gap-6 items-start"
+    children: [
+        CodePreviewCode({ filename: props.filename, code: props.code }),
+        CodePreviewResult({ children: props.preview })
+    ]
+}
+
+CodePreviewCode(props) -> {
+    style: "flex-1"
+    children: [CodeBlock({ filename: props.filename, code: props.code })]
+}
+
+CodePreviewResult(props) -> {
+    style: "flex-1 bg-gradient-to-br from-gray-50 to-pink-50 rounded-2xl p-6 border border-gray-100"
+    align: vertical
+    children: [
+        PreviewLabel,
+        PreviewContent({ children: props.children })
+    ]
+}
+
+PreviewLabel -> Text({
+    text: "Preview",
+    style: "text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4"
+})
+
+PreviewContent(props) -> {
+    style: "bg-white rounded-xl p-6 shadow-sm border border-gray-100"
+    children: props.children
+}

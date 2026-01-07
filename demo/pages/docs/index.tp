@@ -1,0 +1,6 @@
+// Docs page
+import { DocsTemplate } from "./template.tp"
+
+DocsPage -> {
+    children: DocsTemplate
+}

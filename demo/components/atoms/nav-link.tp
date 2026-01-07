@@ -1,0 +1,17 @@
+// Navigation link atom
+NavLink(props) -> {
+    type: link
+    href: props.href
+    content: props.label
+    style: props.style || "text-gray-600 hover:text-pink-500 transition-colors"
+}
+
+// Docs sidebar link with active state
+DocsSidebarLink(props) -> {
+    type: link
+    href: props.href
+    content: props.label
+    style: props.active
+        ? "block px-3 py-2 rounded-lg bg-pink-50 text-pink-600 font-medium text-sm"
+        : "block px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-50 text-sm"
+}

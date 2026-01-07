@@ -1,0 +1,33 @@
+// Docs section molecule - section with title and content
+import { Text } from "../atoms/text.tp"
+
+DocsSection(props) -> {
+    id: props.id
+    style: "mb-16"
+    align: vertical
+    children: [
+        DocsSectionTitle({ text: props.title }),
+        DocsSectionContent({ children: props.children })
+    ]
+}
+
+DocsSectionTitle(props) -> Text({
+    text: props.text,
+    style: "text-3xl font-bold text-gray-900 mb-4"
+})
+
+DocsSectionContent(props) -> {
+    align: vertical
+    style: "space-y-4"
+    children: props.children
+}
+
+DocsText(props) -> Text({
+    text: props.text,
+    style: props.style || "text-gray-700"
+})
+
+DocsDescription(props) -> Text({
+    text: props.text,
+    style: "text-lg text-gray-600 leading-relaxed"
+})
