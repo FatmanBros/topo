@@ -44,8 +44,8 @@
           "match": "^\\s*(BeforeEach|AfterEach|BeforeOnce|AfterOnce)\\b"
         },
         {
-          "comment": "Test functions: goto, expect, fill, click, wait, mock",
-          "match": "\\b(goto|expect|fill|click|wait|mock)\\s*\\(",
+          "comment": "Test functions: goto, expect, fill, click, wait, mock, capture",
+          "match": "\\b(goto|expect|fill|click|wait|mock|capture)\\s*\\(",
           "captures": {
             "1": { "name": "support.function.test.topo" }
           }

@@ -1255,6 +1255,9 @@ fn generate_playwright_test(ast: &Program) -> Result<String> {
                 TestStatement::Wait { ms } => {
                     output.push_str(&format!("  await page.waitForTimeout({});\n", ms));
                 }
+                TestStatement::Capture { filename } => {
+                    output.push_str(&format!("  await page.screenshot({{ path: 'screenshots/{}' }});\n", filename));
+                }
             }
         }
     }
