@@ -1,35 +1,6 @@
 // Team page
 import { TeamTemplate } from "./template.tp"
 
-Team | {
-    State {
-        members: []
-        isLoading: true
-    }
-
-    Actions {
-        Load
-        SetMembers(members)
-    }
-
-    Reducers {
-        on Load { isLoading: true }
-        on SetMembers(members) { members: members }
-    }
-
-    Effects {
-        on Load {
-            try {
-                members: await http.get("/api/team")
-                dispatch: SetMembers(members)
-            } catch(e) {
-                dispatch: SetMembers([])
-            }
-        }
-    }
-}
-
 Page -> {
-    init: Team.Load
     children: TeamTemplate
 }

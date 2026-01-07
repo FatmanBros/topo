@@ -1,0 +1,29 @@
+// Project Card molecule
+import { Text } from "../atoms/text.tp"
+import { ProgressBar } from "./progress-bar.tp"
+
+ProjectCard(props) -> {
+    style: "bg-white rounded-xl shadow-sm border border-gray-100 p-6"
+    children: [
+        ProjectCardHeader({ name: props.name, status: props.status }),
+        ProgressBar({ progress: props.progress })
+    ]
+}
+
+ProjectCardHeader(name, status) -> {
+    style: "mb-4"
+    children: [
+        ProjectCardName({ name: name }),
+        ProjectCardStatus({ status: status })
+    ]
+}
+
+ProjectCardName(name) -> Text({
+    text: name,
+    style: "text-lg font-semibold text-gray-900"
+})
+
+ProjectCardStatus(status) -> Text({
+    text: status,
+    style: status == "Completed" ? "text-sm text-green-600 mt-1" : status == "In Progress" ? "text-sm text-blue-600 mt-1" : "text-sm text-gray-500 mt-1"
+})

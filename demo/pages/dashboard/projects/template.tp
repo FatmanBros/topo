@@ -1,89 +1,13 @@
-// Projects template
+// Projects template - layout only
 import { DashboardLayout } from "../../../components/templates/dashboard-layout.tp"
-import { Projects } from "./index.tp"
+import { PageHeader, PrimaryActionButton } from "../../../components/molecules/page-header.tp"
+import { ProjectsGrid } from "./components/projects-grid.tp"
 
-ProjectsTemplate -> DashboardLayout([ProjectsHeader, ProjectsGrid])
+ProjectsTemplate -> DashboardLayout([ProjectsPageHeader, ProjectsGrid])
 
-ProjectsHeader -> {
-    style: "mb-8"
-    children: [ProjectsTitle, ProjectsActions]
-}
+ProjectsPageHeader -> PageHeader({
+    title: "Projects",
+    actions: [NewProjectButton]
+})
 
-ProjectsTitle -> {
-    type: text
-    content: "Projects"
-    style: "text-2xl font-bold text-gray-900"
-}
-
-ProjectsActions -> {
-    style: "mt-4"
-    children: [NewProjectButton]
-}
-
-NewProjectButton -> {
-    type: button
-    content: "+ New Project"
-    style: "px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-}
-
-ProjectsGrid -> {
-    style: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-    children: Projects.projects.for(project => {
-        ProjectCard({
-            name: project.name,
-            status: project.status,
-            progress: project.progress
-        })
-    })
-}
-
-ProjectCard(name, status, progress) -> {
-    style: "bg-white rounded-xl shadow-sm border border-gray-100 p-6"
-    children: [
-        ProjectCardHeader({ name: name, status: status }),
-        ProjectCardProgress({ progress: progress })
-    ]
-}
-
-ProjectCardHeader(name, status) -> {
-    style: "mb-4"
-    children: [
-        ProjectCardName({ name: name }),
-        ProjectCardStatus({ status: status })
-    ]
-}
-
-ProjectCardName(name) -> {
-    type: text
-    content: name
-    style: "text-lg font-semibold text-gray-900"
-}
-
-ProjectCardStatus(status) -> {
-    type: text
-    content: status
-    style: status == "Completed" ? "text-sm text-green-600 mt-1" : status == "In Progress" ? "text-sm text-blue-600 mt-1" : "text-sm text-gray-500 mt-1"
-}
-
-ProjectCardProgress(progress) -> {
-    style: "mt-4"
-    children: [
-        ProjectProgressBar({ progress: progress }),
-        ProjectProgressText({ progress: progress })
-    ]
-}
-
-ProjectProgressBar(progress) -> {
-    style: "w-full bg-gray-200 rounded-full h-2"
-    children: [ProjectProgressFill({ progress: progress })]
-}
-
-ProjectProgressFill(progress) -> {
-    style: "bg-indigo-600 h-2 rounded-full"
-}
-
-ProjectProgressText(progress) -> {
-    type: text
-    content: progress + "% complete"
-    style: "text-sm text-gray-500 mt-2"
-}
+NewProjectButton -> PrimaryActionButton({ label: "+ New Project" })

@@ -1,44 +1,6 @@
 // Analytics page
 import { AnalyticsTemplate } from "./template.tp"
 
-Analytics | {
-    State {
-        stats: []
-        sources: []
-        isLoading: true
-    }
-
-    Actions {
-        Load
-        SetStats(stats)
-        SetSources(sources)
-    }
-
-    Reducers {
-        on Load { isLoading: true }
-        on SetStats(stats) { stats: stats }
-        on SetSources(sources) { sources: sources }
-    }
-
-    Effects {
-        on Load {
-            try {
-                stats: await http.get("/api/analytics/stats")
-                dispatch: SetStats(stats)
-            } catch(e) {
-                dispatch: SetStats([])
-            }
-            try {
-                sources: await http.get("/api/analytics/sources")
-                dispatch: SetSources(sources)
-            } catch(e) {
-                dispatch: SetSources([])
-            }
-        }
-    }
-}
-
 Page -> {
-    init: Analytics.Load
     children: AnalyticsTemplate
 }

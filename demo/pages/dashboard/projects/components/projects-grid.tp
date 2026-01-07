@@ -1,0 +1,42 @@
+// Projects Grid component with store
+import { ProjectCard } from "../../../../components/molecules/project-card.tp"
+
+Projects | {
+    State {
+        projects: []
+        isLoading: true
+    }
+
+    Actions {
+        Load
+        SetProjects(projects)
+    }
+
+    Reducers {
+        on Load { isLoading: true }
+        on SetProjects(projects) { projects: projects }
+    }
+
+    Effects {
+        on Load {
+            try {
+                projects: await http.get("/api/projects")
+                dispatch: SetProjects(projects)
+            } catch(e) {
+                dispatch: SetProjects([])
+            }
+        }
+    }
+}
+
+ProjectsGrid -> {
+    init: Projects.Load
+    style: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+    children: Projects.projects.for(project => {
+        ProjectCard({
+            name: project.name,
+            status: project.status,
+            progress: project.progress
+        })
+    })
+}
