@@ -1,0 +1,29 @@
+// Feature card molecule - pastel colored cards for LP
+import { Icon } from "../atoms/icon.tp"
+
+FeatureCard(props) -> {
+    style: props.bgColor + " p-6 rounded-2xl border " + props.borderColor + " hover:shadow-lg transition-shadow duration-300"
+    align: vertical
+    children: [
+        FeatureCardIcon({ emoji: props.icon }),
+        FeatureCardTitle({ title: props.title, color: props.textColor }),
+        FeatureCardDesc({ desc: props.description })
+    ]
+}
+
+FeatureCardIcon(props) -> {
+    style: "mb-4"
+    children: [Icon(props.emoji, "text-4xl")]
+}
+
+FeatureCardTitle(props) -> {
+    type: text
+    content: props.title
+    style: "text-xl font-bold mb-2 " + props.color
+}
+
+FeatureCardDesc(props) -> {
+    type: text
+    content: props.desc
+    style: "text-gray-600 leading-relaxed"
+}

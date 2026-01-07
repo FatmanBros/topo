@@ -1,0 +1,15 @@
+// Icon atom - emoji-based icons for LP (no external dependencies)
+Icon(emoji, size) -> {
+    type: text
+    content: emoji
+    style: size || "text-2xl"
+}
+
+// Preset icons for LP
+MountainIcon -> Icon("⛰️", "text-3xl")
+SparkleIcon -> Icon("✨", "text-2xl")
+RocketIcon -> Icon("🚀", "text-2xl")
+CodeIcon -> Icon("💻", "text-2xl")
+BoxIcon -> Icon("📦", "text-2xl")
+LightningIcon -> Icon("⚡", "text-2xl")
+CheckIcon -> Icon("✓", "text-sm")

@@ -1,0 +1,67 @@
+// LP Code Example section - showing topo syntax
+import { CodeBlock } from "../../../components/molecules/code-block.tp"
+
+LPCodeExample -> {
+    id: "example"
+    style: "py-24 bg-gradient-to-r from-violet-50 to-pink-50"
+    children: [CodeExampleContainer]
+}
+
+CodeExampleContainer -> {
+    style: "max-w-5xl mx-auto px-6"
+    children: [CodeExampleContent]
+}
+
+CodeExampleContent -> {
+    style: "grid grid-cols-1 lg:grid-cols-2 gap-12 items-center"
+    children: [CodeExampleText, CodeExampleBlock]
+}
+
+CodeExampleText -> {
+    style: "space-y-6"
+    align: vertical
+    children: [CodeExampleTitle, CodeExampleDesc, CodeExamplePoints]
+}
+
+CodeExampleTitle -> {
+    type: text
+    content: "Simple Counter Example"
+    style: "text-4xl font-bold text-gray-900"
+}
+
+CodeExampleDesc -> {
+    type: text
+    content: "See how clean and readable topo code looks. State management, UI, and interactions - all in one place."
+    style: "text-lg text-gray-600 leading-relaxed"
+}
+
+CodeExamplePoints -> {
+    style: "space-y-3"
+    children: [
+        CodeExamplePoint("Store with state and actions"),
+        CodeExamplePoint("Reducers handle state changes"),
+        CodeExamplePoint("Components reference state directly")
+    ]
+}
+
+CodeExamplePoint(text) -> {
+    style: "flex items-center gap-3"
+    children: [CodeExampleCheckmark, CodeExamplePointText({ text: text })]
+}
+
+CodeExampleCheckmark -> {
+    type: text
+    content: "✓"
+    style: "w-6 h-6 bg-pink-500 text-white rounded-full flex items-center justify-center text-sm font-bold"
+}
+
+CodeExamplePointText(props) -> {
+    type: text
+    content: props.text
+    style: "text-gray-700"
+}
+
+CodeExampleBlock -> CodeBlock({
+    filename: "counter.tp",
+    code: "Counter | {\n    State { count: 0 }\n    Actions { Increment, Decrement }\n    Reducers {\n        on Increment { count: count + 1 }\n        on Decrement { count: count - 1 }\n    }\n}\n\nDisplay -> {\n    type: text\n    value: $Counter.count\n    style: \"text-4xl font-bold\"\n}\n\nPlusBtn -> {\n    type: button\n    content: \"+\"\n    click: Counter.Increment\n}\n\nMinusBtn -> {\n    type: button\n    content: \"-\"\n    click: Counter.Decrement\n}"
+})
