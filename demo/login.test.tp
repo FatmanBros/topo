@@ -9,7 +9,7 @@ Test("ログインフォームが表示される") {
     expect(LoginFormCard.email, { visible })
     expect(LoginFormCard.password, { visible })
     expect(submit, { visible })
-    capture("login-form.png")
+    capture()
 }
 
 Test("空のメールでバリデーションエラー") {
