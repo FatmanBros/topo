@@ -1313,7 +1313,12 @@ fn target_to_selector(target: &topo::ast::TestTarget) -> String {
 
     match target {
         TestTarget::Field { store, field } => {
-            format!("[data-field=\"{}.{}\"]", store, field)
+            // Use data-error for error fields, data-field for others
+            if field.ends_with("Error") {
+                format!("[data-error=\"{}.{}\"]", store, field)
+            } else {
+                format!("[data-field=\"{}.{}\"]", store, field)
+            }
         }
         TestTarget::Text { content } => {
             format!("text={}", content)
