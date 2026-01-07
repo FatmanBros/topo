@@ -1,0 +1,28 @@
+// Stat card for displaying metrics
+StatCard(props) -> {
+    style: "bg-white p-6 rounded-xl shadow-sm border border-gray-100"
+    align: vertical
+    children: [
+        StatLabel({ text: props.label }),
+        StatValue({ text: props.value }),
+        StatChange({ text: props.change, positive: props.positive })
+    ]
+}
+
+StatLabel(props) -> {
+    type: text
+    content: props.text
+    style: "text-sm font-medium text-gray-500 mb-1"
+}
+
+StatValue(props) -> {
+    type: text
+    content: props.text
+    style: "text-3xl font-bold text-gray-900 mb-2"
+}
+
+StatChange(props) -> {
+    type: text
+    content: props.text
+    style: props.positive ? "text-sm text-green-600" : "text-sm text-red-600"
+}
