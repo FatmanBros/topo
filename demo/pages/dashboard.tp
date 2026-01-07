@@ -1,6 +1,2 @@
-// Dashboard page
+// Dashboard page - exports DashboardPage for router
 import { DashboardPage } from "../components/templates/dashboard-page.tp"
-
-Page -> {
-    children: [DashboardPage]
-}

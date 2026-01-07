@@ -1499,6 +1499,12 @@ impl JsCodegen {
             Expression::Spread { expr } => {
                 format!("...{}", self.generate_expression(expr))
             }
+            Expression::Conditional { condition, then_branch, else_branch } => {
+                let cond = self.generate_expression(condition);
+                let then_expr = self.generate_expression(then_branch);
+                let else_expr = self.generate_expression(else_branch);
+                format!("({} ? {} : {})", cond, then_expr, else_expr)
+            }
             Expression::ForIn { item, items, body } => {
                 let items_str = self.generate_expression(items);
                 // Add item to local params for body generation

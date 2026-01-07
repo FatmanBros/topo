@@ -1,6 +1,2 @@
-// Login page
+// Login page - exports LoginPage for router
 import { LoginPage } from "../components/templates/login-page.tp"
-
-Page -> {
-    children: [LoginPage]
-}
