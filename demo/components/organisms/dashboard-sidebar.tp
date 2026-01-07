@@ -5,5 +5,15 @@ import { SidebarNav } from "../molecules/sidebar-nav.tp"
 DashboardSidebar -> {
     style: "w-64 bg-white border-r border-gray-200 fixed left-0 top-0 h-full p-6"
     align: vertical
-    children: [SidebarLogo, SidebarNav]
+    children: [SidebarLogo, DashboardNav]
 }
+
+DashboardNav -> SidebarNav({
+    items: [
+        { label: "Dashboard", href: "/dashboard", icon: "home", active: true },
+        { label: "Projects", href: "/dashboard/projects", icon: "folder", active: false },
+        { label: "Team", href: "/dashboard/team", icon: "users", active: false },
+        { label: "Analytics", href: "/dashboard/analytics", icon: "chart", active: false },
+        { label: "Settings", href: "/dashboard/settings", icon: "cog", active: false }
+    ]
+})

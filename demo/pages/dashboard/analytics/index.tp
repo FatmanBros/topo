@@ -1,6 +1,6 @@
 // Analytics page
 import { AnalyticsTemplate } from "./template.tp"
 
-Page -> {
+AnalyticsPage -> {
     children: AnalyticsTemplate
 }

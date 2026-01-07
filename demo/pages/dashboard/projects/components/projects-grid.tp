@@ -1,5 +1,5 @@
 // Projects Grid component with store
-import { ProjectCard } from "../../../../components/molecules/project-card.tp"
+import { ProjectCard } from "@/components/molecules/project-card.tp"
 
 Projects | {
     State {

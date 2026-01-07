@@ -170,6 +170,10 @@ pub struct PathsConfig {
 
     #[serde(default = "default_public_path")]
     pub public: String,
+
+    /// Path aliases for imports (e.g., "@" -> "." means @/components -> ./components)
+    #[serde(default = "default_aliases")]
+    pub aliases: std::collections::HashMap<String, String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -215,6 +219,9 @@ fn default_layouts_path() -> String { "src/layouts".to_string() }
 fn default_public_path() -> String { "public".to_string() }
 fn default_api_base_url() -> String { "/api".to_string() }
 fn default_api_timeout() -> u32 { 5000 }
+fn default_aliases() -> std::collections::HashMap<String, String> {
+    std::collections::HashMap::from([("@".to_string(), ".".to_string())])
+}
 
 impl Config {
     /// Load configuration from file
@@ -335,6 +342,7 @@ impl Default for PathsConfig {
             services: "src/services".to_string(),
             layouts: "src/layouts".to_string(),
             public: "public".to_string(),
+            aliases: default_aliases(),
         }
     }
 }

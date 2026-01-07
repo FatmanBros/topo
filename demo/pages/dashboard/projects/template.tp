@@ -1,6 +1,6 @@
 // Projects template - layout only
-import { DashboardLayout } from "../../../components/templates/dashboard-layout.tp"
-import { PageHeader, PrimaryActionButton } from "../../../components/molecules/page-header.tp"
+import { DashboardLayout } from "@/components/templates/dashboard-layout.tp"
+import { PageHeader, PrimaryActionButton } from "@/components/molecules/page-header.tp"
 import { ProjectsGrid } from "./components/projects-grid.tp"
 
 ProjectsTemplate -> DashboardLayout([ProjectsPageHeader, ProjectsGrid])

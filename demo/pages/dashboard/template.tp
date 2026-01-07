@@ -1,6 +1,6 @@
 // Dashboard template - layout only
-import { DashboardLayout } from "../../components/templates/dashboard-layout.tp"
-import { DashboardHeader } from "../../components/organisms/dashboard-header.tp"
+import { DashboardLayout } from "@/components/templates/dashboard-layout.tp"
+import { DashboardHeader } from "@/components/organisms/dashboard-header.tp"
 import { StatCardsGrid } from "./components/stat-cards.tp"
 import { RecentActivityCard } from "./components/recent-activity.tp"
 import { QuickActionsCard } from "./components/quick-actions.tp"

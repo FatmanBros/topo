@@ -1,6 +1,6 @@
 // Projects page
 import { ProjectsTemplate } from "./template.tp"
 
-Page -> {
+ProjectsPage -> {
     children: ProjectsTemplate
 }

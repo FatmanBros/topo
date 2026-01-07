@@ -1,6 +1,6 @@
 // Team page
 import { TeamTemplate } from "./template.tp"
 
-Page -> {
+TeamPage -> {
     children: TeamTemplate
 }
