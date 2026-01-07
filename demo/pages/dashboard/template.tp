@@ -1,11 +1,11 @@
 // Dashboard page template
-import { DashboardLayout } from "./dashboard-layout.tp"
-import { DashboardHeader } from "../organisms/dashboard-header.tp"
-import { Card } from "../atoms/card.tp"
-import { StatCard } from "../atoms/stat-card.tp"
-import { ActionButton } from "../atoms/button.tp"
-import { ActivityItem } from "../molecules/activity-item.tp"
-import { Dashboard } from "../../stores/dashboard-store.tp"
+import { DashboardLayout } from "../../components/templates/dashboard-layout.tp"
+import { DashboardHeader } from "../../components/organisms/dashboard-header.tp"
+import { Card } from "../../components/atoms/card.tp"
+import { StatCard } from "../../components/atoms/stat-card.tp"
+import { ActionButton } from "../../components/atoms/button.tp"
+import { ActivityItem } from "../../components/molecules/activity-item.tp"
+import { Dashboard } from "./store.tp"
 
 DashboardPage -> DashboardLayout([DashboardHeader, StatCardsGrid, DashboardContent])
 
