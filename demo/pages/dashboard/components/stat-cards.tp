@@ -1,0 +1,43 @@
+// Stat Cards component with store
+import { StatCard } from "../../../components/atoms/stat-card.tp"
+
+StatCards | {
+    State {
+        stats: []
+        isLoading: true
+    }
+
+    Actions {
+        Load
+        SetStats(stats)
+    }
+
+    Reducers {
+        on Load { isLoading: true }
+        on SetStats(stats) { stats: stats }
+    }
+
+    Effects {
+        on Load {
+            try {
+                stats: await http.get("/api/stats")
+                dispatch: SetStats(stats)
+            } catch(e) {
+                dispatch: SetStats([])
+            }
+        }
+    }
+}
+
+StatCardsGrid -> {
+    init: StatCards.Load
+    style: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
+    children: StatCards.stats.for(stat => {
+        StatCard({
+            label: stat.label,
+            value: stat.value,
+            change: stat.change,
+            positive: stat.positive
+        })
+    })
+}

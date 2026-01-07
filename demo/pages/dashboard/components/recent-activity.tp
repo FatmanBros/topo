@@ -1,0 +1,54 @@
+// Recent Activity component with store
+import { Card } from "../../../components/atoms/card.tp"
+import { ActivityItem } from "../../../components/molecules/activity-item.tp"
+
+RecentActivity | {
+    State {
+        activities: []
+        isLoading: true
+    }
+
+    Actions {
+        Load
+        SetActivities(activities)
+    }
+
+    Reducers {
+        on Load { isLoading: true }
+        on SetActivities(activities) { activities: activities }
+    }
+
+    Effects {
+        on Load {
+            try {
+                activities: await http.get("/api/activities")
+                dispatch: SetActivities(activities)
+            } catch(e) {
+                dispatch: SetActivities([])
+            }
+        }
+    }
+}
+
+RecentActivityCard -> {
+    init: RecentActivity.Load
+    style: "lg:col-span-2"
+    children: [
+        Card({
+            title: "Recent Activity",
+            children: [ActivityList]
+        })
+    ]
+}
+
+ActivityList -> {
+    align: vertical
+    style: "space-y-0"
+    children: RecentActivity.activities.for(activity => {
+        ActivityItem({
+            user: activity.user,
+            action: activity.action,
+            time: activity.time
+        })
+    })
+}

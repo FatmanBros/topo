@@ -1,47 +1,6 @@
 // Dashboard page
-import { DashboardPage } from "./template.tp"
-
-Dashboard | {
-    State {
-        stats: []
-        activities: []
-        isLoading: true
-    }
-
-    Actions {
-        Load
-        SetStats(stats)
-        SetActivities(activities)
-        SetLoading(loading)
-    }
-
-    Reducers {
-        on Load { isLoading: true }
-        on SetStats(stats) { stats: stats }
-        on SetActivities(activities) { activities: activities }
-        on SetLoading(loading) { isLoading: loading }
-    }
-
-    Effects {
-        on Load {
-            try {
-                stats: await http.get("/api/stats")
-                dispatch: SetStats(stats)
-            } catch(e) {
-                dispatch: SetStats([])
-            }
-            try {
-                activities: await http.get("/api/activities")
-                dispatch: SetActivities(activities)
-            } catch(e) {
-                dispatch: SetActivities([])
-            }
-            dispatch: SetLoading(false)
-        }
-    }
-}
+import { DashboardTemplate } from "./template.tp"
 
 Page -> {
-    init: Dashboard.Load
-    children: DashboardPage
+    children: DashboardTemplate
 }

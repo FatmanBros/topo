@@ -1,64 +1,13 @@
-// Dashboard page template
+// Dashboard template - layout only
 import { DashboardLayout } from "../../components/templates/dashboard-layout.tp"
 import { DashboardHeader } from "../../components/organisms/dashboard-header.tp"
-import { Card } from "../../components/atoms/card.tp"
-import { StatCard } from "../../components/atoms/stat-card.tp"
-import { ActionButton } from "../../components/atoms/button.tp"
-import { ActivityItem } from "../../components/molecules/activity-item.tp"
-import { Dashboard } from "./index.tp"
+import { StatCardsGrid } from "./components/stat-cards.tp"
+import { RecentActivityCard } from "./components/recent-activity.tp"
+import { QuickActionsCard } from "./components/quick-actions.tp"
 
-DashboardPage -> DashboardLayout([DashboardHeader, StatCardsGrid, DashboardContent])
-
-StatCardsGrid -> {
-    style: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
-    children: Dashboard.stats.for(stat => {
-        StatCard({
-            label: stat.label,
-            value: stat.value,
-            change: stat.change,
-            positive: stat.positive
-        })
-    })
-}
+DashboardTemplate -> DashboardLayout([DashboardHeader, StatCardsGrid, DashboardContent])
 
 DashboardContent -> {
     style: "grid grid-cols-1 lg:grid-cols-3 gap-6"
     children: [RecentActivityCard, QuickActionsCard]
-}
-
-RecentActivityCard -> {
-    style: "lg:col-span-2"
-    children: [
-        Card({
-            title: "Recent Activity",
-            children: [ActivityList]
-        })
-    ]
-}
-
-ActivityList -> {
-    align: vertical
-    style: "space-y-0"
-    children: Dashboard.activities.for(activity => {
-        ActivityItem({
-            user: activity.user,
-            action: activity.action,
-            time: activity.time
-        })
-    })
-}
-
-QuickActionsCard -> Card({
-    title: "Quick Actions",
-    children: [QuickActionButtons]
-})
-
-QuickActionButtons -> {
-    style: "grid grid-cols-2 gap-3"
-    children: [
-        ActionButton({ label: "New Project" }),
-        ActionButton({ label: "Add User" }),
-        ActionButton({ label: "Generate Report" }),
-        ActionButton({ label: "Settings" })
-    ]
 }
