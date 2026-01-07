@@ -76,6 +76,12 @@ impl Parser {
             return self.after_once_definition();
         }
 
+        // Check for anonymous store: | { ... }
+        if self.check(TokenKind::Pipe) {
+            self.advance();
+            return Ok(Declaration::Store(self.store_def(None)?));
+        }
+
         // All other declarations start with an identifier
         let name = self.expect_identifier()?;
 
@@ -117,7 +123,7 @@ impl Parser {
         } else if self.check(TokenKind::Pipe) {
             // Store: Name | { }
             self.advance();
-            Ok(Declaration::Store(self.store_def(name)?))
+            Ok(Declaration::Store(self.store_def(Some(name))?))
         } else if self.check(TokenKind::Star) {
             // Theme: Name * { }
             self.advance();
@@ -415,7 +421,7 @@ impl Parser {
     // Store Definition (|)
     // ========================================================================
 
-    fn store_def(&mut self, name: String) -> Result<StoreDef, ParseError> {
+    fn store_def(&mut self, name: Option<String>) -> Result<StoreDef, ParseError> {
         self.expect(TokenKind::LBrace)?;
 
         let mut state = None;
@@ -1880,7 +1886,7 @@ mod tests {
         assert_eq!(program.declarations.len(), 1);
 
         if let Declaration::Store(store) = &program.declarations[0] {
-            assert_eq!(store.name, "Counter");
+            assert_eq!(store.name, Some("Counter".to_string()));
             assert!(store.state.is_some());
             assert!(store.actions.is_some());
         } else {

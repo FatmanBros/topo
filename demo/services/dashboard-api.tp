@@ -2,6 +2,6 @@
 DashboardApi :: {
     rest: "/api/dashboard"
 
-    get stats() -> "/stats"
-    get activities() -> "/activities"
+    stats: get("/stats")
+    activities: get("/activities")
 }
