@@ -6,7 +6,7 @@ dev:
 	cargo run --bin topo -- dev
 
 test:
-	cargo test
+	npm test
 
 claude:
 	claude --dangerously-skip-permissions

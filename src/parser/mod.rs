@@ -1021,40 +1021,61 @@ impl Parser {
 
         match token.kind {
             TokenKind::Goto => {
+                // goto("/path")
                 self.advance();
+                self.expect(TokenKind::LParen)?;
                 let path = self.expect_string()?;
+                self.expect(TokenKind::RParen)?;
                 Ok(TestStatement::Goto { path })
             }
             TokenKind::Click => {
+                // click(target)
                 self.advance();
+                self.expect(TokenKind::LParen)?;
                 let target = self.test_target()?;
+                self.expect(TokenKind::RParen)?;
                 Ok(TestStatement::Click { target })
             }
             TokenKind::Fill => {
+                // fill(target, "value")
                 self.advance();
+                self.expect(TokenKind::LParen)?;
                 let target = self.test_target()?;
+                self.expect(TokenKind::Comma)?;
                 let value = self.expression()?;
+                self.expect(TokenKind::RParen)?;
                 Ok(TestStatement::Fill { target, value })
             }
             TokenKind::Type => {
+                // type(target, "value")
                 self.advance();
+                self.expect(TokenKind::LParen)?;
                 let target = self.test_target()?;
+                self.expect(TokenKind::Comma)?;
                 let value = self.expression()?;
+                self.expect(TokenKind::RParen)?;
                 Ok(TestStatement::Type { target, value })
             }
             TokenKind::Expect => {
+                // expect(target, { visible }) or expect(target, "value")
                 self.advance();
+                self.expect(TokenKind::LParen)?;
                 let target = self.test_target()?;
-                let assertion = self.test_assertion()?;
+                self.expect(TokenKind::Comma)?;
+                let assertion = self.test_assertion_new()?;
+                self.expect(TokenKind::RParen)?;
                 Ok(TestStatement::Expect { target, assertion })
             }
             TokenKind::Mock => {
+                // mock(Service.method, { response })
                 self.advance();
+                self.expect(TokenKind::LParen)?;
                 let service = self.expect_identifier()?;
                 self.expect(TokenKind::Dot)?;
                 let method = self.expect_identifier()?;
-                self.expect(TokenKind::Arrow)?;
+                self.expect(TokenKind::Comma)?;
                 let response = self.expression()?;
+                self.expect(TokenKind::RParen)?;
                 Ok(TestStatement::Mock {
                     service,
                     method,
@@ -1062,8 +1083,11 @@ impl Parser {
                 })
             }
             TokenKind::Wait => {
+                // wait(1000)
                 self.advance();
+                self.expect(TokenKind::LParen)?;
                 let value = self.expect_number()?;
+                self.expect(TokenKind::RParen)?;
                 Ok(TestStatement::Wait { ms: value as u32 })
             }
             _ => Err(ParseError::UnexpectedToken {
@@ -1087,6 +1111,20 @@ impl Parser {
                 let field = self.expect_identifier()?;
                 Ok(TestTarget::Field { store, field })
             }
+            TokenKind::Identifier if token.lexeme == "page" => {
+                // page.url
+                self.advance();
+                self.expect(TokenKind::Dot)?;
+                // Allow 'url' keyword as property name
+                let prop_token = self.peek().clone();
+                let property = if prop_token.kind == TokenKind::Url {
+                    self.advance();
+                    "url".to_string()
+                } else {
+                    self.expect_identifier()?
+                };
+                Ok(TestTarget::PageProperty { property })
+            }
             TokenKind::Text => {
                 // text "content"
                 self.advance();
@@ -1098,8 +1136,11 @@ impl Parser {
                 Ok(TestTarget::Submit)
             }
             TokenKind::Button => {
+                // button("text")
                 self.advance();
+                self.expect(TokenKind::LParen)?;
                 let content = self.expect_string()?;
+                self.expect(TokenKind::RParen)?;
                 Ok(TestTarget::Button { content })
             }
             TokenKind::Url => {
@@ -1138,6 +1179,58 @@ impl Parser {
             }
             _ => Err(ParseError::UnexpectedToken {
                 expected: "assertion (visible, hidden, or string value)".to_string(),
+                found: token.lexeme,
+                line: token.line,
+                column: token.column,
+            }),
+        }
+    }
+
+    /// Parse new-style assertion: { visible } or "value"
+    fn test_assertion_new(&mut self) -> Result<TestAssertion, ParseError> {
+        let token = self.peek().clone();
+
+        match token.kind {
+            TokenKind::LBrace => {
+                // { visible }, { hidden }, { disabled }, { empty }
+                self.advance();
+                let condition_token = self.peek().clone();
+                let assertion = match condition_token.kind {
+                    TokenKind::Visible => {
+                        self.advance();
+                        TestAssertion::Visible
+                    }
+                    TokenKind::Hidden => {
+                        self.advance();
+                        TestAssertion::Hidden
+                    }
+                    TokenKind::Identifier if condition_token.lexeme == "disabled" => {
+                        self.advance();
+                        TestAssertion::Disabled
+                    }
+                    TokenKind::Identifier if condition_token.lexeme == "empty" => {
+                        self.advance();
+                        TestAssertion::Empty
+                    }
+                    _ => {
+                        return Err(ParseError::UnexpectedToken {
+                            expected: "visible, hidden, disabled, or empty".to_string(),
+                            found: condition_token.lexeme,
+                            line: condition_token.line,
+                            column: condition_token.column,
+                        });
+                    }
+                };
+                self.expect(TokenKind::RBrace)?;
+                Ok(assertion)
+            }
+            TokenKind::String => {
+                // "value"
+                let value = self.expect_string()?;
+                Ok(TestAssertion::Value { value })
+            }
+            _ => Err(ParseError::UnexpectedToken {
+                expected: "{ condition } or \"value\"".to_string(),
                 found: token.lexeme,
                 line: token.line,
                 column: token.column,

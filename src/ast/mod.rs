@@ -499,8 +499,11 @@ pub enum TestTarget {
     /// Button with text
     Button { content: String },
 
-    /// URL
+    /// URL (legacy)
     Url,
+
+    /// Page property: `page.url`
+    PageProperty { property: String },
 
     /// CSS selector
     Selector { selector: String },
@@ -510,14 +513,23 @@ pub enum TestTarget {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum TestAssertion {
-    /// Element is visible
+    /// Element is visible: { visible }
     Visible,
 
-    /// Element is hidden
+    /// Element is hidden: { hidden }
     Hidden,
+
+    /// Element is disabled: { disabled }
+    Disabled,
+
+    /// Element is empty: { empty }
+    Empty,
 
     /// Element has text value
     HasText { value: String },
+
+    /// Value equals (string): expect(target, "value")
+    Value { value: String },
 
     /// URL equals
     Equals { value: String },
