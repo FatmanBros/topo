@@ -1,6 +1,6 @@
 // Login page
-import { LoginApp } from "../components/organisms/login-form.tp"
+import { LoginPage } from "../components/templates/login-page.tp"
 
-LoginPage -> {
-    children: [LoginApp]
+Page -> {
+    children: [LoginPage]
 }
