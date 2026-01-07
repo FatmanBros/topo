@@ -344,6 +344,7 @@ impl<'a> Lexer<'a> {
             // Store blocks
             "State" => TokenKind::State,
             "Actions" => TokenKind::Actions,
+            "Commands" => TokenKind::Commands,
             "Reducers" => TokenKind::Reducers,
             "Effects" => TokenKind::Effects,
             "Selectors" => TokenKind::Selectors,
