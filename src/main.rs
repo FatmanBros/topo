@@ -3,6 +3,11 @@ use clap::{Parser, Subcommand};
 use std::fs;
 use std::path::PathBuf;
 use tiny_http::{Response, Server};
+use std::sync::{Arc, Mutex};
+use std::net::TcpListener;
+use std::time::Duration;
+use notify::{Watcher, RecursiveMode};
+use tungstenite::{accept, Message};
 
 use std::collections::HashMap;
 
@@ -386,6 +391,82 @@ fn build_project(input: &PathBuf, output: &PathBuf, mode: &str) -> Result<()> {
     Ok(())
 }
 
+/// Build project for development mode (with hot reload script)
+fn build_project_dev(input: &PathBuf, output: &PathBuf, _mode: &str, ws_port: u16, config: &Config) -> Result<()> {
+    // Create output directory
+    fs::create_dir_all(output)?;
+
+    // Find all .tp files or use single file
+    let entry_files = find_tp_files(input)?;
+
+    // Parse all files and resolve imports
+    let mut parsed_files: HashMap<PathBuf, Program> = HashMap::new();
+    let mut compile_order: Vec<PathBuf> = Vec::new();
+
+    // Parse entry files and their dependencies
+    for file in &entry_files {
+        resolve_imports(file, input, &mut parsed_files, &mut compile_order)?;
+    }
+
+    // Generate code in dependency order
+    let mut all_output = String::new();
+    let mut codegen = JsCodegen::new();
+
+    // Generate runtime once at the beginning
+    all_output.push_str(&codegen.generate_runtime());
+
+    // Generate i18n runtime if configured
+    if let Some(i18n_config) = &config.i18n {
+        all_output.push_str(&generate_i18n_runtime(i18n_config));
+    }
+
+    // Generate file-based routes
+    let routes = generate_routes(&entry_files, input)?;
+    if !routes.is_empty() {
+        all_output.push_str("\n// File-based routes\n");
+        for (pattern, component) in &routes {
+            all_output.push_str(&format!("registerRoute('{}', {});\n", pattern, component));
+        }
+        all_output.push_str("\n");
+    }
+
+    let mut has_app = false;
+    for file in &compile_order {
+        if let Some(program) = parsed_files.get(file) {
+            // Check if this file contains App component
+            for decl in &program.declarations {
+                if let Declaration::Component(comp) = decl {
+                    if comp.name == "App" {
+                        has_app = true;
+                    }
+                }
+            }
+            let js = codegen.generate(program);
+            all_output.push_str(&js);
+            all_output.push('\n');
+        }
+    }
+
+    // Add mount call at the end
+    if has_app {
+        all_output.push_str("// Mount app\n");
+        all_output.push_str("mount(App, '#app');\n");
+    } else if !routes.is_empty() {
+        all_output.push_str("// Mount with router\n");
+        all_output.push_str("mount(null, '#app');\n");
+    }
+
+    // Write output
+    let output_file = output.join("app.js");
+    fs::write(&output_file, &all_output)?;
+
+    // Generate HTML with hot reload script
+    let html = generate_html_dev(config, ws_port + 1);
+    fs::write(output.join("index.html"), html)?;
+
+    Ok(())
+}
+
 /// Recursively resolve imports and build dependency order
 fn resolve_imports(
     file: &PathBuf,
@@ -564,6 +645,112 @@ fn generate_html(config: &Config) -> String {
     )
 }
 
+fn generate_html_dev(config: &Config, ws_port: u16) -> String {
+    let style_config = config.style.clone().unwrap_or_default();
+    let tailwind_config = style_config.tailwind.unwrap_or_default();
+
+    // Generate Tailwind script tag based on config
+    let tailwind_script = if tailwind_config.enabled && tailwind_config.cdn {
+        if let Some(custom_url) = &tailwind_config.cdn_url {
+            format!("    <script src=\"{}\"></script>\n", custom_url)
+        } else {
+            format!(
+                "    <script src=\"https://cdn.tailwindcss.com/{}\"></script>\n",
+                tailwind_config.version
+            )
+        }
+    } else if tailwind_config.enabled {
+        "    <!-- Tailwind CSS: Configure local build in tailwind.config.js -->\n    <link rel=\"stylesheet\" href=\"./styles.css\">\n".to_string()
+    } else {
+        String::new()
+    };
+
+    // Get project name
+    let title = config
+        .project
+        .as_ref()
+        .map(|p| p.name.clone())
+        .unwrap_or_else(|| "topo App".to_string());
+
+    format!(
+        r#"<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{}</title>
+{}</head>
+<body>
+    <div id="app"></div>
+    <script type="module" src="./app.js"></script>
+    <script>
+    // Hot Reload WebSocket
+    (function() {{
+      const ws = new WebSocket('ws://localhost:{}');
+      ws.onmessage = (e) => {{
+        if (e.data === 'reload') {{
+          console.log('[topo] Reloading...');
+          location.reload();
+        }}
+      }};
+      ws.onclose = () => {{
+        console.log('[topo] Connection lost, attempting reconnect...');
+        setTimeout(() => location.reload(), 1000);
+      }};
+      ws.onerror = () => {{}};
+    }})();
+
+    // Error Overlay for development
+    (function() {{
+      const overlay = document.createElement('div');
+      overlay.id = 'topo-error-overlay';
+      overlay.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:99999;padding:32px;overflow:auto;font-family:ui-monospace,monospace';
+
+      function showError(title, message, stack) {{
+        overlay.innerHTML = `
+          <div style="max-width:900px;margin:0 auto;background:#1a1a1a;border-radius:12px;border:1px solid #333;overflow:hidden">
+            <div style="background:#dc2626;color:white;padding:16px 20px;display:flex;justify-content:space-between;align-items:center">
+              <span style="font-weight:600;font-size:16px">${{title}}</span>
+              <div>
+                <button id="topo-copy-btn" style="background:#fff2;border:none;color:white;padding:8px 16px;border-radius:6px;cursor:pointer;margin-right:8px;font-size:13px">Copy</button>
+                <button id="topo-close-btn" style="background:#fff2;border:none;color:white;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:13px">✕</button>
+              </div>
+            </div>
+            <div style="padding:20px">
+              <div style="color:#f87171;font-size:18px;font-weight:500;margin-bottom:16px;word-break:break-word">${{message}}</div>
+              ${{stack ? `<pre style="color:#a1a1aa;font-size:13px;line-height:1.6;margin:0;white-space:pre-wrap;word-break:break-word">${{stack}}</pre>` : ''}}
+            </div>
+          </div>
+        `;
+        overlay.style.display = 'block';
+        document.getElementById('topo-close-btn').onclick = () => overlay.style.display = 'none';
+        document.getElementById('topo-copy-btn').onclick = () => {{
+          navigator.clipboard.writeText(message + (stack ? '\\n\\n' + stack : ''));
+          document.getElementById('topo-copy-btn').textContent = 'Copied!';
+          setTimeout(() => document.getElementById('topo-copy-btn').textContent = 'Copy', 2000);
+        }};
+      }}
+
+      document.body.appendChild(overlay);
+
+      window.onerror = (msg, src, line, col, err) => {{
+        const loc = src ? `${{src}}:${{line}}:${{col}}` : '';
+        showError('Runtime Error', msg, err?.stack || loc);
+        return false;
+      }};
+
+      window.onunhandledrejection = (e) => {{
+        showError('Unhandled Promise Rejection', e.reason?.message || String(e.reason), e.reason?.stack);
+      }};
+    }})();
+    </script>
+</body>
+</html>
+"#,
+        title, tailwind_script, ws_port
+    )
+}
+
 fn start_server(port: u16, output_dir: &PathBuf, open_browser: bool) -> Result<()> {
     let addr = format!("0.0.0.0:{}", port);
     let server = Server::http(&addr).map_err(|e| {
@@ -670,13 +857,193 @@ fn open_in_browser(url: &str) -> Result<()> {
     Ok(())
 }
 
-fn start_dev_server(port: u16, _config: &Config) -> Result<()> {
-    println!("Starting development server...");
-    println!("  Port: {}", port);
+fn start_dev_server(port: u16, config: &Config) -> Result<()> {
+    let build_config = config.build_config();
+    let paths_config = config.paths_config();
+    let dev_config = config.dev_config();
+
+    let input = PathBuf::from(&paths_config.pages);
+    let output = PathBuf::from(&build_config.output);
+    let mode = match build_config.mode {
+        BuildMode::Spa => "spa".to_string(),
+        BuildMode::Ssg => "ssg".to_string(),
+        BuildMode::Ssr => "ssr".to_string(),
+    };
+
+    // Initial build with dev mode HTML (includes hot reload script)
+    build_project_dev(&input, &output, &mode, port, config)?;
+
+    // WebSocket clients list
+    let ws_clients: Arc<Mutex<Vec<std::net::TcpStream>>> = Arc::new(Mutex::new(Vec::new()));
+    let ws_clients_clone = Arc::clone(&ws_clients);
+
+    // Start WebSocket server in separate thread
+    let ws_port = port + 1;
+    std::thread::spawn(move || {
+        let listener = match TcpListener::bind(format!("0.0.0.0:{}", ws_port)) {
+            Ok(l) => l,
+            Err(e) => {
+                eprintln!("  Warning: Could not start WebSocket server: {}", e);
+                return;
+            }
+        };
+
+        for stream in listener.incoming() {
+            if let Ok(stream) = stream {
+                let ws_clients = Arc::clone(&ws_clients_clone);
+                std::thread::spawn(move || {
+                    if let Ok(mut websocket) = accept(stream.try_clone().unwrap()) {
+                        // Add to clients list
+                        if let Ok(mut clients) = ws_clients.lock() {
+                            clients.push(stream);
+                        }
+                        // Keep connection alive
+                        loop {
+                            match websocket.read() {
+                                Ok(Message::Close(_)) | Err(_) => break,
+                                Ok(Message::Ping(data)) => {
+                                    let _ = websocket.send(Message::Pong(data));
+                                }
+                                _ => {}
+                            }
+                        }
+                    }
+                });
+            }
+        }
+    });
+
+    // File watcher setup
+    let ws_clients_for_watcher = Arc::clone(&ws_clients);
+    let input_clone = input.clone();
+    let output_clone = output.clone();
+    let mode_clone = mode.clone();
+    let config_clone = config.clone();
+
+    let (tx, rx) = std::sync::mpsc::channel();
+    let mut watcher = notify::recommended_watcher(move |res: Result<notify::Event, notify::Error>| {
+        if let Ok(event) = res {
+            if event.kind.is_modify() || event.kind.is_create() || event.kind.is_remove() {
+                let _ = tx.send(());
+            }
+        }
+    })?;
+
+    // Watch the pages directory and components directory
+    watcher.watch(&input, RecursiveMode::Recursive)?;
+
+    // Also watch components directory if it exists
+    let components_dir = PathBuf::from(&paths_config.components);
+    if components_dir.exists() {
+        watcher.watch(&components_dir, RecursiveMode::Recursive)?;
+    }
+
+    // Rebuild thread
+    std::thread::spawn(move || {
+        let mut last_rebuild = std::time::Instant::now();
+        loop {
+            if rx.recv().is_ok() {
+                // Debounce: wait a bit to batch multiple changes
+                std::thread::sleep(Duration::from_millis(100));
+                // Drain any additional events
+                while rx.try_recv().is_ok() {}
+
+                // Avoid rebuilding too frequently
+                if last_rebuild.elapsed() < Duration::from_millis(200) {
+                    continue;
+                }
+
+                println!("\n  File changed, rebuilding...");
+
+                match build_project_dev(&input_clone, &output_clone, &mode_clone, port, &config_clone) {
+                    Ok(_) => {
+                        println!("  ✓ Rebuild complete");
+
+                        // Notify all WebSocket clients
+                        if let Ok(mut clients) = ws_clients_for_watcher.lock() {
+                            clients.retain(|client| {
+                                if let Ok(mut ws) = accept(client.try_clone().unwrap_or_else(|_| client.try_clone().unwrap())) {
+                                    ws.send(Message::Text("reload".to_string())).is_ok()
+                                } else {
+                                    false
+                                }
+                            });
+                        }
+                    }
+                    Err(e) => {
+                        eprintln!("  ✗ Build error: {}", e);
+                    }
+                }
+                last_rebuild = std::time::Instant::now();
+            }
+        }
+    });
+
+    // Start HTTP server
+    let addr = format!("0.0.0.0:{}", port);
+    let server = Server::http(&addr).map_err(|e| {
+        let err_str = e.to_string();
+        if err_str.contains("Address already in use") || err_str.contains("os error 98") {
+            anyhow::anyhow!(
+                "Port {} is already in use.\n\n\
+                 Try: topo dev --port {}",
+                port, port + 10
+            )
+        } else {
+            anyhow::anyhow!("Failed to start server: {}", e)
+        }
+    })?;
+
     println!();
-    println!("  Local: http://localhost:{}", port);
+    println!("  Dev server running at:");
+    println!("  Local:     http://localhost:{}", port);
+    println!("  WebSocket: ws://localhost:{}", ws_port);
     println!();
-    println!("(Dev server with HMR not yet implemented - use 'topo start' for now)");
+    println!("  Watching for file changes...");
+    println!("  Press Ctrl+C to stop");
+    println!();
+
+    // Open browser if configured
+    if dev_config.open {
+        let url = format!("http://localhost:{}", port);
+        if let Err(e) = open_in_browser(&url) {
+            eprintln!("  Warning: Could not open browser: {}", e);
+        }
+    }
+
+    // Serve files
+    for request in server.incoming_requests() {
+        let url_path = request.url().trim_start_matches('/');
+        let file_path = if url_path.is_empty() || url_path == "/" {
+            output.join("index.html")
+        } else {
+            output.join(url_path)
+        };
+
+        let response = if file_path.exists() && file_path.is_file() {
+            match fs::read(&file_path) {
+                Ok(content) => {
+                    let content_type = get_content_type(&file_path);
+                    Response::from_data(content).with_header(
+                        tiny_http::Header::from_bytes(&b"Content-Type"[..], content_type.as_bytes()).unwrap()
+                    )
+                }
+                Err(_) => Response::from_string("500 Internal Server Error")
+                    .with_status_code(500),
+            }
+        } else {
+            // For SPA, serve index.html for non-existent paths
+            match fs::read(output.join("index.html")) {
+                Ok(content) => Response::from_data(content).with_header(
+                    tiny_http::Header::from_bytes(&b"Content-Type"[..], b"text/html").unwrap()
+                ),
+                Err(_) => Response::from_string("404 Not Found").with_status_code(404),
+            }
+        };
+
+        let _ = request.respond(response);
+    }
+
     Ok(())
 }
 
