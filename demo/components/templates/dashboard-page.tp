@@ -1,12 +1,22 @@
 // Dashboard page template
 import { DashboardLayout } from "./dashboard-layout.tp"
 import { DashboardHeader } from "../organisms/dashboard-header.tp"
-import { StatCards } from "../organisms/stat-cards.tp"
 import { Card } from "../atoms/card.tp"
+import { StatCard } from "../atoms/stat-card.tp"
 import { ActionButton } from "../atoms/button.tp"
 import { ActivityItem } from "../molecules/activity-item.tp"
 
-DashboardPage -> DashboardLayout([DashboardHeader, StatCards, DashboardContent])
+DashboardPage -> DashboardLayout([DashboardHeader, StatCardsGrid, DashboardContent])
+
+StatCardsGrid -> {
+    style: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
+    children: [
+        StatCard({ label: "Total Users", value: "12,345", change: "+12.5%", positive: true }),
+        StatCard({ label: "Revenue", value: "$45,678", change: "+8.2%", positive: true }),
+        StatCard({ label: "Active Sessions", value: "1,234", change: "-3.1%", positive: false }),
+        StatCard({ label: "Conversion Rate", value: "3.24%", change: "+0.8%", positive: true })
+    ]
+}
 
 DashboardContent -> {
     style: "grid grid-cols-1 lg:grid-cols-3 gap-6"
