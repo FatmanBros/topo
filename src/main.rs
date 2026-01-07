@@ -1679,6 +1679,18 @@ fn generate_routes(files: &[PathBuf], base_dir: &PathBuf) -> Result<Vec<(String,
             continue;
         }
 
+        // Get file stem (name without extension)
+        let file_stem = file
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("");
+
+        // Skip non-page files (template, store, etc.)
+        // Only index.tp, [param].tp, or root-level named files are pages
+        if file_stem == "template" || file_stem == "store" || file_stem == "layout" {
+            continue;
+        }
+
         // Get relative path from pages directory
         let relative = file.strip_prefix(&pages_dir)?;
         let path_str = relative.to_string_lossy();
