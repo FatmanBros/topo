@@ -2,21 +2,54 @@
 import { DashboardLayout } from "./dashboard-layout.tp"
 import { DashboardHeader } from "../organisms/dashboard-header.tp"
 import { StatCards } from "../organisms/stat-cards.tp"
-import { ActivityFeed } from "../organisms/activity-feed.tp"
-import { QuickActions } from "../organisms/quick-actions.tp"
+import { Card } from "../atoms/card.tp"
+import { ActivityItem } from "../molecules/activity-item.tp"
 
 DashboardPage -> DashboardLayout([DashboardHeader, StatCards, DashboardContent])
 
 DashboardContent -> {
     style: "grid grid-cols-1 lg:grid-cols-3 gap-6"
-    children: [ActivityFeedWrapper, QuickActionsWrapper]
+    children: [RecentActivityCard, QuickActionsCard]
 }
 
-ActivityFeedWrapper -> {
+RecentActivityCard -> {
     style: "lg:col-span-2"
-    children: [ActivityFeed]
+    children: [
+        Card({
+            title: "Recent Activity",
+            children: [ActivityList]
+        })
+    ]
 }
 
-QuickActionsWrapper -> {
-    children: [QuickActions]
+ActivityList -> {
+    align: vertical
+    style: "space-y-0"
+    children: [
+        ActivityItem({ user: "Alice", action: "created a new project", time: "2 minutes ago" }),
+        ActivityItem({ user: "Bob", action: "updated the dashboard", time: "15 minutes ago" }),
+        ActivityItem({ user: "Carol", action: "completed a task", time: "1 hour ago" }),
+        ActivityItem({ user: "Dave", action: "joined the team", time: "3 hours ago" })
+    ]
+}
+
+QuickActionsCard -> Card({
+    title: "Quick Actions",
+    children: [QuickActionButtons]
+})
+
+QuickActionButtons -> {
+    style: "grid grid-cols-2 gap-3"
+    children: [
+        ActionButton({ label: "New Project" }),
+        ActionButton({ label: "Add User" }),
+        ActionButton({ label: "Generate Report" }),
+        ActionButton({ label: "Settings" })
+    ]
+}
+
+ActionButton(label) -> {
+    type: button
+    content: label
+    style: "p-3 bg-gray-50 hover:bg-gray-100 rounded-lg text-sm font-medium text-gray-700 transition text-left"
 }

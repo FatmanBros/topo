@@ -1,0 +1,12 @@
+// Card atom - container with title and content
+Card(title, children) -> {
+    style: "bg-white rounded-xl shadow-sm border border-gray-100 p-6"
+    align: vertical
+    children: [CardTitle({ title: title }), ...children]
+}
+
+CardTitle(title) -> {
+    type: text
+    content: title
+    style: "text-lg font-semibold text-gray-900 mb-4"
+}
