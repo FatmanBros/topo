@@ -1,0 +1,5 @@
+// Header organism - layout only, content is decided by the page
+Header(props) -> {
+    style: props.style ? props.style : "flex items-center justify-between mb-8"
+    children: [props.left, props.right]
+}
