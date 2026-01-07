@@ -1,8 +1,18 @@
 import { Button } from "../atoms/button.tp"
 
-LangJa -> Button("日本語", $i18n.setLocale("ja"), "px-3 py-1 text-sm rounded bg-gray-200 hover:bg-gray-300 mr-2", button)
+LangJa -> {
+    type: "button"
+    content: "日本語"
+    click: $i18n.setLocale("ja")
+    style: "px-3 py-1 text-sm rounded bg-gray-200 hover:bg-gray-300 mr-2"
+}
 
-LangEn -> Button("English", $i18n.setLocale("en"), "px-3 py-1 text-sm rounded bg-gray-200 hover:bg-gray-300", button)
+LangEn -> {
+    type: "button"
+    content: "English"
+    click: $i18n.setLocale("en")
+    style: "px-3 py-1 text-sm rounded bg-gray-200 hover:bg-gray-300"
+}
 
 LangSwitcher -> {
     style: "flex justify-center mb-4"

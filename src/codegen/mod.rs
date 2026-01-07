@@ -22,6 +22,8 @@ pub struct JsCodegen {
     theme_values: Vec<(String, String)>,
     /// Component parameter names (for object-style props conversion)
     component_params: HashMap<String, Vec<String>>,
+    /// Store names that have same-name components (need internal naming)
+    stores_with_components: HashSet<String>,
 }
 
 impl JsCodegen {
@@ -36,6 +38,7 @@ impl JsCodegen {
             theme_colors: HashSet::new(),
             theme_values: Vec::new(),
             component_params: HashMap::new(),
+            stores_with_components: HashSet::new(),
         }
     }
 
@@ -90,6 +93,16 @@ impl JsCodegen {
         self.theme_colors.contains(name)
     }
 
+    /// Get the JavaScript variable name for a store
+    /// Returns `_StoreNameStore` if the store has a same-name component, otherwise `store_name`
+    fn store_var_name(&self, store_name: &str) -> String {
+        if self.stores_with_components.contains(store_name) {
+            format!("_{}Store", store_name)
+        } else {
+            store_name.to_string()
+        }
+    }
+
     /// Generate runtime code (call once at the beginning of build)
     pub fn generate_runtime(&mut self) -> String {
         self.emit_runtime_imports();
@@ -99,11 +112,19 @@ impl JsCodegen {
 
     pub fn generate(&mut self, program: &Program) -> String {
         // First pass: collect API service names, collect theme and component params
+        // Also detect stores that have same-name components
+        let mut store_names: HashSet<String> = HashSet::new();
+        let mut component_names: HashSet<String> = HashSet::new();
+
         for decl in &program.declarations {
             if let Declaration::ApiService(api) = decl {
                 self.api_service_names.insert(api.name.clone());
             }
+            if let Declaration::Store(store) = decl {
+                store_names.insert(store.name.clone());
+            }
             if let Declaration::Component(comp) = decl {
+                component_names.insert(comp.name.clone());
                 // Collect component parameter names for object-style props conversion
                 if !comp.params.is_empty() {
                     let param_names: Vec<String> = comp.params.iter().map(|p| p.name.clone()).collect();
@@ -114,6 +135,11 @@ impl JsCodegen {
             if let Declaration::Theme(theme) = decl {
                 self.collect_theme_from_def(theme);
             }
+        }
+
+        // Find stores that have same-name components
+        for name in store_names.intersection(&component_names) {
+            self.stores_with_components.insert(name.clone());
         }
 
         // Generate theme CSS injection if theme is defined
@@ -716,8 +742,11 @@ impl JsCodegen {
                 .collect())
             .unwrap_or_default();
 
+        // Get variable name (different from registry name if same-name component exists)
+        let var_name = self.store_var_name(&store.name);
+
         // Generate store creation
-        self.emit_line(&format!("const {} = createStore('{}', {{", store.name, store.name));
+        self.emit_line(&format!("const {} = createStore('{}', {{", var_name, store.name));
         self.indent += 1;
 
         if let Some(state) = &store.state {
@@ -749,7 +778,7 @@ impl JsCodegen {
             let field_labels = self.collect_field_labels(&state.fields);
 
             if !validation_rules.is_empty() {
-                self.emit_line(&format!("const {}ValidationRules = {{", store.name));
+                self.emit_line(&format!("const {}ValidationRules = {{", var_name));
                 self.indent += 1;
                 for (i, (field, rules)) in validation_rules.iter().enumerate() {
                     let comma = if i < validation_rules.len() - 1 { "," } else { "" };
@@ -760,7 +789,7 @@ impl JsCodegen {
                 self.emit_line("");
 
                 // Generate field labels map
-                self.emit_line(&format!("const {}FieldLabels = {{", store.name));
+                self.emit_line(&format!("const {}FieldLabels = {{", var_name));
                 self.indent += 1;
                 for (i, (field, label)) in field_labels.iter().enumerate() {
                     let comma = if i < field_labels.len() - 1 { "," } else { "" };
@@ -771,16 +800,16 @@ impl JsCodegen {
                 self.emit_line("");
 
                 // Attach labels to store object for runtime access ($Store.label.field)
-                self.emit_line(&format!("{}.labels = {}FieldLabels;", store.name, store.name));
+                self.emit_line(&format!("{}.labels = {}FieldLabels;", var_name, var_name));
 
                 // Generate validate helper for this store with custom labels
-                self.emit_line(&format!("function validate{}(data) {{", store.name));
+                self.emit_line(&format!("function validate{}(data) {{", var_name));
                 self.indent += 1;
                 self.emit_line("const errors = {};");
-                self.emit_line(&format!("for (const [field, fieldRules] of Object.entries({}ValidationRules)) {{", store.name));
+                self.emit_line(&format!("for (const [field, fieldRules] of Object.entries({}ValidationRules)) {{", var_name));
                 self.indent += 1;
                 self.emit_line("const value = data[field];");
-                self.emit_line(&format!("const label = {}FieldLabels[field] || field;", store.name));
+                self.emit_line(&format!("const label = {}FieldLabels[field] || field;", var_name));
                 self.emit_line("for (const rule of fieldRules) {");
                 self.indent += 1;
                 self.emit_line("const validator = validators[rule.name];");
@@ -812,9 +841,9 @@ impl JsCodegen {
                     let capitalized = capitalize_first(field_name);
 
                     // Generate auto-validating setter
-                    self.emit_line(&format!("{}.on('Set{}', (state, value) => {{", store.name, capitalized));
+                    self.emit_line(&format!("{}.on('Set{}', (state, value) => {{", var_name, capitalized));
                     self.indent += 1;
-                    self.emit_line(&format!("const result = validate{}({{ ...state, {}: value }});", store.name, field_name));
+                    self.emit_line(&format!("const result = validate{}({{ ...state, {}: value }});", var_name, field_name));
                     self.emit_line(&format!("const error = result.errors.{} ? result.errors.{}[0] : '';", field_name, field_name));
                     self.emit_line("return {");
                     self.indent += 1;
@@ -836,9 +865,9 @@ impl JsCodegen {
                 .collect();
 
             if !validated_fields.is_empty() {
-                self.emit_line(&format!("{}.on('Submit', (state) => {{", store.name));
+                self.emit_line(&format!("{}.on('Submit', (state) => {{", var_name));
                 self.indent += 1;
-                self.emit_line(&format!("const result = validate{}(state);", store.name));
+                self.emit_line(&format!("const result = validate{}(state);", var_name));
                 self.emit_line("return {");
                 self.indent += 1;
                 self.emit_line("...state,");
@@ -898,9 +927,10 @@ impl JsCodegen {
             format!(", {}", handler.params.join(", "))
         };
 
+        let var_name = self.store_var_name(&store.name);
         self.emit_line(&format!(
             "{}.on('{}', (state{}) => ({{",
-            store.name, handler.action, params
+            var_name, handler.action, params
         ));
         self.indent += 1;
 
@@ -927,9 +957,10 @@ impl JsCodegen {
             handler.params.join(", ")
         };
 
+        let var_name = self.store_var_name(&store.name);
         self.emit_line(&format!(
             "{}.effect('{}', async ({}) => {{",
-            store.name, handler.action, params
+            var_name, handler.action, params
         ));
         self.indent += 1;
 
@@ -952,9 +983,10 @@ impl JsCodegen {
         }
 
         let body = self.generate_expression(&selector.body);
+        let var_name = self.store_var_name(&store.name);
         self.emit_line(&format!(
             "{}.selector('{}', (state) => {});",
-            store.name, selector.name, body
+            var_name, selector.name, body
         ));
 
         self.state_fields.clear();
@@ -1373,17 +1405,20 @@ impl JsCodegen {
                     return format!("$i18n.{}", path.join("."));
                 }
 
+                // Use store variable name (may differ from store name if same-name component exists)
+                let var_name = self.store_var_name(store);
+
                 if path.is_empty() {
-                    format!("{}.state", store)
+                    format!("{}.state", var_name)
                 } else if path.last().map(|s| s.as_str()) == Some("label") {
                     // $Store.field.label -> Store.labels.field (virtual property)
                     let field_path: Vec<&str> = path.iter()
                         .take(path.len() - 1)
                         .map(|s| s.as_str())
                         .collect();
-                    format!("{}.labels.{}", store, field_path.join("."))
+                    format!("{}.labels.{}", var_name, field_path.join("."))
                 } else {
-                    format!("{}.state.{}", store, path.join("."))
+                    format!("{}.state.{}", var_name, path.join("."))
                 }
             }
             Expression::ActionRef { store, action, args } => {
@@ -1490,6 +1525,14 @@ impl JsCodegen {
                             // Clone param_names to avoid borrow conflict
                             let param_names_opt = self.component_params.get(name).cloned();
                             if let Some(param_names) = param_names_opt {
+                                // If component uses single "props" param, pass object as-is
+                                if param_names.len() == 1 && param_names[0] == "props" {
+                                    let props: Vec<String> = properties
+                                        .iter()
+                                        .map(|p| format!("{}: {}", p.key, self.generate_expression(&p.value)))
+                                        .collect();
+                                    return format!("{}({{ {} }})", c, props.join(", "));
+                                }
                                 // Check for Reference props and collect their paths
                                 let mut auto_data_error: Option<String> = None;
                                 let mut auto_data_field: Option<String> = None;
@@ -1649,6 +1692,7 @@ impl Default for JsCodegen {
             theme_colors: HashSet::new(),
             theme_values: Vec::new(),
             component_params: HashMap::new(),
+            stores_with_components: HashSet::new(),
         }
     }
 }

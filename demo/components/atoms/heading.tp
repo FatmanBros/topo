@@ -1,5 +1,6 @@
-Heading(content, style) -> {
+// Heading({ t: "key" }) or Heading({ text: "直接", style: "..." })
+Heading(props) -> {
     type: text
-    content: content
-    style: style
+    content: props.t
+    style: props.style
 }

@@ -1,5 +1,6 @@
-Text(content, style) -> {
+// Text({ t: "key" }) or Text({ text: "直接", style: "..." })
+Text(props) -> {
     type: text
-    content: content
-    style: style
+    content: props.text
+    style: props.style
 }

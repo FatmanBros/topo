@@ -132,6 +132,21 @@ my-app/
     └── organisms/
 ```
 
+## Editor Support
+
+### VS Code Extension
+
+Full language support for `.tp` files:
+
+- Syntax highlighting
+- Code completion (components, props, Tailwind classes)
+- Auto-import suggestions
+- Formatting
+- Linting
+- Snippets
+
+See [vscode-topo](./vscode-topo/) for installation instructions.
+
 ## License
 
 MIT

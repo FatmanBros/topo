@@ -7,12 +7,12 @@ import { Text } from "../atoms/text.tp"
 // ─── Store定義 ───
 LoginFormCard | {
     State {
-        @label("メールアドレス")
+        @label("email")
         @required
         @email
         email: ""
 
-        @label("パスワード")
+        @label("password")
         @required
         @minLength(8)
         password: ""
@@ -20,13 +20,11 @@ LoginFormCard | {
         isSubmitting: false
     }
 
-    // 外部公開コマンド（Templatesからアクセス可能）
     Commands {
         Submit
         Reset
     }
 
-    // 内部アクション（このOrganism内でのみ使用）
     Actions {
         SetEmail(value)
         SetPassword(value)
@@ -52,24 +50,30 @@ LoginFormCard -> {
     align: vertical
     children: [
         LangSwitcher,
-        Heading(t("sign_in"), "text-2xl font-bold text-gray-900 mb-6 text-center"),
+        Heading({
+            t: "sign_in"
+            style: "text-2xl font-bold text-gray-900 mb-6 text-center"
+        }),
         FormField({
-            label: t("email")
+            label: { t: "email" }
             inputType: "email"
-            placeholder: t("email_placeholder")
+            placeholder: { t: "email_placeholder" }
             value: $LoginFormCard.email
             onInput: LoginFormCard.SetEmail
             errorMsg: $LoginFormCard.emailError
         }),
         FormField({
-            label: t("password")
+            label: { t: "password" }
             inputType: "password"
-            placeholder: t("password_placeholder")
+            placeholder: { t: "password_placeholder" }
             value: $LoginFormCard.password
             onInput: LoginFormCard.SetPassword
             errorMsg: $LoginFormCard.passwordError
         }),
-        SubmitButton(t("sign_in"), LoginFormCard.Submit),
-        Text($LoginFormCard.email, "text-sm text-gray-500 mt-4 text-center")
+        SubmitButton({ t: "sign_in" }, LoginFormCard.Submit),
+        Text({
+            text: $LoginFormCard.email
+            style: "text-sm text-gray-500 mt-4 text-center"
+        })
     ]
 }

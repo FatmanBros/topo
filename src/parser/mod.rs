@@ -1339,7 +1339,7 @@ impl Parser {
                 };
             } else if self.check(TokenKind::Dot) {
                 self.advance();
-                let property = self.expect_identifier()?;
+                let property = self.expect_identifier_or_keyword()?;
                 expr = Expression::MemberAccess {
                     object: Box::new(expr),
                     property,
