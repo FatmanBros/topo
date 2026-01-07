@@ -1,9 +1,7 @@
 // Dashboard template - layout only
 import { DashboardLayout } from "@/components/templates/dashboard-layout.tp"
 import { Header } from "@/components/organisms/header.tp"
-import { Heading } from "@/components/atoms/heading.tp"
-import { Text } from "@/components/atoms/text.tp"
-import { Button } from "@/components/atoms/button.tp"
+import { DashboardHeaderLeft, DashboardHeaderRight } from "./components/dashboard-header-content.tp"
 import { StatCardsGrid } from "./components/stat-cards.tp"
 import { RecentActivityCard } from "./components/recent-activity.tp"
 import { QuickActionsCard } from "./components/quick-actions.tp"
@@ -11,29 +9,9 @@ import { QuickActionsCard } from "./components/quick-actions.tp"
 DashboardTemplate -> DashboardLayout([DashboardHeaderSection, StatCardsGrid, DashboardContent])
 
 DashboardHeaderSection -> Header({
-    left: HeaderLeft,
-    right: HeaderRight
+    left: DashboardHeaderLeft,
+    right: DashboardHeaderRight
 })
-
-HeaderLeft -> {
-    align: vertical
-    children: [
-        Heading({ text: "Dashboard", level: 2, style: "text-2xl font-bold text-gray-900" }),
-        Text({ text: "Welcome back! Here's what's happening.", style: "text-gray-500 mt-1" })
-    ]
-}
-
-HeaderRight -> {
-    style: "flex items-center gap-4"
-    children: [NotificationButton, UserAvatar]
-}
-
-NotificationButton -> Button("Notifications", null, "p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition", "button")
-
-UserAvatar -> {
-    style: "w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center"
-    children: [Text({ text: "T", style: "text-white font-semibold" })]
-}
 
 DashboardContent -> {
     style: "grid grid-cols-1 lg:grid-cols-3 gap-6"
