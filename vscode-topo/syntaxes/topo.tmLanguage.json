@@ -1,0 +1,262 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Topo",
+  "scopeName": "source.topo",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#imports" },
+    { "include": "#component-alias" },
+    { "include": "#component-definition" },
+    { "include": "#store-definition" },
+    { "include": "#api-service" },
+    { "include": "#annotations" },
+    { "include": "#strings" },
+    { "include": "#numbers" },
+    { "include": "#keywords" },
+    { "include": "#operators" },
+    { "include": "#store-access" },
+    { "include": "#function-call" },
+    { "include": "#identifiers" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.double-slash.topo",
+          "match": "//.*$"
+        }
+      ]
+    },
+    "imports": {
+      "patterns": [
+        {
+          "name": "meta.import.topo",
+          "begin": "\\b(import)\\s*\\{",
+          "beginCaptures": {
+            "1": { "name": "keyword.control.import.topo" }
+          },
+          "end": "\\}\\s*(from)\\s*([\"'])([^\"']+)\\3",
+          "endCaptures": {
+            "1": { "name": "keyword.control.from.topo" },
+            "2": { "name": "punctuation.definition.string.begin.topo" },
+            "3": { "name": "string.quoted.topo" }
+          },
+          "patterns": [
+            {
+              "name": "entity.name.type.import.topo",
+              "match": "\\b[A-Z][a-zA-Z0-9]*\\b"
+            }
+          ]
+        }
+      ]
+    },
+    "component-alias": {
+      "patterns": [
+        {
+          "name": "meta.component.alias.topo",
+          "match": "^\\s*([A-Z][a-zA-Z0-9]*)\\s*(\\([^)]*\\))?\\s*(->)\\s*([A-Z][a-zA-Z0-9]*)\\s*\\(",
+          "captures": {
+            "1": { "name": "entity.name.function.component.topo" },
+            "2": { "name": "meta.parameters.topo" },
+            "3": { "name": "keyword.operator.arrow.topo" },
+            "4": { "name": "entity.name.type.component.topo" }
+          }
+        }
+      ]
+    },
+    "component-definition": {
+      "patterns": [
+        {
+          "name": "meta.component.definition.topo",
+          "match": "^\\s*([A-Z][a-zA-Z0-9]*)\\s*(\\([^)]*\\))?\\s*(->)\\s*\\{",
+          "captures": {
+            "1": { "name": "entity.name.function.component.topo" },
+            "2": { "name": "meta.parameters.topo" },
+            "3": { "name": "keyword.operator.arrow.topo" }
+          }
+        }
+      ]
+    },
+    "store-definition": {
+      "patterns": [
+        {
+          "name": "meta.store.definition.topo",
+          "match": "^\\s*([A-Z][a-zA-Z0-9]*)\\s*(\\|)\\s*\\{",
+          "captures": {
+            "1": { "name": "entity.name.class.store.topo" },
+            "2": { "name": "keyword.operator.pipe.topo" }
+          }
+        },
+        {
+          "name": "keyword.other.state.topo",
+          "match": "\\b(State|Actions|Reducers)\\b"
+        },
+        {
+          "name": "keyword.control.on.topo",
+          "match": "\\bon\\b"
+        }
+      ]
+    },
+    "api-service": {
+      "patterns": [
+        {
+          "name": "meta.api.service.topo",
+          "match": "^\\s*([A-Z][a-zA-Z0-9]*)\\s*(::)\\s*\\{",
+          "captures": {
+            "1": { "name": "entity.name.class.api.topo" },
+            "2": { "name": "keyword.operator.double-colon.topo" }
+          }
+        }
+      ]
+    },
+    "annotations": {
+      "patterns": [
+        {
+          "name": "meta.annotation.topo",
+          "match": "(@)([a-zA-Z]+)(\\([^)]*\\))?",
+          "captures": {
+            "1": { "name": "punctuation.definition.annotation.topo" },
+            "2": { "name": "entity.name.function.decorator.topo" },
+            "3": { "name": "meta.annotation.arguments.topo" }
+          }
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.topo",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "name": "constant.character.escape.topo",
+              "match": "\\\\."
+            }
+          ]
+        },
+        {
+          "name": "string.quoted.single.topo",
+          "begin": "'",
+          "end": "'",
+          "patterns": [
+            {
+              "name": "constant.character.escape.topo",
+              "match": "\\\\."
+            }
+          ]
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.topo",
+          "match": "\\b\\d+(\\.\\d+)?\\b"
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.topo",
+          "match": "\\b(import|from|on)\\b"
+        },
+        {
+          "name": "constant.language.topo",
+          "match": "\\b(true|false|null)\\b"
+        },
+        {
+          "name": "support.type.property.topo",
+          "match": "\\b(type|content|value|style|children|align|click|submit|href|placeholder|inputType|options|rows|dataBind|dataError|dataField|onInput|onChange)\\b(?=\\s*:)"
+        },
+        {
+          "name": "support.constant.type.topo",
+          "match": "(?<=type:\\s*)(text|button|input|link|select|textarea|container|form|submit)\\b"
+        },
+        {
+          "name": "support.constant.align.topo",
+          "match": "(?<=align:\\s*)(horizontal|vertical)\\b"
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.arrow.topo",
+          "match": "->"
+        },
+        {
+          "name": "keyword.operator.pipe.topo",
+          "match": "\\|"
+        },
+        {
+          "name": "keyword.operator.double-colon.topo",
+          "match": "::"
+        },
+        {
+          "name": "punctuation.separator.colon.topo",
+          "match": ":"
+        }
+      ]
+    },
+    "store-access": {
+      "patterns": [
+        {
+          "name": "meta.store.access.topo",
+          "match": "(\\$)([A-Z][a-zA-Z0-9]*)\\.([a-zA-Z][a-zA-Z0-9]*)",
+          "captures": {
+            "1": { "name": "punctuation.definition.store.topo" },
+            "2": { "name": "entity.name.class.store.topo" },
+            "3": { "name": "variable.other.property.topo" }
+          }
+        },
+        {
+          "name": "meta.store.dispatch.topo",
+          "match": "([A-Z][a-zA-Z0-9]*)\\.([A-Z][a-zA-Z0-9]*)",
+          "captures": {
+            "1": { "name": "entity.name.class.store.topo" },
+            "2": { "name": "entity.name.function.action.topo" }
+          }
+        }
+      ]
+    },
+    "function-call": {
+      "patterns": [
+        {
+          "name": "meta.function-call.i18n.topo",
+          "match": "\\b(t)\\s*\\(",
+          "captures": {
+            "1": { "name": "support.function.i18n.topo" }
+          }
+        },
+        {
+          "name": "meta.function-call.topo",
+          "match": "\\b([a-z][a-zA-Z0-9]*)\\s*\\(",
+          "captures": {
+            "1": { "name": "entity.name.function.topo" }
+          }
+        },
+        {
+          "name": "meta.component-call.topo",
+          "match": "\\b([A-Z][a-zA-Z0-9]*)\\s*\\(",
+          "captures": {
+            "1": { "name": "entity.name.type.component.topo" }
+          }
+        }
+      ]
+    },
+    "identifiers": {
+      "patterns": [
+        {
+          "name": "variable.other.topo",
+          "match": "\\b[a-z][a-zA-Z0-9]*\\b"
+        },
+        {
+          "name": "entity.name.type.topo",
+          "match": "\\b[A-Z][a-zA-Z0-9]*\\b"
+        }
+      ]
+    }
+  }
+}
