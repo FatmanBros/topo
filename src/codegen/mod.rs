@@ -24,6 +24,8 @@ pub struct JsCodegen {
     component_params: HashMap<String, Vec<String>>,
     /// Store names that have same-name components (need internal naming)
     stores_with_components: HashSet<String>,
+    /// Store state fields: map from store name to set of state field names
+    store_state_fields: HashMap<String, HashSet<String>>,
 }
 
 impl JsCodegen {
@@ -39,6 +41,7 @@ impl JsCodegen {
             theme_values: Vec::new(),
             component_params: HashMap::new(),
             stores_with_components: HashSet::new(),
+            store_state_fields: HashMap::new(),
         }
     }
 
@@ -125,6 +128,20 @@ impl JsCodegen {
         }
     }
 
+    /// Pre-collect store state fields from all files for cross-file state access
+    pub fn collect_store_state_fields(&mut self, program: &Program) {
+        for decl in &program.declarations {
+            if let Declaration::Store(store) = decl {
+                if let Some(state_block) = &store.state {
+                    let fields: HashSet<String> = state_block.fields.iter()
+                        .map(|p| p.key.clone())
+                        .collect();
+                    self.store_state_fields.insert(store.name.clone(), fields);
+                }
+            }
+        }
+    }
+
     pub fn generate(&mut self, program: &Program) -> String {
         // First pass: collect API service names, collect theme and component params
         // Also detect stores that have same-name components
@@ -137,6 +154,13 @@ impl JsCodegen {
             }
             if let Declaration::Store(store) = decl {
                 store_names.insert(store.name.clone());
+                // Collect state field names for store state access
+                if let Some(state_block) = &store.state {
+                    let fields: HashSet<String> = state_block.fields.iter()
+                        .map(|p| p.key.clone())
+                        .collect();
+                    self.store_state_fields.insert(store.name.clone(), fields);
+                }
             }
             if let Declaration::Component(comp) = decl {
                 component_names.insert(comp.name.clone());
@@ -1693,6 +1717,12 @@ impl JsCodegen {
                     if property == "Fields" && self.stores_with_components.contains(name) {
                         return format!("_{}Store.Fields", name);
                     }
+                    // Check if accessing a store state field: Store.field -> Store.state.field
+                    if let Some(state_fields) = self.store_state_fields.get(name) {
+                        if state_fields.contains(property) {
+                            return format!("{}.state.{}", name, property);
+                        }
+                    }
                 }
                 let obj = self.generate_expression(object);
                 format!("{}.{}", obj, property)
@@ -1940,6 +1970,7 @@ impl Default for JsCodegen {
             theme_values: Vec::new(),
             component_params: HashMap::new(),
             stores_with_components: HashSet::new(),
+            store_state_fields: HashMap::new(),
         }
     }
 }
