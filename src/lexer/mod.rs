@@ -384,6 +384,7 @@ impl<'a> Lexer<'a> {
             "expect" => TokenKind::Expect,
             "mock" => TokenKind::Mock,
             "wait" => TokenKind::Wait,
+            "capture" => TokenKind::Capture,
             "visible" => TokenKind::Visible,
             "hidden" => TokenKind::Hidden,
             "text" => TokenKind::Text,

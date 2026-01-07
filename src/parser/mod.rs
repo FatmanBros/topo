@@ -1164,6 +1164,14 @@ impl Parser {
                 self.expect(TokenKind::RParen)?;
                 Ok(TestStatement::Wait { ms: value as u32 })
             }
+            TokenKind::Capture => {
+                // capture("filename")
+                self.advance();
+                self.expect(TokenKind::LParen)?;
+                let filename = self.expect_string()?;
+                self.expect(TokenKind::RParen)?;
+                Ok(TestStatement::Capture { filename })
+            }
             _ => Err(ParseError::UnexpectedToken {
                 expected: "test statement".to_string(),
                 found: token.lexeme,

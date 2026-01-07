@@ -502,6 +502,9 @@ pub enum TestStatement {
 
     /// Wait for time: `wait 1000`
     Wait { ms: u32 },
+
+    /// Capture screenshot: `capture("filename")`
+    Capture { filename: String },
 }
 
 /// Target for test operations

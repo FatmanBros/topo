@@ -115,6 +115,7 @@ pub enum TokenKind {
     Expect,
     Mock,
     Wait,
+    Capture,  // screenshot capture
     Visible,
     Hidden,
     Text,
@@ -216,6 +217,7 @@ impl std::fmt::Display for TokenKind {
             TokenKind::Expect => write!(f, "expect"),
             TokenKind::Mock => write!(f, "mock"),
             TokenKind::Wait => write!(f, "wait"),
+            TokenKind::Capture => write!(f, "capture"),
             TokenKind::Visible => write!(f, "visible"),
             TokenKind::Hidden => write!(f, "hidden"),
             TokenKind::Text => write!(f, "text"),
