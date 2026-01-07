@@ -1,0 +1,9 @@
+// Dashboard sidebar organism
+import { SidebarLogo } from "../atoms/sidebar-logo.tp"
+import { SidebarNav } from "../molecules/sidebar-nav.tp"
+
+DashboardSidebar -> {
+    style: "w-64 bg-white border-r border-gray-200 fixed left-0 top-0 h-full p-6"
+    align: vertical
+    children: [SidebarLogo, SidebarNav]
+}

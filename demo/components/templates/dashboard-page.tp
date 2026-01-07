@@ -1,43 +1,13 @@
+// Dashboard page template
 import { DashboardHeader } from "../organisms/dashboard-header.tp"
+import { DashboardSidebar } from "../organisms/dashboard-sidebar.tp"
 import { StatCards } from "../organisms/stat-cards.tp"
 import { ActivityFeed } from "../organisms/activity-feed.tp"
 import { QuickActions } from "../organisms/quick-actions.tp"
 
-// Dashboard page template
 DashboardPage -> {
     style: "min-h-screen bg-gray-50"
     children: [DashboardSidebar, DashboardMain]
-}
-
-DashboardSidebar -> {
-    style: "w-64 bg-white border-r border-gray-200 fixed left-0 top-0 h-full p-6"
-    align: vertical
-    children: [SidebarLogo, SidebarNav]
-}
-
-SidebarLogo -> {
-    type: text
-    content: "topo"
-    style: "text-2xl font-bold text-indigo-600 mb-8"
-}
-
-SidebarNav -> {
-    align: vertical
-    style: "space-y-2"
-    children: [
-        SidebarItem({ label: "Dashboard", active: true }),
-        SidebarItem({ label: "Projects", active: false }),
-        SidebarItem({ label: "Team", active: false }),
-        SidebarItem({ label: "Analytics", active: false }),
-        SidebarItem({ label: "Settings", active: false })
-    ]
-}
-
-SidebarItem(props) -> {
-    type: link
-    href: "#"
-    content: props.label
-    style: props.active ? "block px-4 py-2 rounded-lg bg-indigo-50 text-indigo-600 font-medium" : "block px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-50"
 }
 
 DashboardMain -> {

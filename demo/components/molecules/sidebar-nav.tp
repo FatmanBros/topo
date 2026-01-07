@@ -1,0 +1,14 @@
+// Sidebar navigation molecule
+import { SidebarItem } from "../atoms/sidebar-item.tp"
+
+SidebarNav -> {
+    align: vertical
+    style: "space-y-2"
+    children: [
+        SidebarItem({ label: "Dashboard", href: "/dashboard", active: true }),
+        SidebarItem({ label: "Projects", href: "/projects", active: false }),
+        SidebarItem({ label: "Team", href: "/team", active: false }),
+        SidebarItem({ label: "Analytics", href: "/analytics", active: false }),
+        SidebarItem({ label: "Settings", href: "/settings", active: false })
+    ]
+}
