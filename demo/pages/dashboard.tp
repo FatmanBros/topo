@@ -1,0 +1,6 @@
+// Dashboard page
+import { DashboardPage } from "../components/templates/dashboard-page.tp"
+
+Page -> {
+    children: [DashboardPage]
+}
