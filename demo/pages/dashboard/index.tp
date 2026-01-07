@@ -1,0 +1,8 @@
+// Dashboard page
+import { DashboardPage } from "./template.tp"
+import { Dashboard } from "./store.tp"
+
+Page -> {
+    init: Dashboard.Load
+    children: DashboardPage
+}
