@@ -44,12 +44,12 @@ LoginFormCard | {
     }
 }
 
-// ─── Submitボタン内蔵のフォーム ───
-LoginForm -> {
+// ─── フォーム（トリガーは外から渡す） ───
+LoginForm(props) -> {
     type: "form"
     onSubmit: LoginFormCard.Submit
     style: "flex flex-col"
-    children: [...LoginFormCard.Fields]
+    children: [...LoginFormCard.Fields, props.trigger]
 }
 
 // ─── Component定義 ───
@@ -62,13 +62,9 @@ LoginFormCard -> {
             t: "sign_in"
             style: "text-2xl font-bold text-gray-900 mb-6 text-center"
         }),
-        LoginForm,
-        {
-            type: "submit"
-            content: { t: "sign_in" }
-            click: LoginFormCard.Submit
-            style: "w-full bg-indigo-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-indigo-700 transition cursor-pointer"
-        },
+        LoginForm({
+            trigger: SubmitButton({ t: "sign_in" })
+        }),
         Text({
             text: $LoginFormCard.email
             style: "text-sm text-gray-500 mt-4 text-center"
