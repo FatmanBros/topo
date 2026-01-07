@@ -587,7 +587,8 @@ impl JsCodegen {
         // required
         self.emit_line("required(value, _args, field) {");
         self.emit_line("  if (value === null || value === undefined || value === '') {");
-        self.emit_line("    return { valid: false, error: `${field} is required` };");
+        self.emit_line("    const msg = typeof t === 'function' ? t('validation_required', { field }) : `${field} is required`;");
+        self.emit_line("    return { valid: false, error: msg };");
         self.emit_line("  }");
         self.emit_line("  return { valid: true };");
         self.emit_line("},");
@@ -596,10 +597,12 @@ impl JsCodegen {
         self.emit_line("min(value, args, field) {");
         self.emit_line("  const min = args[0];");
         self.emit_line("  if (typeof value === 'string' && value.length < min) {");
-        self.emit_line("    return { valid: false, error: `${field} must be at least ${min} characters` };");
+        self.emit_line("    const msg = typeof t === 'function' ? t('validation_min_length', { field, min }) : `${field} must be at least ${min} characters`;");
+        self.emit_line("    return { valid: false, error: msg };");
         self.emit_line("  }");
         self.emit_line("  if (typeof value === 'number' && value < min) {");
-        self.emit_line("    return { valid: false, error: `${field} must be at least ${min}` };");
+        self.emit_line("    const msg = typeof t === 'function' ? t('validation_min_value', { field, min }) : `${field} must be at least ${min}`;");
+        self.emit_line("    return { valid: false, error: msg };");
         self.emit_line("  }");
         self.emit_line("  return { valid: true };");
         self.emit_line("},");
@@ -608,10 +611,12 @@ impl JsCodegen {
         self.emit_line("max(value, args, field) {");
         self.emit_line("  const max = args[0];");
         self.emit_line("  if (typeof value === 'string' && value.length > max) {");
-        self.emit_line("    return { valid: false, error: `${field} must be at most ${max} characters` };");
+        self.emit_line("    const msg = typeof t === 'function' ? t('validation_max_length', { field, max }) : `${field} must be at most ${max} characters`;");
+        self.emit_line("    return { valid: false, error: msg };");
         self.emit_line("  }");
         self.emit_line("  if (typeof value === 'number' && value > max) {");
-        self.emit_line("    return { valid: false, error: `${field} must be at most ${max}` };");
+        self.emit_line("    const msg = typeof t === 'function' ? t('validation_max_value', { field, max }) : `${field} must be at most ${max}`;");
+        self.emit_line("    return { valid: false, error: msg };");
         self.emit_line("  }");
         self.emit_line("  return { valid: true };");
         self.emit_line("},");
@@ -620,7 +625,8 @@ impl JsCodegen {
         self.emit_line("minLength(value, args, field) {");
         self.emit_line("  const min = args[0];");
         self.emit_line("  if (typeof value === 'string' && value.length < min) {");
-        self.emit_line("    return { valid: false, error: `${field} must be at least ${min} characters` };");
+        self.emit_line("    const msg = typeof t === 'function' ? t('validation_min_length', { field, min }) : `${field} must be at least ${min} characters`;");
+        self.emit_line("    return { valid: false, error: msg };");
         self.emit_line("  }");
         self.emit_line("  return { valid: true };");
         self.emit_line("},");
@@ -629,7 +635,8 @@ impl JsCodegen {
         self.emit_line("maxLength(value, args, field) {");
         self.emit_line("  const max = args[0];");
         self.emit_line("  if (typeof value === 'string' && value.length > max) {");
-        self.emit_line("    return { valid: false, error: `${field} must be at most ${max} characters` };");
+        self.emit_line("    const msg = typeof t === 'function' ? t('validation_max_length', { field, max }) : `${field} must be at most ${max} characters`;");
+        self.emit_line("    return { valid: false, error: msg };");
         self.emit_line("  }");
         self.emit_line("  return { valid: true };");
         self.emit_line("},");
@@ -638,7 +645,8 @@ impl JsCodegen {
         self.emit_line("email(value, _args, field) {");
         self.emit_line("  const emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;");
         self.emit_line("  if (typeof value === 'string' && !emailRegex.test(value)) {");
-        self.emit_line("    return { valid: false, error: `${field} must be a valid email address` };");
+        self.emit_line("    const msg = typeof t === 'function' ? t('validation_email', { field }) : `${field} must be a valid email address`;");
+        self.emit_line("    return { valid: false, error: msg };");
         self.emit_line("  }");
         self.emit_line("  return { valid: true };");
         self.emit_line("},");
@@ -647,7 +655,8 @@ impl JsCodegen {
         self.emit_line("pattern(value, args, field) {");
         self.emit_line("  const pattern = new RegExp(args[0]);");
         self.emit_line("  if (typeof value === 'string' && !pattern.test(value)) {");
-        self.emit_line("    return { valid: false, error: `${field} does not match the required pattern` };");
+        self.emit_line("    const msg = typeof t === 'function' ? t('validation_pattern', { field }) : `${field} does not match the required pattern`;");
+        self.emit_line("    return { valid: false, error: msg };");
         self.emit_line("  }");
         self.emit_line("  return { valid: true };");
         self.emit_line("},");
