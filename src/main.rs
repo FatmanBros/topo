@@ -1200,7 +1200,15 @@ fn generate_playwright_test(ast: &Program) -> Result<String> {
                         match target {
                             TestTarget::Url => {
                                 match assertion {
-                                    TestAssertion::Equals { value } => {
+                                    TestAssertion::Equals { value } | TestAssertion::Value { value } => {
+                                        output.push_str(&format!("  await expect(page).toHaveURL('{}');\n", value));
+                                    }
+                                    _ => {}
+                                }
+                            }
+                            TestTarget::PageProperty { property } if property == "url" => {
+                                match assertion {
+                                    TestAssertion::Equals { value } | TestAssertion::Value { value } => {
                                         output.push_str(&format!("  await expect(page).toHaveURL('{}');\n", value));
                                     }
                                     _ => {}
@@ -1215,8 +1223,17 @@ fn generate_playwright_test(ast: &Program) -> Result<String> {
                                     TestAssertion::Hidden => {
                                         output.push_str(&format!("  await expect(page.locator('{}')).toBeHidden();\n", selector));
                                     }
+                                    TestAssertion::Disabled => {
+                                        output.push_str(&format!("  await expect(page.locator('{}')).toBeDisabled();\n", selector));
+                                    }
+                                    TestAssertion::Empty => {
+                                        output.push_str(&format!("  await expect(page.locator('{}')).toBeEmpty();\n", selector));
+                                    }
                                     TestAssertion::HasText { value } => {
                                         output.push_str(&format!("  await expect(page.locator('{}')).toHaveText('{}');\n", selector, value));
+                                    }
+                                    TestAssertion::Value { value } => {
+                                        output.push_str(&format!("  await expect(page.locator('{}')).toHaveValue('{}');\n", selector, value));
                                     }
                                     TestAssertion::Equals { value } => {
                                         output.push_str(&format!("  await expect(page.locator('{}')).toHaveText('{}');\n", selector, value));
@@ -1268,6 +1285,9 @@ fn target_to_selector(target: &topo::ast::TestTarget) -> String {
         }
         TestTarget::Url => {
             "".to_string() // Handled specially in expect
+        }
+        TestTarget::PageProperty { property: _ } => {
+            "".to_string() // Handled specially in expect for page.url
         }
         TestTarget::Selector { selector } => {
             selector.clone()
