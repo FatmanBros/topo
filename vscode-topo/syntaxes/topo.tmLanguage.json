@@ -5,17 +5,17 @@
   "patterns": [
     { "include": "#comments" },
     { "include": "#imports" },
-    { "include": "#component-alias" },
-    { "include": "#component-definition" },
     { "include": "#store-definition" },
-    { "include": "#api-service" },
-    { "include": "#annotations" },
+    { "include": "#api-service-definition" },
+    { "include": "#component-definition" },
     { "include": "#strings" },
     { "include": "#numbers" },
+    { "include": "#annotations" },
     { "include": "#keywords" },
     { "include": "#operators" },
     { "include": "#store-access" },
     { "include": "#function-call" },
+    { "include": "#property" },
     { "include": "#identifiers" }
   ],
   "repository": {
@@ -28,59 +28,59 @@
       ]
     },
     "imports": {
+      "begin": "^\\s*(import)\\s*\\{",
+      "beginCaptures": {
+        "1": { "name": "keyword.control.import.topo" }
+      },
+      "end": "\\}\\s*(from)\\s*(\"[^\"]*\"|'[^']*')",
+      "endCaptures": {
+        "1": { "name": "keyword.control.from.topo" },
+        "2": { "name": "string.quoted.topo" }
+      },
       "patterns": [
         {
-          "name": "meta.import.topo",
-          "begin": "\\b(import)\\s*\\{",
-          "beginCaptures": {
-            "1": { "name": "keyword.control.import.topo" }
-          },
-          "end": "\\}\\s*(from)\\s*([\"'])([^\"']+)\\3",
-          "endCaptures": {
-            "1": { "name": "keyword.control.from.topo" },
-            "2": { "name": "punctuation.definition.string.begin.topo" },
-            "3": { "name": "string.quoted.topo" }
-          },
-          "patterns": [
-            {
-              "name": "entity.name.type.import.topo",
-              "match": "\\b[A-Z][a-zA-Z0-9]*\\b"
-            }
-          ]
-        }
-      ]
-    },
-    "component-alias": {
-      "patterns": [
+          "name": "entity.name.type.topo",
+          "match": "[A-Z][a-zA-Z0-9]*"
+        },
         {
-          "name": "meta.component.alias.topo",
-          "match": "^\\s*([A-Z][a-zA-Z0-9]*)\\s*(\\([^)]*\\))?\\s*(->)\\s*([A-Z][a-zA-Z0-9]*)\\s*\\(",
-          "captures": {
-            "1": { "name": "entity.name.function.component.topo" },
-            "2": { "name": "meta.parameters.topo" },
-            "3": { "name": "keyword.operator.arrow.topo" },
-            "4": { "name": "entity.name.type.component.topo" }
-          }
+          "name": "punctuation.separator.comma.topo",
+          "match": ","
         }
       ]
     },
     "component-definition": {
       "patterns": [
         {
-          "name": "meta.component.definition.topo",
-          "match": "^\\s*([A-Z][a-zA-Z0-9]*)\\s*(\\([^)]*\\))?\\s*(->)\\s*\\{",
+          "comment": "Component with params: Name(params) -> { or Name(params) -> Base(",
+          "match": "^\\s*([A-Z][a-zA-Z0-9]*)\\s*(\\([^)]*\\))?\\s*(->)",
           "captures": {
             "1": { "name": "entity.name.function.component.topo" },
-            "2": { "name": "meta.parameters.topo" },
+            "2": {
+              "name": "meta.parameters.topo",
+              "patterns": [
+                { "include": "#parameter-list" }
+              ]
+            },
             "3": { "name": "keyword.operator.arrow.topo" }
           }
+        }
+      ]
+    },
+    "parameter-list": {
+      "patterns": [
+        {
+          "name": "variable.parameter.topo",
+          "match": "[a-zA-Z][a-zA-Z0-9]*"
+        },
+        {
+          "name": "punctuation.separator.comma.topo",
+          "match": ","
         }
       ]
     },
     "store-definition": {
       "patterns": [
         {
-          "name": "meta.store.definition.topo",
           "match": "^\\s*([A-Z][a-zA-Z0-9]*)\\s*(\\|)\\s*\\{",
           "captures": {
             "1": { "name": "entity.name.class.store.topo" },
@@ -88,8 +88,8 @@
           }
         },
         {
-          "name": "keyword.other.state.topo",
-          "match": "\\b(State|Actions|Reducers)\\b"
+          "name": "keyword.other.store-block.topo",
+          "match": "\\b(State|Actions|Commands|Reducers|Effects|Selectors)\\b"
         },
         {
           "name": "keyword.control.on.topo",
@@ -97,15 +97,18 @@
         }
       ]
     },
-    "api-service": {
+    "api-service-definition": {
       "patterns": [
         {
-          "name": "meta.api.service.topo",
           "match": "^\\s*([A-Z][a-zA-Z0-9]*)\\s*(::)\\s*\\{",
           "captures": {
             "1": { "name": "entity.name.class.api.topo" },
             "2": { "name": "keyword.operator.double-colon.topo" }
           }
+        },
+        {
+          "name": "constant.language.http-method.topo",
+          "match": "\\b(GET|POST|PUT|DELETE|PATCH)\\b"
         }
       ]
     },
@@ -156,19 +159,26 @@
         }
       ]
     },
+    "property": {
+      "patterns": [
+        {
+          "match": "^\\s*([a-zA-Z][a-zA-Z0-9]*)\\s*(:)",
+          "captures": {
+            "1": { "name": "support.type.property-name.topo" },
+            "2": { "name": "punctuation.separator.key-value.topo" }
+          }
+        }
+      ]
+    },
     "keywords": {
       "patterns": [
         {
           "name": "keyword.control.topo",
-          "match": "\\b(import|from|on)\\b"
+          "match": "\\b(import|from)\\b"
         },
         {
           "name": "constant.language.topo",
           "match": "\\b(true|false|null)\\b"
-        },
-        {
-          "name": "support.type.property.topo",
-          "match": "\\b(type|content|value|style|children|align|click|submit|href|placeholder|inputType|options|rows|dataBind|dataError|dataField|onInput|onChange)\\b(?=\\s*:)"
         },
         {
           "name": "support.constant.type.topo",
@@ -193,10 +203,6 @@
         {
           "name": "keyword.operator.double-colon.topo",
           "match": "::"
-        },
-        {
-          "name": "punctuation.separator.colon.topo",
-          "match": ":"
         }
       ]
     },
@@ -204,19 +210,19 @@
       "patterns": [
         {
           "name": "meta.store.access.topo",
-          "match": "(\\$)([A-Z][a-zA-Z0-9]*)\\.([a-zA-Z][a-zA-Z0-9]*)",
+          "match": "(\\$)([a-zA-Z][a-zA-Z0-9]*)\\.([a-zA-Z][a-zA-Z0-9]*)",
           "captures": {
-            "1": { "name": "punctuation.definition.store.topo" },
-            "2": { "name": "entity.name.class.store.topo" },
+            "1": { "name": "punctuation.definition.variable.topo" },
+            "2": { "name": "variable.other.object.topo" },
             "3": { "name": "variable.other.property.topo" }
           }
         },
         {
-          "name": "meta.store.dispatch.topo",
-          "match": "([A-Z][a-zA-Z0-9]*)\\.([A-Z][a-zA-Z0-9]*)",
+          "name": "variable.other.store-ref.topo",
+          "match": "(\\$)([a-zA-Z][a-zA-Z0-9]*)",
           "captures": {
-            "1": { "name": "entity.name.class.store.topo" },
-            "2": { "name": "entity.name.function.action.topo" }
+            "1": { "name": "punctuation.definition.variable.topo" },
+            "2": { "name": "variable.other.object.topo" }
           }
         }
       ]
@@ -231,15 +237,16 @@
           }
         },
         {
-          "name": "meta.function-call.topo",
-          "match": "\\b([a-z][a-zA-Z0-9]*)\\s*\\(",
+          "comment": "Store action dispatch: Store.Action",
+          "match": "([A-Z][a-zA-Z0-9]*)\\.([A-Z][a-zA-Z0-9]*)",
           "captures": {
-            "1": { "name": "entity.name.function.topo" }
+            "1": { "name": "variable.other.object.topo" },
+            "2": { "name": "entity.name.function.topo" }
           }
         },
         {
-          "name": "meta.component-call.topo",
-          "match": "\\b([A-Z][a-zA-Z0-9]*)\\s*\\(",
+          "comment": "Component call with parens",
+          "match": "([A-Z][a-zA-Z0-9]*)\\s*\\(",
           "captures": {
             "1": { "name": "entity.name.type.component.topo" }
           }
@@ -249,12 +256,12 @@
     "identifiers": {
       "patterns": [
         {
-          "name": "variable.other.topo",
-          "match": "\\b[a-z][a-zA-Z0-9]*\\b"
+          "name": "entity.name.type.component-ref.topo",
+          "match": "\\b[A-Z][a-zA-Z0-9]*\\b"
         },
         {
-          "name": "entity.name.type.topo",
-          "match": "\\b[A-Z][a-zA-Z0-9]*\\b"
+          "name": "variable.other.topo",
+          "match": "\\b[a-z][a-zA-Z0-9]*\\b"
         }
       ]
     }
