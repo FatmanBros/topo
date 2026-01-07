@@ -409,6 +409,9 @@ pub enum Expression {
 
     /// Await expression: `await expr`
     Await { expr: Box<Expression> },
+
+    /// Spread expression: `...arr`
+    Spread { expr: Box<Expression> },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

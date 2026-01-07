@@ -1,4 +1,3 @@
-import { FormField } from "../molecules/form-field.tp"
 import { LangSwitcher } from "../molecules/lang-switcher.tp"
 import { SubmitButton } from "../atoms/button.tp"
 import { Heading } from "../atoms/heading.tp"
@@ -7,16 +6,17 @@ import { Text } from "../atoms/text.tp"
 // ─── Store定義 ───
 LoginFormCard | {
     State {
-        @label("email")
+        @key("email")
         @required
         @email
         email: ""
 
-        @label("password")
+        @key("password")
         @required
         @minLength(8)
         password: ""
 
+        @hidden
         isSubmitting: false
     }
 
@@ -44,6 +44,14 @@ LoginFormCard | {
     }
 }
 
+// ─── Submitボタン内蔵のフォーム ───
+LoginForm -> {
+    type: "form"
+    onSubmit: LoginFormCard.Submit
+    style: "flex flex-col"
+    children: [...LoginFormCard.Fields]
+}
+
 // ─── Component定義 ───
 LoginFormCard -> {
     style: "bg-white p-8 rounded-xl shadow-lg max-w-md w-full"
@@ -54,23 +62,13 @@ LoginFormCard -> {
             t: "sign_in"
             style: "text-2xl font-bold text-gray-900 mb-6 text-center"
         }),
-        FormField({
-            label: { t: "email" }
-            inputType: "email"
-            placeholder: { t: "email_placeholder" }
-            value: $LoginFormCard.email
-            onInput: LoginFormCard.SetEmail
-            errorMsg: $LoginFormCard.emailError
-        }),
-        FormField({
-            label: { t: "password" }
-            inputType: "password"
-            placeholder: { t: "password_placeholder" }
-            value: $LoginFormCard.password
-            onInput: LoginFormCard.SetPassword
-            errorMsg: $LoginFormCard.passwordError
-        }),
-        SubmitButton({ t: "sign_in" }, LoginFormCard.Submit),
+        LoginForm,
+        {
+            type: "submit"
+            content: { t: "sign_in" }
+            click: LoginFormCard.Submit
+            style: "w-full bg-indigo-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-indigo-700 transition cursor-pointer"
+        },
         Text({
             text: $LoginFormCard.email
             style: "text-sm text-gray-500 mt-4 text-center"

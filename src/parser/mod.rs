@@ -905,7 +905,7 @@ impl Parser {
     }
 
     fn parse_annotation(&mut self) -> Result<Annotation, ParseError> {
-        let name = self.expect_identifier()?;
+        let name = self.expect_annotation_name()?;
         let mut args = Vec::new();
 
         // Check for optional arguments: @min(3), @pattern("[a-z]+")
@@ -921,6 +921,31 @@ impl Parser {
         }
 
         Ok(Annotation { name, args })
+    }
+
+    /// Accept identifiers or keywords as annotation names (e.g. @hidden, @key, @required)
+    fn expect_annotation_name(&mut self) -> Result<String, ParseError> {
+        let token = self.peek().clone();
+        let is_valid = matches!(
+            token.kind,
+            TokenKind::Identifier
+                | TokenKind::Hidden
+                | TokenKind::Type
+                | TokenKind::Text
+                | TokenKind::State
+        );
+
+        if is_valid {
+            self.advance();
+            Ok(token.lexeme)
+        } else {
+            Err(ParseError::UnexpectedToken {
+                expected: "annotation name".to_string(),
+                found: format!("{}", token.kind),
+                line: token.line,
+                column: token.column,
+            })
+        }
     }
 
     /// Accept identifiers or keywords as property keys
@@ -1422,7 +1447,14 @@ impl Parser {
                 self.advance();
                 let mut elements = Vec::new();
                 while !self.check(TokenKind::RBracket) && !self.is_at_end() {
-                    elements.push(self.expression()?);
+                    // Check for spread operator
+                    if self.check(TokenKind::DotDotDot) {
+                        self.advance();
+                        let expr = self.expression()?;
+                        elements.push(Expression::Spread { expr: Box::new(expr) });
+                    } else {
+                        elements.push(self.expression()?);
+                    }
                     if !self.check(TokenKind::RBracket) {
                         let _ = self.match_token(TokenKind::Comma);
                     }
