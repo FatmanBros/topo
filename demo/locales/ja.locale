@@ -3,3 +3,11 @@ email=メールアドレス
 email_placeholder=example@email.com
 password=パスワード
 password_placeholder=8文字以上
+
+validation_required={field}は必須です
+validation_min_length={field}は{min}文字以上で入力してください
+validation_max_length={field}は{max}文字以下で入力してください
+validation_min_value={field}は{min}以上で入力してください
+validation_max_value={field}は{max}以下で入力してください
+validation_email={field}は有効なメールアドレスを入力してください
+validation_pattern={field}の形式が正しくありません

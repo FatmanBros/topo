@@ -1,5 +1,5 @@
 // Login form tests
-import { LoginForm } from "./components/stores/login.tp"
+import { LoginFormCard } from "./components/organisms/login-form.tp"
 
 Test "ログインフォームが表示される" {
     goto "/login"

@@ -3,3 +3,11 @@ email=Email
 email_placeholder=example@email.com
 password=Password
 password_placeholder=8 or more characters
+
+validation_required={field} is required
+validation_min_length={field} must be at least {min} characters
+validation_max_length={field} must be at most {max} characters
+validation_min_value={field} must be at least {min}
+validation_max_value={field} must be at most {max}
+validation_email={field} must be a valid email address
+validation_pattern={field} does not match the required pattern
