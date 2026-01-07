@@ -14,68 +14,96 @@ git worktree remove ../topo-feature
 
 ## ページ設計: Feature-based Structure
 
-ページは機能単位でディレクトリにまとめる。Store は index.tp に内包するのがベストプラクティス。
+ページは機能単位でディレクトリにまとめる。各コンポーネントは自身の Store を持ち、init で独立してデータ取得する。
 
 ```
 demo/pages/
 └── dashboard/
-    ├── index.tp      # Store + Page定義（エントリポイント）
-    ├── template.tp   # UIテンプレート
-    └── mocks/        # API mockデータ
+    ├── index.tp          # Page定義（エントリポイント）
+    ├── template.tp       # DashboardTemplate（レイアウトのみ）
+    ├── components/       # ページ固有コンポーネント（ルートにならない）
+    │   ├── stat-cards.tp
+    │   ├── recent-activity.tp
+    │   └── quick-actions.tp
+    ├── projects/         # サブルート: /dashboard/projects
+    │   └── index.tp
+    ├── team/             # サブルート: /dashboard/team
+    │   └── index.tp
+    └── mocks/
         ├── stats.json
         └── activities.json
 ```
 
-### index.tp の構造
+### ルーティング規則
+
+- `index.tp` → ルートエントリポイント
+- `template.tp`, `store.tp`, `layout.tp` → ルートにならない
+- `components/` 配下 → ルートにならない（共有コンポーネント用）
+- その他のディレクトリの `index.tp` → サブルート
+
+### コンポーネント + Store パターン
+
+各コンポーネントは自身の Store と init を持ち、独立してデータ取得する：
 
 ```topo
-// Dashboard page
-import { DashboardPage } from "./template.tp"
+// components/stat-cards.tp
+import { StatCard } from "../../../components/atoms/stat-card.tp"
 
-// Store定義をページに内包
-Dashboard | {
+StatCards | {
     State {
-        items: []
+        stats: []
         isLoading: true
     }
 
     Actions {
         Load
-        SetItems(items)
+        SetStats(stats)
     }
 
     Reducers {
         on Load { isLoading: true }
-        on SetItems(items) { items: items, isLoading: false }
+        on SetStats(stats) { stats: stats }
     }
 
     Effects {
         on Load {
             try {
-                items: await http.get("/api/items")
-                dispatch: SetItems(items)
+                stats: await http.get("/api/stats")
+                dispatch: SetStats(stats)
             } catch(e) {
-                dispatch: SetItems([])
+                dispatch: SetStats([])
             }
         }
     }
 }
 
-// ページ定義（initでデータ取得）
-Page -> {
-    init: Dashboard.Load
-    children: DashboardPage
+StatCardsGrid -> {
+    init: StatCards.Load
+    style: "grid grid-cols-1 md:grid-cols-4 gap-6"
+    children: StatCards.stats.for(stat => {
+        StatCard({ label: stat.label, value: stat.value })
+    })
 }
 ```
 
-### template.tp からの Store 参照
+### template.tp（レイアウトのみ）
 
 ```topo
-import { Dashboard } from "./index.tp"
+import { DashboardLayout } from "../../components/templates/dashboard-layout.tp"
+import { StatCardsGrid } from "./components/stat-cards.tp"
+import { RecentActivityCard } from "./components/recent-activity.tp"
 
-ItemList -> Dashboard.items.for(item => {
-    ItemCard({ title: item.title })
-})
+DashboardTemplate -> DashboardLayout([Header, StatCardsGrid, Content])
+```
+
+### index.tp（シンプルなPage定義）
+
+```topo
+import { DashboardTemplate } from "./template.tp"
+
+Page -> {
+    children: DashboardTemplate
+}
 ```
 
 ## コンポーネント設計: Atomic Design
