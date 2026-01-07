@@ -1,0 +1,44 @@
+// Dashboard header with title and user info
+DashboardHeader -> {
+    style: "flex items-center justify-between mb-8"
+    children: [HeaderLeft, HeaderRight]
+}
+
+HeaderLeft -> {
+    align: vertical
+    children: [HeaderTitle, HeaderSubtitle]
+}
+
+HeaderTitle -> {
+    type: text
+    content: "Dashboard"
+    style: "text-2xl font-bold text-gray-900"
+}
+
+HeaderSubtitle -> {
+    type: text
+    content: "Welcome back! Here's what's happening."
+    style: "text-gray-500 mt-1"
+}
+
+HeaderRight -> {
+    style: "flex items-center gap-4"
+    children: [NotificationButton, UserAvatar]
+}
+
+NotificationButton -> {
+    type: button
+    content: "Notifications"
+    style: "p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition"
+}
+
+UserAvatar -> {
+    style: "w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center"
+    children: [UserInitial]
+}
+
+UserInitial -> {
+    type: text
+    content: "T"
+    style: "text-white font-semibold"
+}
