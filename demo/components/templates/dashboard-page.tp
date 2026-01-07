@@ -3,6 +3,7 @@ import { DashboardLayout } from "./dashboard-layout.tp"
 import { DashboardHeader } from "../organisms/dashboard-header.tp"
 import { StatCards } from "../organisms/stat-cards.tp"
 import { Card } from "../atoms/card.tp"
+import { ActionButton } from "../atoms/button.tp"
 import { ActivityItem } from "../molecules/activity-item.tp"
 
 DashboardPage -> DashboardLayout([DashboardHeader, StatCards, DashboardContent])
@@ -48,8 +49,3 @@ QuickActionButtons -> {
     ]
 }
 
-ActionButton(label) -> {
-    type: button
-    content: label
-    style: "p-3 bg-gray-50 hover:bg-gray-100 rounded-lg text-sm font-medium text-gray-700 transition text-left"
-}
