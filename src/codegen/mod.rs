@@ -1588,7 +1588,27 @@ impl JsCodegen {
                     }
                 }
 
-                let args_str: Vec<String> = args.iter().map(|a| self.generate_expression(a)).collect();
+                // Get component params if this is a component call
+                let param_names = if let Expression::Identifier { name } = callee.as_ref() {
+                    self.component_params.get(name).cloned()
+                } else {
+                    None
+                };
+
+                let args_str: Vec<String> = args.iter().enumerate().map(|(i, a)| {
+                    // Check if this arg corresponds to an event handler param
+                    if let Some(ref params) = param_names {
+                        if let Some(param_name) = params.get(i) {
+                            if matches!(param_name.as_str(), "onClick" | "click" | "onInput" | "input" | "onChange" | "change" | "onSubmit" | "submit") {
+                                self.current_property_key = Some(param_name.clone());
+                                let val = self.generate_expression(a);
+                                self.current_property_key = None;
+                                return val;
+                            }
+                        }
+                    }
+                    self.generate_expression(a)
+                }).collect();
                 let call = format!("{}({})", c, args_str.join(", "));
 
                 // In event handler context (click, etc.), wrap method calls in arrow function
