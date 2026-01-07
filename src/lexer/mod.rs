@@ -372,6 +372,11 @@ impl<'a> Lexer<'a> {
             "close" => TokenKind::Close,
             // Testing keywords
             "Test" => TokenKind::Test,
+            "xTest" => TokenKind::XTest,
+            "BeforeEach" => TokenKind::BeforeEach,
+            "AfterEach" => TokenKind::AfterEach,
+            "BeforeOnce" => TokenKind::BeforeOnce,
+            "AfterOnce" => TokenKind::AfterOnce,
             "goto" => TokenKind::Goto,
             "click" => TokenKind::Click,
             "fill" => TokenKind::Fill,

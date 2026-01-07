@@ -1,28 +1,33 @@
 // Login form tests
 import { LoginFormCard } from "./components/organisms/login-form.tp"
 
-Test "ログインフォームが表示される" {
+BeforeEach {
     goto("/login")
-    expect($LoginFormCard.email, { visible })
-    expect($LoginFormCard.password, { visible })
+}
+
+Test("ログインフォームが表示される") {
+    expect(LoginFormCard.email, { visible })
+    expect(LoginFormCard.password, { visible })
     expect(submit, { visible })
 }
 
-Test "空のメールでバリデーションエラー" {
-    goto("/login")
-    fill($LoginFormCard.email, "")
+Test("空のメールでバリデーションエラー") {
+    fill(LoginFormCard.email, "")
     click(submit)
-    expect($LoginFormCard.emailError, { visible })
+    expect(LoginFormCard.emailError, { visible })
 }
 
-Test "正常なログインフロー" {
+Test("正常なログインフロー") {
     mock(AuthApi.login, { token: "test-token" })
 
-    goto("/login")
-    fill($LoginFormCard.email, "test@example.com")
-    fill($LoginFormCard.password, "password123")
+    fill(LoginFormCard.email, "test@example.com")
+    fill(LoginFormCard.password, "password123")
     click(submit)
 
     wait(500)
     expect(page.url, "/")
+}
+
+xTest("未実装テスト") {
+    expect(LoginFormCard.email, { disabled })
 }

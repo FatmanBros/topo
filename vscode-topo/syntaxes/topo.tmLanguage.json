@@ -31,12 +31,17 @@
     "test-definition": {
       "patterns": [
         {
-          "comment": "Test block: Test \"name\" { ... }",
-          "match": "^\\s*(Test)\\s+(\"[^\"]*\")",
+          "comment": "Test block: Test(\"name\") { ... } or xTest(\"name\") { ... }",
+          "match": "^\\s*(Test|xTest)\\s*\\(\\s*(\"[^\"]*\")\\s*\\)",
           "captures": {
             "1": { "name": "keyword.control.test.topo" },
             "2": { "name": "string.quoted.double.test-name.topo" }
           }
+        },
+        {
+          "comment": "BeforeEach, AfterEach, BeforeOnce, AfterOnce hooks",
+          "name": "keyword.control.test.topo",
+          "match": "^\\s*(BeforeEach|AfterEach|BeforeOnce|AfterOnce)\\b"
         },
         {
           "comment": "Test functions: goto, expect, fill, click, wait, mock",

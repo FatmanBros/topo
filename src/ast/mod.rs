@@ -36,8 +36,20 @@ pub enum Declaration {
     /// Theme definition: `Name * { ... }`
     Theme(ThemeDef),
 
-    /// Test definition: `Test "name" { ... }`
+    /// Test definition: `Test("name") { ... }`
     Test(TestDef),
+
+    /// BeforeEach hook: `BeforeEach { ... }`
+    BeforeEach(TestHookDef),
+
+    /// AfterEach hook: `AfterEach { ... }`
+    AfterEach(TestHookDef),
+
+    /// BeforeOnce hook (runs once before all tests): `BeforeOnce { ... }`
+    BeforeOnce(TestHookDef),
+
+    /// AfterOnce hook (runs once after all tests): `AfterOnce { ... }`
+    AfterOnce(TestHookDef),
 }
 
 // ============================================================================
@@ -446,10 +458,19 @@ pub enum UnaryOperator {
 // Test Definition
 // ============================================================================
 
-/// Test definition: `Test "test name" { ... }`
+/// Test definition: `Test("test name") { ... }` or `xTest("test name") { ... }`
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TestDef {
     pub name: String,
+    pub statements: Vec<TestStatement>,
+    /// If true, this test is skipped (xTest)
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub skip: bool,
+}
+
+/// Test hook definition: `BeforeEach { ... }` or `AfterEach { ... }`
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct TestHookDef {
     pub statements: Vec<TestStatement>,
 }
 

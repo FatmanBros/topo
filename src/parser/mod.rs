@@ -53,9 +53,27 @@ impl Parser {
             return self.import_statement();
         }
 
-        // Check for Test definition: Test "name" { ... }
+        // Check for Test definition: Test("name") { ... } or xTest("name") { ... }
         if self.check(TokenKind::Test) {
-            return self.test_definition();
+            return self.test_definition(false);
+        }
+        if self.check(TokenKind::XTest) {
+            return self.test_definition(true);
+        }
+
+        // Check for BeforeEach/AfterEach hooks
+        if self.check(TokenKind::BeforeEach) {
+            return self.before_each_definition();
+        }
+        if self.check(TokenKind::AfterEach) {
+            return self.after_each_definition();
+        }
+        // Check for BeforeOnce/AfterOnce hooks
+        if self.check(TokenKind::BeforeOnce) {
+            return self.before_once_definition();
+        }
+        if self.check(TokenKind::AfterOnce) {
+            return self.after_once_definition();
         }
 
         // All other declarations start with an identifier
@@ -1002,9 +1020,13 @@ impl Parser {
     // Test Definition
     // ========================================================================
 
-    fn test_definition(&mut self) -> Result<Declaration, ParseError> {
-        self.expect(TokenKind::Test)?;
+    fn test_definition(&mut self, skip: bool) -> Result<Declaration, ParseError> {
+        // Consume Test or xTest
+        self.advance();
+        // Expect Test("name") or xTest("name") syntax
+        self.expect(TokenKind::LParen)?;
         let name = self.expect_string()?;
+        self.expect(TokenKind::RParen)?;
         self.expect(TokenKind::LBrace)?;
 
         let mut statements = Vec::new();
@@ -1013,7 +1035,59 @@ impl Parser {
         }
 
         self.expect(TokenKind::RBrace)?;
-        Ok(Declaration::Test(TestDef { name, statements }))
+        Ok(Declaration::Test(TestDef { name, statements, skip }))
+    }
+
+    fn before_each_definition(&mut self) -> Result<Declaration, ParseError> {
+        self.expect(TokenKind::BeforeEach)?;
+        self.expect(TokenKind::LBrace)?;
+
+        let mut statements = Vec::new();
+        while !self.check(TokenKind::RBrace) && !self.is_at_end() {
+            statements.push(self.test_statement()?);
+        }
+
+        self.expect(TokenKind::RBrace)?;
+        Ok(Declaration::BeforeEach(TestHookDef { statements }))
+    }
+
+    fn after_each_definition(&mut self) -> Result<Declaration, ParseError> {
+        self.expect(TokenKind::AfterEach)?;
+        self.expect(TokenKind::LBrace)?;
+
+        let mut statements = Vec::new();
+        while !self.check(TokenKind::RBrace) && !self.is_at_end() {
+            statements.push(self.test_statement()?);
+        }
+
+        self.expect(TokenKind::RBrace)?;
+        Ok(Declaration::AfterEach(TestHookDef { statements }))
+    }
+
+    fn before_once_definition(&mut self) -> Result<Declaration, ParseError> {
+        self.expect(TokenKind::BeforeOnce)?;
+        self.expect(TokenKind::LBrace)?;
+
+        let mut statements = Vec::new();
+        while !self.check(TokenKind::RBrace) && !self.is_at_end() {
+            statements.push(self.test_statement()?);
+        }
+
+        self.expect(TokenKind::RBrace)?;
+        Ok(Declaration::BeforeOnce(TestHookDef { statements }))
+    }
+
+    fn after_once_definition(&mut self) -> Result<Declaration, ParseError> {
+        self.expect(TokenKind::AfterOnce)?;
+        self.expect(TokenKind::LBrace)?;
+
+        let mut statements = Vec::new();
+        while !self.check(TokenKind::RBrace) && !self.is_at_end() {
+            statements.push(self.test_statement()?);
+        }
+
+        self.expect(TokenKind::RBrace)?;
+        Ok(Declaration::AfterOnce(TestHookDef { statements }))
     }
 
     fn test_statement(&mut self) -> Result<TestStatement, ParseError> {
@@ -1104,7 +1178,7 @@ impl Parser {
 
         match token.kind {
             TokenKind::Dollar => {
-                // $Store.field
+                // $Store.field (legacy syntax, still supported)
                 self.advance();
                 let store = self.expect_identifier()?;
                 self.expect(TokenKind::Dot)?;
@@ -1124,6 +1198,13 @@ impl Parser {
                     self.expect_identifier()?
                 };
                 Ok(TestTarget::PageProperty { property })
+            }
+            TokenKind::Identifier => {
+                // Component.field (e.g., LoginFormCard.email)
+                let store = self.expect_identifier()?;
+                self.expect(TokenKind::Dot)?;
+                let field = self.expect_identifier()?;
+                Ok(TestTarget::Field { store, field })
             }
             TokenKind::Text => {
                 // text "content"
