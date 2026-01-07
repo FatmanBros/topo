@@ -1,14 +1,18 @@
-// Docs template - documentation layout
+// Docs template - documentation layout with sidebar
 import { LPNavbar } from "../../components/organisms/lp-navbar.tp"
 import { DocsSidebar } from "./components/docs-sidebar.tp"
-import { DocsContent } from "./components/docs-content.tp"
 
-DocsTemplate -> {
+DocsTemplate(props) -> {
     style: "min-h-screen bg-white"
-    children: [LPNavbar, DocsMain]
+    children: [LPNavbar, DocsMain({ children: props.children })]
 }
 
-DocsMain -> {
+DocsMain(props) -> {
     style: "pt-20 flex"
-    children: [DocsSidebar, DocsContent]
+    children: [DocsSidebar, DocsMainContent({ children: props.children })]
+}
+
+DocsMainContent(props) -> {
+    style: "flex-1 p-8 max-w-4xl"
+    children: props.children
 }

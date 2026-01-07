@@ -1,0 +1,184 @@
+// Styling docs page
+import { DocsTemplate } from "../template.tp"
+import { DocsSection, DocsText, DocsDescription } from "../../../components/molecules/docs-section.tp"
+import { CodeBlock } from "../../../components/molecules/code-block.tp"
+import { CodePreview } from "../../../components/molecules/code-preview.tp"
+import { Text } from "../../../components/atoms/text.tp"
+
+Page -> DocsTemplate({ children: [StylingContent] })
+
+StylingContent -> {
+    align: vertical
+    style: "space-y-8"
+    children: [
+        PageHeader,
+        TailwindSection,
+        DynamicStylesSection,
+        ThemingSection,
+        ResponsiveSection
+    ]
+}
+
+PageHeader -> DocsSection({
+    id: "styling",
+    title: "Styling",
+    children: [HeaderDesc]
+})
+
+HeaderDesc -> DocsDescription({
+    text: "topo uses Tailwind CSS for styling. Write utility classes directly in your style property."
+})
+
+// Tailwind
+TailwindSection -> {
+    align: vertical
+    style: "space-y-4"
+    children: [
+        SectionTitle({ text: "Tailwind CSS" }),
+        DocsText({ text: "Apply Tailwind classes in the style property:" }),
+        TailwindExample
+    ]
+}
+
+SectionTitle(props) -> DocsText({
+    text: props.text,
+    style: "text-xl font-semibold text-gray-900"
+})
+
+TailwindExample -> CodePreview({
+    filename: "button.tp",
+    code: "PrimaryButton -> {\n    type: button\n    content: \"Click me\"\n    style: \"px-4 py-2\n           bg-pink-500 text-white\n           rounded-lg shadow-md\n           hover:bg-pink-600\n           active:scale-95\n           transition-all\"\n}",
+    preview: [TailwindPreview]
+})
+
+TailwindPreview -> {
+    style: "flex gap-3"
+    children: [
+        StyleButton({ text: "Primary", style: "px-4 py-2 bg-pink-500 text-white rounded-lg shadow-md hover:bg-pink-600 transition-all" }),
+        StyleButton({ text: "Secondary", style: "px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-all" }),
+        StyleButton({ text: "Outline", style: "px-4 py-2 border-2 border-pink-500 text-pink-500 rounded-lg hover:bg-pink-50 transition-all" })
+    ]
+}
+
+StyleButton(props) -> {
+    type: button
+    content: props.text
+    style: props.style
+}
+
+// Dynamic styles
+DynamicStylesSection -> {
+    align: vertical
+    style: "space-y-4"
+    children: [
+        SectionTitle({ text: "Dynamic Styles" }),
+        DocsText({ text: "Conditional styling with ternary operator:" }),
+        DynamicStylesExample
+    ]
+}
+
+DynamicStylesExample -> CodePreview({
+    filename: "status.tp",
+    code: "StatusBadge(props) -> {\n    type: text\n    content: props.status\n    style: props.status == \"active\"\n        ? \"px-2 py-1 bg-green-100\n           text-green-700 rounded-full\"\n        : props.status == \"pending\"\n        ? \"px-2 py-1 bg-yellow-100\n           text-yellow-700 rounded-full\"\n        : \"px-2 py-1 bg-red-100\n           text-red-700 rounded-full\"\n}",
+    preview: [DynamicPreview]
+})
+
+DynamicPreview -> {
+    style: "flex gap-3"
+    children: [
+        Badge({ text: "Active", style: "px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm" }),
+        Badge({ text: "Pending", style: "px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-sm" }),
+        Badge({ text: "Inactive", style: "px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm" })
+    ]
+}
+
+Badge(props) -> {
+    type: text
+    content: props.text
+    style: props.style
+}
+
+// Theming
+ThemingSection -> {
+    align: vertical
+    style: "space-y-4"
+    children: [
+        SectionTitle({ text: "Theming" }),
+        DocsText({ text: "Create theme variables for consistent styling:" }),
+        ThemingExample
+    ]
+}
+
+ThemingExample -> CodePreview({
+    filename: "theme.tp",
+    code: "// Define theme\nTheme | {\n    State {\n        mode: \"light\"\n        colors: {\n            primary: \"pink-500\"\n            secondary: \"violet-500\"\n            background: \"white\"\n            text: \"gray-900\"\n        }\n    }\n    Actions { Toggle }\n    Reducers {\n        on Toggle {\n            mode: mode == \"light\" ? \"dark\" : \"light\"\n            colors: mode == \"light\"\n                ? { primary: \"pink-400\", background: \"gray-900\", text: \"white\" }\n                : { primary: \"pink-500\", background: \"white\", text: \"gray-900\" }\n        }\n    }\n}\n\n// Use theme\nCard -> {\n    style: \"bg-\" + Theme.colors.background + \" text-\" + Theme.colors.text\n}",
+    preview: [ThemePreview]
+})
+
+ThemePreview -> {
+    style: "flex gap-4"
+    children: [
+        ThemeCard({ mode: "Light", bg: "bg-white", text: "text-gray-900", border: "border-gray-200" }),
+        ThemeCard({ mode: "Dark", bg: "bg-gray-900", text: "text-white", border: "border-gray-700" })
+    ]
+}
+
+ThemeCard(props) -> {
+    style: "p-4 rounded-lg border " + props.bg + " " + props.text + " " + props.border
+    children: [
+        Text({ text: props.mode + " Mode", style: "font-medium" }),
+        Text({ text: "Theme preview", style: "text-sm opacity-70 mt-1" })
+    ]
+}
+
+// Responsive
+ResponsiveSection -> {
+    align: vertical
+    style: "space-y-4"
+    children: [
+        SectionTitle({ text: "Responsive Design" }),
+        DocsText({ text: "Use Tailwind's responsive prefixes:" }),
+        ResponsiveExample,
+        BreakpointsList
+    ]
+}
+
+ResponsiveExample -> CodePreview({
+    filename: "grid.tp",
+    code: "Grid -> {\n    style: \"grid\n           grid-cols-1\n           md:grid-cols-2\n           lg:grid-cols-3\n           xl:grid-cols-4\n           gap-4\"\n    children: items.for(item => Card(item))\n}\n\nSidebar -> {\n    style: \"hidden md:block\n           w-64 h-screen\n           fixed left-0 top-0\"\n}",
+    preview: [ResponsivePreview]
+})
+
+ResponsivePreview -> {
+    style: "grid grid-cols-2 lg:grid-cols-4 gap-2"
+    children: [
+        GridItem({ n: "1" }),
+        GridItem({ n: "2" }),
+        GridItem({ n: "3" }),
+        GridItem({ n: "4" })
+    ]
+}
+
+GridItem(props) -> {
+    style: "h-12 bg-pink-100 rounded flex items-center justify-center"
+    children: [Text({ text: props.n, style: "text-pink-600 font-medium" })]
+}
+
+BreakpointsList -> {
+    style: "grid grid-cols-2 md:grid-cols-4 gap-3 p-4 bg-gray-50 rounded-lg"
+    children: [
+        Breakpoint({ prefix: "sm:", size: "640px" }),
+        Breakpoint({ prefix: "md:", size: "768px" }),
+        Breakpoint({ prefix: "lg:", size: "1024px" }),
+        Breakpoint({ prefix: "xl:", size: "1280px" })
+    ]
+}
+
+Breakpoint(props) -> {
+    align: vertical
+    style: "text-center"
+    children: [
+        Text({ text: props.prefix, style: "font-mono text-pink-600 font-bold" }),
+        Text({ text: props.size, style: "text-xs text-gray-500" })
+    ]
+}

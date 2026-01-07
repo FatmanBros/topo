@@ -1,9 +1,10 @@
-// Docs sidebar navigation
+// Docs sidebar navigation with search
 import { SidebarSection, DocsSidebarItem } from "../../../components/molecules/sidebar-section.tp"
+import { DocsSearchBox } from "../../../components/molecules/docs-search.tp"
 
 DocsSidebar -> {
     style: "w-64 border-r border-gray-100 h-screen sticky top-20 overflow-y-auto p-6 hidden md:block"
-    children: [DocsSidebarNav]
+    children: [DocsSearchBox, DocsSidebarNav]
 }
 
 DocsSidebarNav -> {
@@ -13,26 +14,26 @@ DocsSidebarNav -> {
         SidebarSection({
             title: "Getting Started",
             items: [
-                DocsSidebarItem({ label: "Introduction", href: "#introduction", active: true }),
-                DocsSidebarItem({ label: "Installation", href: "#installation", active: false }),
-                DocsSidebarItem({ label: "Quick Start", href: "#quick-start", active: false })
+                DocsSidebarItem({ label: "Introduction", href: "/docs", active: false }),
+                DocsSidebarItem({ label: "Installation", href: "/docs/installation", active: false }),
+                DocsSidebarItem({ label: "Quick Start", href: "/docs/quick-start", active: false })
             ]
         }),
         SidebarSection({
             title: "Core Concepts",
             items: [
-                DocsSidebarItem({ label: "Components", href: "#components", active: false }),
-                DocsSidebarItem({ label: "Store", href: "#store", active: false }),
-                DocsSidebarItem({ label: "API Services", href: "#api-services", active: false }),
-                DocsSidebarItem({ label: "Routing", href: "#routing", active: false })
+                DocsSidebarItem({ label: "Components", href: "/docs/components-guide", active: false }),
+                DocsSidebarItem({ label: "Store", href: "/docs/store", active: false }),
+                DocsSidebarItem({ label: "API Services", href: "/docs/api", active: false }),
+                DocsSidebarItem({ label: "Routing", href: "/docs/routing", active: false })
             ]
         }),
         SidebarSection({
             title: "Guides",
             items: [
-                DocsSidebarItem({ label: "Styling", href: "#styling", active: false }),
-                DocsSidebarItem({ label: "Forms", href: "#forms", active: false }),
-                DocsSidebarItem({ label: "i18n", href: "#i18n", active: false })
+                DocsSidebarItem({ label: "Styling", href: "/docs/styling", active: false }),
+                DocsSidebarItem({ label: "Forms", href: "/docs/forms", active: false }),
+                DocsSidebarItem({ label: "i18n", href: "/docs/i18n", active: false })
             ]
         })
     ]

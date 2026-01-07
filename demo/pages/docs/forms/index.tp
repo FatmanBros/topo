@@ -1,0 +1,195 @@
+// Forms docs page
+import { DocsTemplate } from "../template.tp"
+import { DocsSection, DocsText, DocsDescription } from "../../../components/molecules/docs-section.tp"
+import { CodeBlock } from "../../../components/molecules/code-block.tp"
+import { CodePreview } from "../../../components/molecules/code-preview.tp"
+import { Text } from "../../../components/atoms/text.tp"
+
+Page -> DocsTemplate({ children: [FormsContent] })
+
+FormsContent -> {
+    align: vertical
+    style: "space-y-8"
+    children: [
+        PageHeader,
+        BasicFormSection,
+        ValidationSection,
+        AutoGenSection,
+        SubmitSection
+    ]
+}
+
+PageHeader -> DocsSection({
+    id: "forms",
+    title: "Forms",
+    children: [HeaderDesc]
+})
+
+HeaderDesc -> DocsDescription({
+    text: "Build forms with automatic validation and store integration. Define once, get all form handling for free."
+})
+
+// Basic Form
+BasicFormSection -> {
+    align: vertical
+    style: "space-y-4"
+    children: [
+        SectionTitle({ text: "Form Store" }),
+        DocsText({ text: "Define form fields in a Store with validation annotations:" }),
+        BasicFormExample
+    ]
+}
+
+SectionTitle(props) -> DocsText({
+    text: props.text,
+    style: "text-xl font-semibold text-gray-900"
+})
+
+BasicFormExample -> CodePreview({
+    filename: "login-form.tp",
+    code: "LoginForm | {\n    State {\n        @key(\"email\")\n        @required\n        @email\n        email: \"\"\n        \n        @key(\"password\")\n        @required\n        @minLength(8)\n        password: \"\"\n        \n        @hidden\n        isSubmitting: false\n    }\n    \n    Actions {\n        SetEmail(value)\n        SetPassword(value)\n        Submit\n    }\n    \n    Reducers {\n        on SetEmail(value) { email: value }\n        on SetPassword(value) { password: value }\n        on Submit { isSubmitting: true }\n    }\n}",
+    preview: [BasicFormPreview]
+})
+
+BasicFormPreview -> {
+    align: vertical
+    style: "space-y-3 w-full max-w-xs"
+    children: [
+        FormInput({ placeholder: "Email", type: "email" }),
+        FormInput({ placeholder: "Password", type: "password" }),
+        FormButton({ text: "Login" })
+    ]
+}
+
+FormInput(props) -> {
+    type: input
+    placeholder: props.placeholder
+    style: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-300 focus:border-transparent"
+}
+
+FormButton(props) -> {
+    type: button
+    content: props.text
+    style: "w-full px-4 py-2 bg-pink-500 text-white rounded-lg hover:bg-pink-600"
+}
+
+// Validation
+ValidationSection -> {
+    align: vertical
+    style: "space-y-4"
+    children: [
+        SectionTitle({ text: "Validation Annotations" }),
+        DocsText({ text: "Built-in validation with declarative annotations:" }),
+        ValidationList
+    ]
+}
+
+ValidationList -> {
+    style: "grid grid-cols-1 md:grid-cols-2 gap-3"
+    children: [
+        ValidationItem({ annotation: "@required", desc: "Field must have a value" }),
+        ValidationItem({ annotation: "@email", desc: "Valid email format" }),
+        ValidationItem({ annotation: "@minLength(n)", desc: "Minimum character count" }),
+        ValidationItem({ annotation: "@maxLength(n)", desc: "Maximum character count" }),
+        ValidationItem({ annotation: "@pattern(regex)", desc: "Regex pattern match" }),
+        ValidationItem({ annotation: "@min(n)", desc: "Minimum number value" }),
+        ValidationItem({ annotation: "@max(n)", desc: "Maximum number value" }),
+        ValidationItem({ annotation: "@hidden", desc: "Not rendered as input" })
+    ]
+}
+
+ValidationItem(props) -> {
+    style: "flex items-start gap-2 p-3 bg-gray-50 rounded-lg"
+    children: [
+        Text({ text: props.annotation, style: "font-mono text-sm text-pink-600 shrink-0" }),
+        Text({ text: props.desc, style: "text-sm text-gray-600" })
+    ]
+}
+
+// Auto-generated fields
+AutoGenSection -> {
+    align: vertical
+    style: "space-y-4"
+    children: [
+        SectionTitle({ text: "Auto-Generated Fields" }),
+        DocsText({ text: "Use Store.Fields to auto-generate form inputs:" }),
+        AutoGenExample
+    ]
+}
+
+AutoGenExample -> CodePreview({
+    filename: "contact-form.tp",
+    code: "ContactForm | {\n    State {\n        @key(\"name\")\n        @required\n        @label(\"Your Name\")\n        name: \"\"\n        \n        @key(\"email\")\n        @required\n        @email\n        @label(\"Email Address\")\n        email: \"\"\n        \n        @key(\"message\")\n        @required\n        @minLength(10)\n        @label(\"Message\")\n        @textarea\n        message: \"\"\n    }\n}\n\n// Auto-generate all fields!\nForm -> {\n    type: form\n    onSubmit: ContactForm.Submit\n    children: [\n        ...ContactForm.Fields,  // ← Magic!\n        SubmitButton\n    ]\n}",
+    preview: [AutoGenPreview]
+})
+
+AutoGenPreview -> {
+    align: vertical
+    style: "space-y-3 w-full"
+    children: [
+        LabeledInput({ label: "Your Name", placeholder: "John Doe" }),
+        LabeledInput({ label: "Email Address", placeholder: "john@example.com" }),
+        LabeledTextarea({ label: "Message", placeholder: "Enter your message..." }),
+        FormButton({ text: "Send Message" })
+    ]
+}
+
+LabeledInput(props) -> {
+    align: vertical
+    style: "space-y-1"
+    children: [
+        Text({ text: props.label, style: "text-sm font-medium text-gray-700" }),
+        FormInput({ placeholder: props.placeholder, type: "text" })
+    ]
+}
+
+LabeledTextarea(props) -> {
+    align: vertical
+    style: "space-y-1"
+    children: [
+        Text({ text: props.label, style: "text-sm font-medium text-gray-700" }),
+        TextareaField({ placeholder: props.placeholder })
+    ]
+}
+
+TextareaField(props) -> {
+    type: textarea
+    placeholder: props.placeholder
+    style: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-300 h-24 resize-none"
+}
+
+// Submit handling
+SubmitSection -> {
+    align: vertical
+    style: "space-y-4"
+    children: [
+        SectionTitle({ text: "Form Submission" }),
+        DocsText({ text: "Handle form submission with Effects:" }),
+        SubmitExample
+    ]
+}
+
+SubmitExample -> CodePreview({
+    filename: "form-submit.tp",
+    code: "LoginForm | {\n    // ... State, Actions, Reducers\n    \n    Effects {\n        on Submit {\n            // Validation runs automatically\n            if (!isValid) {\n                return\n            }\n            \n            try {\n                result: await AuthApi.login({\n                    email: email,\n                    password: password\n                })\n                dispatch: SetSuccess\n                router.push(\"/dashboard\")\n            } catch(e) {\n                dispatch: SetError(e.message)\n            }\n        }\n    }\n}",
+    preview: [SubmitPreview]
+})
+
+SubmitPreview -> {
+    align: vertical
+    style: "space-y-2 text-sm"
+    children: [
+        FeatureItem({ icon: "✓", text: "Auto validation before submit" }),
+        FeatureItem({ icon: "✓", text: "Loading state management" }),
+        FeatureItem({ icon: "✓", text: "Error handling built-in" }),
+        FeatureItem({ icon: "✓", text: "Redirect on success" })
+    ]
+}
+
+FeatureItem(props) -> {
+    style: "flex items-center gap-2"
+    children: [
+        Text({ text: props.icon, style: "text-green-500" }),
+        Text({ text: props.text, style: "text-gray-600" })
+    ]
+}

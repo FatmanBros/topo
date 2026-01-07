@@ -1,0 +1,172 @@
+// Store docs page
+import { DocsTemplate } from "../template.tp"
+import { DocsSection, DocsText, DocsDescription } from "../../../components/molecules/docs-section.tp"
+import { CodeBlock } from "../../../components/molecules/code-block.tp"
+import { CodePreview } from "../../../components/molecules/code-preview.tp"
+import { Text } from "../../../components/atoms/text.tp"
+
+Page -> DocsTemplate({ children: [StoreContent] })
+
+StoreContent -> {
+    align: vertical
+    style: "space-y-8"
+    children: [
+        PageHeader,
+        BasicStoreSection,
+        EffectsSection,
+        FeaturesSection,
+        TestingSection
+    ]
+}
+
+PageHeader -> DocsSection({
+    id: "store",
+    title: "Store (State Management)",
+    children: [HeaderDesc]
+})
+
+HeaderDesc -> DocsDescription({
+    text: "Stores provide predictable state management with Actions, Reducers, and Effects. Inspired by Redux but with a cleaner syntax."
+})
+
+// Basic Store
+BasicStoreSection -> {
+    align: vertical
+    style: "space-y-4"
+    children: [
+        SectionTitle({ text: "Basic Store" }),
+        DocsText({ text: "Define stores using the | operator:" }),
+        BasicStoreExample
+    ]
+}
+
+SectionTitle(props) -> DocsText({
+    text: props.text,
+    style: "text-xl font-semibold text-gray-900"
+})
+
+BasicStoreExample -> CodePreview({
+    filename: "counter.tp",
+    code: "Counter | {\n    State {\n        count: 0\n    }\n    \n    Actions {\n        Increment\n        Decrement\n        SetCount(value)\n    }\n    \n    Reducers {\n        on Increment {\n            count: count + 1\n        }\n        on Decrement {\n            count: count - 1\n        }\n        on SetCount(value) {\n            count: value\n        }\n    }\n}",
+    preview: [CounterPreview]
+})
+
+CounterPreview -> {
+    style: "flex items-center gap-4"
+    children: [
+        CounterBtn({ text: "-" }),
+        Text({ text: "0", style: "text-4xl font-bold w-16 text-center" }),
+        CounterBtn({ text: "+" })
+    ]
+}
+
+CounterBtn(props) -> {
+    type: button
+    content: props.text
+    style: "w-10 h-10 bg-pink-500 text-white rounded-full hover:bg-pink-600 font-bold text-xl"
+}
+
+// Effects
+EffectsSection -> {
+    align: vertical
+    style: "space-y-4"
+    children: [
+        SectionTitle({ text: "Effects (Async Operations)" }),
+        DocsText({ text: "Handle async operations like API calls with Effects:" }),
+        EffectsExample,
+        EffectsFeaturesList
+    ]
+}
+
+EffectsExample -> CodePreview({
+    filename: "user-store.tp",
+    code: "UserStore | {\n    State {\n        users: []\n        isLoading: false\n        error: null\n    }\n    \n    Actions {\n        FetchUsers\n        SetUsers(users)\n        SetError(error)\n    }\n    \n    Reducers {\n        on FetchUsers {\n            isLoading: true\n            error: null\n        }\n        on SetUsers(users) {\n            users: users\n            isLoading: false\n        }\n        on SetError(error) {\n            error: error\n            isLoading: false\n        }\n    }\n    \n    Effects {\n        on FetchUsers {\n            try {\n                users: await UserApi.getAll()\n                dispatch: SetUsers(users)\n            } catch(e) {\n                dispatch: SetError(e.message)\n            }\n        }\n    }\n}",
+    preview: [EffectsPreview]
+})
+
+EffectsPreview -> {
+    align: vertical
+    style: "space-y-3"
+    children: [
+        FeatureItem({ icon: "⚡", text: "Async/await support" }),
+        FeatureItem({ icon: "🔄", text: "Automatic loading states" }),
+        FeatureItem({ icon: "❌", text: "Built-in error handling" }),
+        FeatureItem({ icon: "📡", text: "API integration" })
+    ]
+}
+
+EffectsFeaturesList -> DocsDescription({
+    text: "Effects run after reducers and can dispatch additional actions. Perfect for API calls, timers, and other side effects."
+})
+
+// Features
+FeaturesSection -> {
+    align: vertical
+    style: "space-y-4"
+    children: [
+        SectionTitle({ text: "Store Features" }),
+        FeatureNameAbbrev,
+        FeatureCrossComponent
+    ]
+}
+
+FeatureNameAbbrev -> {
+    align: vertical
+    style: "space-y-2 p-4 bg-violet-50 rounded-lg"
+    children: [
+        Text({ text: "Name Abbreviation", style: "font-semibold text-violet-900" }),
+        Text({ text: "Access state directly without prefix in the same file:", style: "text-violet-700 text-sm" }),
+        CodeBlock({ filename: "example", code: "// Instead of Counter.count\ncount\n\n// Instead of Counter.Increment\nIncrement" })
+    ]
+}
+
+FeatureCrossComponent -> {
+    align: vertical
+    style: "space-y-2 p-4 bg-sky-50 rounded-lg mt-4"
+    children: [
+        Text({ text: "Cross-Component Access", style: "font-semibold text-sky-900" }),
+        Text({ text: "Parent components can access child stores:", style: "text-sky-700 text-sm" }),
+        CodeBlock({ filename: "example", code: "// Access child store state\nChildStore.count\n\n// Dispatch to child store\nChildStore.dispatch(Increment)" })
+    ]
+}
+
+// Testing
+TestingSection -> {
+    align: vertical
+    style: "space-y-4"
+    children: [
+        SectionTitle({ text: "Easy Testing" }),
+        DocsText({ text: "Stores are easy to test in isolation:" }),
+        TestingExample,
+        TestingFeaturesList
+    ]
+}
+
+TestingExample -> CodePreview({
+    filename: "counter.test.tp",
+    code: "test \"increments count\" {\n    store: Counter.init()\n    \n    store.dispatch(Increment)\n    \n    expect(store.state.count).toBe(1)\n}\n\ntest \"decrements from initial\" {\n    store: Counter.init({ count: 10 })\n    \n    store.dispatch(Decrement)\n    \n    expect(store.state.count).toBe(9)\n}\n\ntest \"handles async fetch\" {\n    store: UserStore.init()\n    mock(UserApi.getAll).returns([user1])\n    \n    await store.dispatch(FetchUsers)\n    \n    expect(store.state.users).toEqual([user1])\n}",
+    preview: [TestingPreview]
+})
+
+TestingPreview -> {
+    align: vertical
+    style: "space-y-3"
+    children: [
+        FeatureItem({ icon: "🧪", text: "Simple test syntax" }),
+        FeatureItem({ icon: "🎯", text: "Direct state initialization" }),
+        FeatureItem({ icon: "📦", text: "Isolated store instances" }),
+        FeatureItem({ icon: "🔮", text: "Easy mocking for effects" })
+    ]
+}
+
+TestingFeaturesList -> DocsDescription({
+    text: "Each test gets an isolated store instance. Mock external dependencies to test effects without real API calls."
+})
+
+FeatureItem(props) -> {
+    style: "flex items-center gap-2"
+    children: [
+        Text({ text: props.icon, style: "text-lg" }),
+        Text({ text: props.text, style: "text-gray-600" })
+    ]
+}

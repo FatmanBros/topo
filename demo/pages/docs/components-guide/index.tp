@@ -1,0 +1,151 @@
+// Components Guide docs page
+import { DocsTemplate } from "../template.tp"
+import { DocsSection, DocsText, DocsDescription } from "../../../components/molecules/docs-section.tp"
+import { CodeBlock } from "../../../components/molecules/code-block.tp"
+import { CodePreview } from "../../../components/molecules/code-preview.tp"
+import { Text } from "../../../components/atoms/text.tp"
+import { PrimaryButton } from "../../../components/atoms/button.tp"
+
+Page -> DocsTemplate({ children: [ComponentsContent] })
+
+ComponentsContent -> {
+    align: vertical
+    style: "space-y-8"
+    children: [
+        PageHeader,
+        BasicSyntaxSection,
+        PropsSection,
+        ChildrenSection,
+        CompositionSection
+    ]
+}
+
+PageHeader -> DocsSection({
+    id: "components",
+    title: "Components",
+    children: [HeaderDesc]
+})
+
+HeaderDesc -> DocsDescription({
+    text: "Components are the building blocks of topo applications. Define reusable UI elements with a simple, flat syntax."
+})
+
+// Basic syntax
+BasicSyntaxSection -> {
+    align: vertical
+    style: "space-y-4"
+    children: [
+        SectionTitle({ text: "Basic Syntax" }),
+        DocsText({ text: "Components are defined using the -> operator:" }),
+        BasicExample
+    ]
+}
+
+SectionTitle(props) -> DocsText({
+    text: props.text,
+    style: "text-xl font-semibold text-gray-900"
+})
+
+BasicExample -> CodePreview({
+    filename: "button.tp",
+    code: "Button -> {\n    type: button\n    content: \"Click me\"\n    style: \"px-4 py-2 bg-blue-500\n           text-white rounded\n           hover:bg-blue-600\"\n}",
+    preview: [BasicPreview]
+})
+
+BasicPreview -> {
+    type: button
+    content: "Click me"
+    style: "px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+}
+
+// Props
+PropsSection -> {
+    align: vertical
+    style: "space-y-4"
+    children: [
+        SectionTitle({ text: "Props" }),
+        DocsText({ text: "Pass data to components using props:" }),
+        PropsExample,
+        DocsDescription({ text: "Props can have default values and be destructured." })
+    ]
+}
+
+PropsExample -> CodePreview({
+    filename: "button.tp",
+    code: "// With single prop\nButton(label) -> {\n    type: button\n    content: label\n    style: \"px-4 py-2 bg-blue-500\n           text-white rounded\"\n}\n\n// With props object\nCard(props) -> {\n    style: \"p-4 rounded shadow\"\n    children: [\n        Title({ text: props.title }),\n        Body({ text: props.body })\n    ]\n}",
+    preview: [PropsPreview]
+})
+
+PropsPreview -> {
+    align: vertical
+    style: "space-y-3"
+    children: [
+        PrimaryButton("Primary", null),
+        PrimaryButton("Secondary", null),
+        PrimaryButton("Custom Label", null)
+    ]
+}
+
+// Children
+ChildrenSection -> {
+    align: vertical
+    style: "space-y-4"
+    children: [
+        SectionTitle({ text: "Children" }),
+        DocsText({ text: "Compose components using children:" }),
+        ChildrenExample
+    ]
+}
+
+ChildrenExample -> CodePreview({
+    filename: "card.tp",
+    code: "Card -> {\n    style: \"p-6 bg-white rounded-xl\n           shadow-lg\"\n    children: [\n        CardHeader,\n        CardBody,\n        CardFooter\n    ]\n}\n\nCardHeader -> {\n    type: text\n    content: \"Card Title\"\n    style: \"text-xl font-bold\"\n}\n\nCardBody -> {\n    type: text\n    content: \"Card content here...\"\n    style: \"text-gray-600 mt-2\"\n}",
+    preview: [ChildrenPreview]
+})
+
+ChildrenPreview -> {
+    style: "p-6 bg-white rounded-xl shadow-lg border"
+    children: [
+        Text({ text: "Card Title", style: "text-xl font-bold" }),
+        Text({ text: "Card content goes here...", style: "text-gray-600 mt-2" }),
+        Text({ text: "Footer", style: "text-sm text-gray-400 mt-4" })
+    ]
+}
+
+// Composition
+CompositionSection -> {
+    align: vertical
+    style: "space-y-4"
+    children: [
+        SectionTitle({ text: "Composition" }),
+        DocsText({ text: "Build complex UIs by composing simple components:" }),
+        CompositionExample
+    ]
+}
+
+CompositionExample -> CodePreview({
+    filename: "profile.tp",
+    code: "// Atoms compose into molecules\nProfileCard -> {\n    style: \"flex items-center gap-4 p-4\"\n    children: [\n        Avatar({ src: user.avatar }),\n        ProfileInfo\n    ]\n}\n\nProfileInfo -> {\n    children: [\n        Username({ name: user.name }),\n        UserRole({ role: user.role })\n    ]\n}",
+    preview: [CompositionPreview]
+})
+
+CompositionPreview -> {
+    style: "flex items-center gap-4 p-4 bg-gray-50 rounded-lg"
+    children: [
+        AvatarPlaceholder,
+        CompositionInfo
+    ]
+}
+
+AvatarPlaceholder -> {
+    style: "w-12 h-12 bg-pink-200 rounded-full flex items-center justify-center"
+    children: [Text({ text: "JD", style: "font-bold text-pink-600" })]
+}
+
+CompositionInfo -> {
+    align: vertical
+    children: [
+        Text({ text: "John Doe", style: "font-semibold" }),
+        Text({ text: "Developer", style: "text-sm text-gray-500" })
+    ]
+}

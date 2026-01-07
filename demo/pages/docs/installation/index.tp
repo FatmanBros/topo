@@ -1,0 +1,83 @@
+// Installation docs page
+import { DocsTemplate } from "../template.tp"
+import { DocsSection, DocsText, DocsDescription } from "../../../components/molecules/docs-section.tp"
+import { CodeBlock } from "../../../components/molecules/code-block.tp"
+
+Page -> DocsTemplate({ children: [InstallationContent] })
+
+InstallationContent -> {
+    align: vertical
+    style: "space-y-8"
+    children: [
+        PageHeader,
+        PrerequisitesSection,
+        InstallFromSourceSection,
+        VerifySection
+    ]
+}
+
+PageHeader -> DocsSection({
+    id: "installation",
+    title: "Installation",
+    children: [HeaderDesc]
+})
+
+HeaderDesc -> DocsDescription({
+    text: "Get topo up and running on your machine in minutes."
+})
+
+// Prerequisites
+PrerequisitesSection -> {
+    align: vertical
+    style: "space-y-4"
+    children: [
+        SectionTitle({ text: "Prerequisites" }),
+        PrereqList
+    ]
+}
+
+SectionTitle(props) -> DocsText({
+    text: props.text,
+    style: "text-xl font-semibold text-gray-900"
+})
+
+PrereqList -> {
+    align: vertical
+    style: "space-y-2"
+    children: [
+        PrereqItem({ text: "Rust 1.70+ (install from rustup.rs)" }),
+        PrereqItem({ text: "Git" }),
+        PrereqItem({ text: "Node.js 18+ (for Tailwind CSS)" })
+    ]
+}
+
+PrereqItem(props) -> DocsText({
+    text: "• " + props.text,
+    style: "text-gray-600"
+})
+
+// Install from source
+InstallFromSourceSection -> {
+    align: vertical
+    style: "space-y-4"
+    children: [
+        SectionTitle({ text: "Install from Source" }),
+        DocsText({ text: "Clone the repository and build:" }),
+        CodeBlock({ filename: "terminal", code: "git clone https://github.com/user/topo.git\ncd topo\ncargo build --release" }),
+        DocsText({ text: "Add to your PATH:" }),
+        CodeBlock({ filename: "~/.bashrc or ~/.zshrc", code: "export PATH=\"$PATH:/path/to/topo/target/release\"" }),
+        DocsText({ text: "Or create a symlink:", style: "mt-4" }),
+        CodeBlock({ filename: "terminal", code: "sudo ln -s $(pwd)/target/release/topo /usr/local/bin/topo" })
+    ]
+}
+
+// Verify installation
+VerifySection -> {
+    align: vertical
+    style: "space-y-4"
+    children: [
+        SectionTitle({ text: "Verify Installation" }),
+        DocsText({ text: "Check that topo is installed correctly:" }),
+        CodeBlock({ filename: "terminal", code: "topo --version\n# topo 0.1.0" })
+    ]
+}
