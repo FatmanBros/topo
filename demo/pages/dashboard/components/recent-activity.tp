@@ -1,8 +1,9 @@
-// Recent Activity component with store
+// Recent Activity component with anonymous store
+// Store name is derived from filename: recent-activity.tp -> RecentActivity
 import { Card } from "../../../components/atoms/card.tp"
 import { ActivityItem } from "../../../components/molecules/activity-item.tp"
 
-RecentActivity | {
+| {
     State {
         activities: []
         isLoading: true
@@ -31,7 +32,7 @@ RecentActivity | {
 }
 
 RecentActivityCard -> {
-    init: RecentActivity.Load
+    init: Load
     style: "lg:col-span-2"
     children: [
         Card({
@@ -44,7 +45,7 @@ RecentActivityCard -> {
 ActivityList -> {
     align: vertical
     style: "space-y-0"
-    children: RecentActivity.activities.for(activity => {
+    children: activities.for(activity => {
         ActivityItem({
             user: activity.user,
             action: activity.action,

@@ -203,7 +203,8 @@ pub enum EventType {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct StoreDef {
-    pub name: String,
+    /// Store name. None for anonymous stores (derived from filename)
+    pub name: Option<String>,
     pub state: Option<StateBlock>,
     pub actions: Option<ActionsBlock>,
     /// Commands are public actions accessible from outside (e.g., from Templates)

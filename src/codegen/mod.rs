@@ -4,6 +4,7 @@
 
 use crate::ast::*;
 use std::collections::{HashMap, HashSet};
+use std::path::Path;
 
 pub struct JsCodegen {
     output: String,
@@ -26,6 +27,13 @@ pub struct JsCodegen {
     stores_with_components: HashSet<String>,
     /// Store state fields: map from store name to set of state field names
     store_state_fields: HashMap<String, HashSet<String>>,
+    /// Current file path being processed
+    current_file_path: Option<String>,
+    /// Current file's anonymous store name (derived from filename)
+    current_file_store_name: Option<String>,
+    /// Actions/state fields defined in anonymous store (for unqualified reference resolution)
+    current_file_store_actions: HashSet<String>,
+    current_file_store_fields: HashSet<String>,
 }
 
 impl JsCodegen {
@@ -42,7 +50,36 @@ impl JsCodegen {
             component_params: HashMap::new(),
             stores_with_components: HashSet::new(),
             store_state_fields: HashMap::new(),
+            current_file_path: None,
+            current_file_store_name: None,
+            current_file_store_actions: HashSet::new(),
+            current_file_store_fields: HashSet::new(),
         }
+    }
+
+    /// Convert filename to PascalCase for anonymous store naming
+    /// Supports: kebab-case, snake_case, camelCase, PascalCase
+    fn filename_to_pascal_case(filename: &str) -> String {
+        let stem = Path::new(filename)
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or(filename);
+
+        let mut result = String::new();
+        let mut capitalize_next = true;
+
+        for ch in stem.chars() {
+            if ch == '-' || ch == '_' {
+                capitalize_next = true;
+            } else if capitalize_next {
+                result.push(ch.to_ascii_uppercase());
+                capitalize_next = false;
+            } else {
+                result.push(ch);
+            }
+        }
+
+        result
     }
 
     /// Check if current property is an event handler
@@ -129,20 +166,40 @@ impl JsCodegen {
     }
 
     /// Pre-collect store state fields from all files for cross-file state access
-    pub fn collect_store_state_fields(&mut self, program: &Program) {
+    pub fn collect_store_state_fields(&mut self, program: &Program, file_path: Option<&str>) {
         for decl in &program.declarations {
             if let Declaration::Store(store) = decl {
+                let store_name = self.resolve_store_name(store, file_path);
                 if let Some(state_block) = &store.state {
                     let fields: HashSet<String> = state_block.fields.iter()
                         .map(|p| p.key.clone())
                         .collect();
-                    self.store_state_fields.insert(store.name.clone(), fields);
+                    self.store_state_fields.insert(store_name, fields);
                 }
             }
         }
     }
 
+    /// Resolve store name: use explicit name or derive from filename
+    fn resolve_store_name(&self, store: &StoreDef, file_path: Option<&str>) -> String {
+        store.name.clone().unwrap_or_else(|| {
+            file_path
+                .map(|p| Self::filename_to_pascal_case(p))
+                .unwrap_or_else(|| "AnonymousStore".to_string())
+        })
+    }
+
     pub fn generate(&mut self, program: &Program) -> String {
+        self.generate_with_file_path(program, None)
+    }
+
+    pub fn generate_with_file_path(&mut self, program: &Program, file_path: Option<&str>) -> String {
+        // Reset file-specific state
+        self.current_file_path = file_path.map(|s| s.to_string());
+        self.current_file_store_name = None;
+        self.current_file_store_actions.clear();
+        self.current_file_store_fields.clear();
+
         // First pass: collect API service names, collect theme and component params
         // Also detect stores that have same-name components
         let mut store_names: HashSet<String> = HashSet::new();
@@ -153,13 +210,30 @@ impl JsCodegen {
                 self.api_service_names.insert(api.name.clone());
             }
             if let Declaration::Store(store) = decl {
-                store_names.insert(store.name.clone());
+                let store_name = self.resolve_store_name(store, file_path);
+
+                // If anonymous store, track its actions/fields for unqualified reference resolution
+                if store.name.is_none() {
+                    self.current_file_store_name = Some(store_name.clone());
+                    if let Some(actions_block) = &store.actions {
+                        for action in &actions_block.actions {
+                            self.current_file_store_actions.insert(action.name.clone());
+                        }
+                    }
+                    if let Some(state_block) = &store.state {
+                        for field in &state_block.fields {
+                            self.current_file_store_fields.insert(field.key.clone());
+                        }
+                    }
+                }
+
+                store_names.insert(store_name.clone());
                 // Collect state field names for store state access
                 if let Some(state_block) = &store.state {
                     let fields: HashSet<String> = state_block.fields.iter()
                         .map(|p| p.key.clone())
                         .collect();
-                    self.store_state_fields.insert(store.name.clone(), fields);
+                    self.store_state_fields.insert(store_name, fields);
                 }
             }
             if let Declaration::Component(comp) = decl {
@@ -885,6 +959,9 @@ impl JsCodegen {
     }
 
     fn generate_store(&mut self, store: &StoreDef) {
+        // Resolve store name (use explicit name or derive from filename)
+        let store_name = self.resolve_store_name(store, self.current_file_path.as_deref());
+
         // Collect fields with validation annotations for auto-validation
         let validated_fields: Vec<String> = store.state.as_ref()
             .map(|s| s.fields.iter()
@@ -894,10 +971,10 @@ impl JsCodegen {
             .unwrap_or_default();
 
         // Get variable name (different from registry name if same-name component exists)
-        let var_name = self.store_var_name(&store.name);
+        let var_name = self.store_var_name(&store_name);
 
         // Generate store creation
-        self.emit_line(&format!("const {} = createStore('{}', {{", var_name, store.name));
+        self.emit_line(&format!("const {} = createStore('{}', {{", var_name, store_name));
         self.indent += 1;
 
         if let Some(state) = &store.state {
@@ -1037,21 +1114,21 @@ impl JsCodegen {
         // Generate reducers
         if let Some(reducers) = &store.reducers {
             for handler in &reducers.handlers {
-                self.generate_reducer(store, handler);
+                self.generate_reducer(store, &store_name, handler);
             }
         }
 
         // Generate effects
         if let Some(effects) = &store.effects {
             for handler in &effects.handlers {
-                self.generate_effect(store, handler);
+                self.generate_effect(store, &store_name, handler);
             }
         }
 
         // Generate selectors
         if let Some(selectors) = &store.selectors {
             for selector in &selectors.selectors {
-                self.generate_selector(store, selector);
+                self.generate_selector(store, &store_name, selector);
             }
         }
 
@@ -1071,10 +1148,10 @@ impl JsCodegen {
                         "{{ type: 'formfield', label: {{ t: '{}' }}, inputType: '{}', placeholder: {{ t: '{}_placeholder' }}, value: {}.state.{}, onInput: (v) => dispatchField('{}', 'Set{}', v, '{}'), errorMsg: {}.state.{}Error, dataError: '{}.{}Error', dataField: '{}.{}' }},",
                         i18n_key, input_type, i18n_key,
                         var_name, field_name,
-                        store.name, capitalized, field_name,
+                        store_name, capitalized, field_name,
                         var_name, field_name,
-                        store.name, field_name,
-                        store.name, field_name
+                        store_name, field_name,
+                        store_name, field_name
                     ));
                 }
                 self.indent -= 1;
@@ -1089,7 +1166,7 @@ impl JsCodegen {
 
     }
 
-    fn generate_reducer(&mut self, store: &StoreDef, handler: &ReducerHandler) {
+    fn generate_reducer(&mut self, store: &StoreDef, store_name: &str, handler: &ReducerHandler) {
         // Collect state field names for context-aware expression generation
         self.state_fields.clear();
         self.local_params.clear();
@@ -1111,7 +1188,7 @@ impl JsCodegen {
             format!(", {}", handler.params.join(", "))
         };
 
-        let var_name = self.store_var_name(&store.name);
+        let var_name = self.store_var_name(store_name);
         self.emit_line(&format!(
             "{}.on('{}', (state{}) => ({{",
             var_name, handler.action, params
@@ -1134,14 +1211,22 @@ impl JsCodegen {
         self.local_params.clear();
     }
 
-    fn generate_effect(&mut self, store: &StoreDef, handler: &EffectHandler) {
+    fn generate_effect(&mut self, store: &StoreDef, store_name: &str, handler: &EffectHandler) {
+        // Save old local_params and clear for effect scope
+        let old_local_params = std::mem::take(&mut self.local_params);
+
+        // Add effect parameters to local_params
+        for param in &handler.params {
+            self.local_params.insert(param.clone());
+        }
+
         let params = if handler.params.is_empty() {
             String::new()
         } else {
             handler.params.join(", ")
         };
 
-        let var_name = self.store_var_name(&store.name);
+        let var_name = self.store_var_name(store_name);
         self.emit_line(&format!(
             "{}.effect('{}', async ({}) => {{",
             var_name, handler.action, params
@@ -1149,15 +1234,18 @@ impl JsCodegen {
         self.indent += 1;
 
         for stmt in &handler.body {
-            self.generate_statement(store, stmt);
+            self.generate_statement_with_tracking(store, store_name, stmt);
         }
 
         self.indent -= 1;
         self.emit_line("});");
         self.emit_line("");
+
+        // Restore old local_params
+        self.local_params = old_local_params;
     }
 
-    fn generate_selector(&mut self, store: &StoreDef, selector: &SelectorDef) {
+    fn generate_selector(&mut self, store: &StoreDef, store_name: &str, selector: &SelectorDef) {
         // Collect state field names for context-aware expression generation
         self.state_fields.clear();
         if let Some(state) = &store.state {
@@ -1167,7 +1255,7 @@ impl JsCodegen {
         }
 
         let body = self.generate_expression(&selector.body);
-        let var_name = self.store_var_name(&store.name);
+        let var_name = self.store_var_name(store_name);
         self.emit_line(&format!(
             "{}.selector('{}', (state) => {});",
             var_name, selector.name, body
@@ -1176,11 +1264,19 @@ impl JsCodegen {
         self.state_fields.clear();
     }
 
-    fn generate_statement(&mut self, store: &StoreDef, stmt: &Statement) {
+    fn generate_statement_with_tracking(&mut self, store: &StoreDef, store_name: &str, stmt: &Statement) {
+        self.generate_statement_impl(store, store_name, stmt, true)
+    }
+
+    fn generate_statement_impl(&mut self, store: &StoreDef, store_name: &str, stmt: &Statement, track_locals: bool) {
         match stmt {
             Statement::Assignment { name, value } => {
                 let val = self.generate_expression(value);
                 self.emit_line(&format!("const {} = {};", name, val));
+                // Track this variable so subsequent statements can reference it
+                if track_locals {
+                    self.local_params.insert(name.clone());
+                }
             }
             Statement::Dispatch { action, args } => {
                 let args_str = args
@@ -1190,7 +1286,7 @@ impl JsCodegen {
                     .join(", ");
                 self.emit_line(&format!(
                     "dispatch('{}', '{}'{}{});",
-                    store.name,
+                    store_name,
                     action,
                     if args_str.is_empty() { "" } else { ", " },
                     args_str
@@ -1204,13 +1300,17 @@ impl JsCodegen {
                 self.emit_line("try {");
                 self.indent += 1;
                 for s in try_block {
-                    self.generate_statement(store, s);
+                    self.generate_statement_impl(store, store_name, s, track_locals);
                 }
                 self.indent -= 1;
+                // Add catch parameter to local_params for catch block
+                if track_locals {
+                    self.local_params.insert(catch_param.clone());
+                }
                 self.emit_line(&format!("}} catch ({}) {{", catch_param));
                 self.indent += 1;
                 for s in catch_block {
-                    self.generate_statement(store, s);
+                    self.generate_statement_impl(store, store_name, s, track_locals);
                 }
                 self.indent -= 1;
                 self.emit_line("}");
@@ -1549,6 +1649,18 @@ impl JsCodegen {
                 } else if self.should_quote_identifier() {
                     // Quote identifier values for properties like type, align
                     format!("'{}'", name)
+                } else if let Some(store_name) = &self.current_file_store_name {
+                    // Check for unqualified action reference from anonymous store
+                    if self.current_file_store_actions.contains(name) {
+                        // Generate as action reference: () => dispatch('StoreName', 'Action')
+                        format!("() => dispatch('{}', '{}')", store_name, name)
+                    } else if self.current_file_store_fields.contains(name) {
+                        // Generate as state field reference: StoreName.state.field
+                        let var_name = self.store_var_name(store_name);
+                        format!("{}.state.{}", var_name, name)
+                    } else {
+                        name.clone()
+                    }
                 } else {
                     name.clone()
                 }
@@ -1976,6 +2088,10 @@ impl Default for JsCodegen {
             component_params: HashMap::new(),
             stores_with_components: HashSet::new(),
             store_state_fields: HashMap::new(),
+            current_file_path: None,
+            current_file_store_name: None,
+            current_file_store_actions: HashSet::new(),
+            current_file_store_fields: HashSet::new(),
         }
     }
 }
@@ -2060,8 +2176,11 @@ impl TsCodegen {
     }
 
     fn generate_store_types(&mut self, store: &StoreDef) {
+        // For type generation, use explicit name or fallback to AnonymousStore
+        let store_name = store.name.clone().unwrap_or_else(|| "AnonymousStore".to_string());
+
         // Generate State interface
-        self.emit_line(&format!("export interface {}State {{", store.name));
+        self.emit_line(&format!("export interface {}State {{", store_name));
         self.indent += 1;
 
         if let Some(state) = &store.state {
@@ -2081,7 +2200,7 @@ impl TsCodegen {
 
         // Generate Actions type
         if let Some(actions) = &store.actions {
-            self.emit_line(&format!("export type {}Actions =", store.name));
+            self.emit_line(&format!("export type {}Actions =", store_name));
             self.indent += 1;
 
             for (i, action) in actions.actions.iter().enumerate() {
@@ -2115,9 +2234,9 @@ impl TsCodegen {
         }
 
         // Generate Store interface
-        self.emit_line(&format!("export interface {}Store {{", store.name));
+        self.emit_line(&format!("export interface {}Store {{", store_name));
         self.indent += 1;
-        self.emit_line(&format!("readonly state: {}State;", store.name));
+        self.emit_line(&format!("readonly state: {}State;", store_name));
         self.emit_line("subscribe(listener: (state: {}State) => void): void;");
         self.emit_line("dispatch(action: string, ...args: any[]): void;");
 
@@ -2133,7 +2252,7 @@ impl TsCodegen {
         self.emit_line("");
 
         // Export store constant
-        self.emit_line(&format!("export declare const {}: {}Store;", store.name, store.name));
+        self.emit_line(&format!("export declare const {}: {}Store;", store_name, store_name));
     }
 
     fn generate_api_types(&mut self, api: &ApiServiceDef) {

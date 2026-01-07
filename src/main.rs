@@ -342,8 +342,9 @@ fn build_project(input: &PathBuf, output: &PathBuf, mode: &str) -> Result<()> {
     // This enables cross-file param detection and store state access
     for file in &compile_order {
         if let Some(program) = parsed_files.get(file) {
+            let file_path = file.to_str();
             codegen.collect_component_params(program);
-            codegen.collect_store_state_fields(program);
+            codegen.collect_store_state_fields(program, file_path);
         }
     }
 
@@ -387,7 +388,7 @@ fn build_project(input: &PathBuf, output: &PathBuf, mode: &str) -> Result<()> {
                     }
                 }
             }
-            let js = codegen.generate(program);
+            let js = codegen.generate_with_file_path(program, file.to_str());
             all_output.push_str(&js);
             all_output.push('\n');
         }
@@ -448,8 +449,9 @@ fn build_project_dev(input: &PathBuf, output: &PathBuf, _mode: &str, ws_port: u1
     // This enables cross-file param detection and store state access
     for file in &compile_order {
         if let Some(program) = parsed_files.get(file) {
+            let file_path = file.to_str();
             codegen.collect_component_params(program);
-            codegen.collect_store_state_fields(program);
+            codegen.collect_store_state_fields(program, file_path);
         }
     }
 
@@ -491,7 +493,7 @@ fn build_project_dev(input: &PathBuf, output: &PathBuf, _mode: &str, ws_port: u1
                     }
                 }
             }
-            let js = codegen.generate(program);
+            let js = codegen.generate_with_file_path(program, file.to_str());
             all_output.push_str(&js);
             all_output.push('\n');
         }
@@ -1685,6 +1687,10 @@ fn find_tp_files(dir: &PathBuf) -> Result<Vec<PathBuf>> {
         if path.is_dir() {
             files.extend(find_tp_files(&path)?);
         } else if path.extension().map_or(false, |ext| ext == "tp") {
+            // Skip http.setup.tp (raw JavaScript file, not topo component)
+            if path.file_name().map_or(false, |name| name == "http.setup.tp") {
+                continue;
+            }
             files.push(path);
         }
     }

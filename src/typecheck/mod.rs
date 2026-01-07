@@ -143,8 +143,10 @@ impl TypeChecker {
             }
         }
 
+        // Use explicit name or fallback to AnonymousStore for type checking
+        let store_name = store.name.clone().unwrap_or_else(|| "AnonymousStore".to_string());
         self.env.stores.insert(
-            store.name.clone(),
+            store_name,
             StoreType {
                 state_fields,
                 actions,
@@ -407,25 +409,28 @@ impl TypeChecker {
     }
 
     fn check_store(&mut self, store: &StoreDef) {
+        // Use explicit name or fallback to AnonymousStore for type checking
+        let store_name = store.name.clone().unwrap_or_else(|| "AnonymousStore".to_string());
+
         // Check state fields
         if let Some(state) = &store.state {
             for field in &state.fields {
-                self.check_property(field, &format!("{}.State", store.name));
+                self.check_property(field, &format!("{}.State", store_name));
             }
         }
 
         // Check reducers reference valid actions or commands
         if let Some(reducers) = &store.reducers {
-            let store_type = self.env.stores.get(&store.name);
+            let store_type = self.env.stores.get(&store_name);
             for handler in &reducers.handlers {
                 if let Some(st) = store_type {
                     let action_exists = st.actions.contains_key(&handler.action)
                         || st.commands.contains_key(&handler.action);
                     if !action_exists {
                         self.errors.push(TypeError::UnknownAction {
-                            store: store.name.clone(),
+                            store: store_name.clone(),
                             action: handler.action.clone(),
-                            location: format!("{}.Reducers", store.name),
+                            location: format!("{}.Reducers", store_name),
                         });
                     }
                 }
@@ -434,16 +439,16 @@ impl TypeChecker {
 
         // Check effects reference valid actions or commands
         if let Some(effects) = &store.effects {
-            let store_type = self.env.stores.get(&store.name);
+            let store_type = self.env.stores.get(&store_name);
             for handler in &effects.handlers {
                 if let Some(st) = store_type {
                     let action_exists = st.actions.contains_key(&handler.action)
                         || st.commands.contains_key(&handler.action);
                     if !action_exists {
                         self.errors.push(TypeError::UnknownAction {
-                            store: store.name.clone(),
+                            store: store_name.clone(),
                             action: handler.action.clone(),
-                            location: format!("{}.Effects", store.name),
+                            location: format!("{}.Effects", store_name),
                         });
                     }
                 }
