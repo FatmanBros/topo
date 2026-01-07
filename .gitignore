@@ -1,6 +1,9 @@
 /target
 /dist
 /tmp
+/.claude
+/CLAUDE.md
+/Makefile
 
 /demo/dist
 
