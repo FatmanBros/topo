@@ -1,0 +1,9 @@
+// Home page template - LP layout with all sections
+import { LPLayout } from "../../components/templates/lp-layout.tp"
+import { LPHero } from "./components/lp-hero.tp"
+import { LPFeatures } from "./components/lp-features.tp"
+import { LPCodeExample } from "./components/lp-code-example.tp"
+import { LPGettingStarted } from "./components/lp-getting-started.tp"
+import { LPFooter } from "./components/lp-footer.tp"
+
+HomeTemplate -> LPLayout([LPHero, LPFeatures, LPCodeExample, LPGettingStarted, LPFooter])
