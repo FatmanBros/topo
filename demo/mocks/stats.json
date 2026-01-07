@@ -1,0 +1,6 @@
+[
+  { "label": "Total Users", "value": "12,345", "change": "+12%" },
+  { "label": "Revenue", "value": "$54,321", "change": "+8%" },
+  { "label": "Active Projects", "value": "89", "change": "+5%" },
+  { "label": "Tasks Completed", "value": "1,234", "change": "+23%" }
+]

@@ -1,0 +1,13 @@
+{
+  "name": "Takuma",
+  "email": "takuma@example.com",
+  "role": "Lead Developer",
+  "avatar": "T",
+  "timezone": "Asia/Tokyo",
+  "language": "ja",
+  "notifications": {
+    "email": true,
+    "push": true,
+    "weekly_digest": false
+  }
+}
