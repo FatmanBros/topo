@@ -1165,10 +1165,14 @@ impl Parser {
                 Ok(TestStatement::Wait { ms: value as u32 })
             }
             TokenKind::Capture => {
-                // capture("filename")
+                // capture() or capture("filename")
                 self.advance();
                 self.expect(TokenKind::LParen)?;
-                let filename = self.expect_string()?;
+                let filename = if self.check(TokenKind::String) {
+                    Some(self.expect_string()?)
+                } else {
+                    None
+                };
                 self.expect(TokenKind::RParen)?;
                 Ok(TestStatement::Capture { filename })
             }
