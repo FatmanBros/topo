@@ -466,7 +466,8 @@ impl JsCodegen {
         self.emit_line("    return `<form${styleAttr} class=\"${(style || '') + flexClass}\" data-form=\"true\">${inner}</form>`;");
         self.emit_line("  }");
         self.emit_line("  if (children) {");
-        self.emit_line("    const inner = children.map(c => typeof c === 'function' ? renderVdom(c()) : renderVdom(c)).join('');");
+        self.emit_line("    const childArr = Array.isArray(children) ? children : [children];");
+        self.emit_line("    const inner = childArr.map(c => typeof c === 'function' ? renderVdom(c()) : renderVdom(c)).join('');");
         self.emit_line("    return `<div class=\"${(style || '') + flexClass}\">${inner}</div>`;");
         self.emit_line("  }");
         self.emit_line("  return `<div${styleAttr}>${resolvedContent || value || ''}</div>`;");
