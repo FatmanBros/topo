@@ -8,7 +8,10 @@
     "output": "dist"
   },
   "paths": {
-    "pages": "pages"
+    "pages": "pages",
+    "aliases": {
+      "@": "."
+    }
   },
   "style": {
     "tailwind": {

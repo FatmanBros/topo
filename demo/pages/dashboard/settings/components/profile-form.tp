@@ -1,26 +1,18 @@
 // Profile Form component with store
 ProfileSettings | {
     State {
-        fullName: ""
-        email: ""
-        bio: ""
+        profile: { fullName: "", email: "", bio: "" }
         isLoading: true
     }
 
     Actions {
         Load
         SetProfile(profile)
-        SetFullName(name)
-        SetEmail(email)
-        SetBio(bio)
     }
 
     Reducers {
         on Load { isLoading: true }
-        on SetProfile(profile) { fullName: profile.fullName, email: profile.email, bio: profile.bio }
-        on SetFullName(name) { fullName: name }
-        on SetEmail(email) { email: email }
-        on SetBio(bio) { bio: bio }
+        on SetProfile(profile) { profile: profile }
     }
 
     Effects {
@@ -52,9 +44,9 @@ ProfileFormFields -> {
     align: vertical
     style: "space-y-4 pt-4"
     children: [
-        FormField({ label: "Full Name", value: ProfileSettings.fullName, type: "text" }),
-        FormField({ label: "Email", value: ProfileSettings.email, type: "email" }),
-        FormField({ label: "Bio", value: ProfileSettings.bio, type: "textarea" }),
+        FormField({ label: "Full Name", value: ProfileSettings.profile.fullName, type: "text" }),
+        FormField({ label: "Email", value: ProfileSettings.profile.email, type: "email" }),
+        FormField({ label: "Bio", value: ProfileSettings.profile.bio, type: "textarea" }),
         SaveButton
     ]
 }

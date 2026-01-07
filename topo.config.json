@@ -26,9 +26,12 @@
   },
   "paths": {
     "pages": "demo/pages",
-    "components": "src/components",
+    "components": "demo/components",
     "stores": "src/stores",
-    "services": "src/services"
+    "services": "src/services",
+    "aliases": {
+      "@": "demo"
+    }
   },
   "runtime": {
     "api": {

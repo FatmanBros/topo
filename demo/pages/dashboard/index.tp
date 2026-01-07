@@ -1,6 +1,6 @@
 // Dashboard page
 import { DashboardTemplate } from "./template.tp"
 
-Page -> {
+DashboardPage -> {
     children: DashboardTemplate
 }

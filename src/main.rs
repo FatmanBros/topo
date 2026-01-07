@@ -315,19 +315,24 @@ fn build_project(input: &PathBuf, output: &PathBuf, mode: &str) -> Result<()> {
     let entry_files = find_tp_files(input)?;
     println!("  Found {} .tp files", entry_files.len());
 
+    // Project root is where topo.config.json is located
+    let project_root = find_project_root(input)?;
+
+    // Load config from project root
+    let config = Config::load(&project_root.join("topo.config.json")).unwrap_or_default();
+    let paths_config = config.paths_config();
+    let aliases = paths_config.aliases;
+
     // Parse all files and resolve imports
     let mut parsed_files: HashMap<PathBuf, Program> = HashMap::new();
     let mut compile_order: Vec<PathBuf> = Vec::new();
 
     // Parse entry files and their dependencies
     for file in &entry_files {
-        resolve_imports(file, input, &mut parsed_files, &mut compile_order)?;
+        resolve_imports(file, input, &project_root, &mut parsed_files, &mut compile_order, &aliases)?;
     }
 
     println!("  Compiling {} files in dependency order", compile_order.len());
-
-    // Load config early for i18n generation
-    let config = Config::load_or_default();
 
     // Generate code in dependency order
     let mut all_output = String::new();
@@ -348,6 +353,16 @@ fn build_project(input: &PathBuf, output: &PathBuf, mode: &str) -> Result<()> {
     // Generate i18n runtime if configured
     if let Some(i18n_config) = &config.i18n {
         all_output.push_str(&generate_i18n_runtime(i18n_config));
+    }
+
+    // Load http.setup.tp if exists (for HTTP client configuration)
+    let http_setup_path = project_root.join("http.setup.tp");
+    if http_setup_path.exists() {
+        println!("  Loading http.setup.tp...");
+        let setup_source = fs::read_to_string(&http_setup_path)?;
+        all_output.push_str("\n// HTTP Setup\n");
+        all_output.push_str(&setup_source);
+        all_output.push_str("\n");
     }
 
     // Generate file-based routes
@@ -408,13 +423,21 @@ fn build_project_dev(input: &PathBuf, output: &PathBuf, _mode: &str, ws_port: u1
     // Find all .tp files or use single file
     let entry_files = find_tp_files(input)?;
 
+    // Project root is where topo.config.json is located
+    let project_root = find_project_root(input)?;
+
+    // Load config from project root for aliases (may differ from passed config)
+    let project_config = Config::load(&project_root.join("topo.config.json")).unwrap_or_default();
+    let paths_config = project_config.paths_config();
+    let aliases = paths_config.aliases;
+
     // Parse all files and resolve imports
     let mut parsed_files: HashMap<PathBuf, Program> = HashMap::new();
     let mut compile_order: Vec<PathBuf> = Vec::new();
 
     // Parse entry files and their dependencies
     for file in &entry_files {
-        resolve_imports(file, input, &mut parsed_files, &mut compile_order)?;
+        resolve_imports(file, input, &project_root, &mut parsed_files, &mut compile_order, &aliases)?;
     }
 
     // Generate code in dependency order
@@ -436,6 +459,15 @@ fn build_project_dev(input: &PathBuf, output: &PathBuf, _mode: &str, ws_port: u1
     // Generate i18n runtime if configured
     if let Some(i18n_config) = &config.i18n {
         all_output.push_str(&generate_i18n_runtime(i18n_config));
+    }
+
+    // Load http.setup.tp if exists (for HTTP client configuration)
+    let http_setup_path = project_root.join("http.setup.tp");
+    if http_setup_path.exists() {
+        let setup_source = fs::read_to_string(&http_setup_path)?;
+        all_output.push_str("\n// HTTP Setup\n");
+        all_output.push_str(&setup_source);
+        all_output.push_str("\n");
     }
 
     // Generate file-based routes
@@ -489,8 +521,10 @@ fn build_project_dev(input: &PathBuf, output: &PathBuf, _mode: &str, ws_port: u1
 fn resolve_imports(
     file: &PathBuf,
     base_dir: &PathBuf,
+    project_root: &PathBuf,
     parsed: &mut HashMap<PathBuf, Program>,
     order: &mut Vec<PathBuf>,
+    aliases: &HashMap<String, String>,
 ) -> Result<()> {
     // Normalize path
     let file = if file.is_absolute() {
@@ -531,8 +565,8 @@ fn resolve_imports(
     // Resolve imports first (dependencies before dependents)
     let file_dir = file.parent().unwrap_or(base_dir);
     for import_path in imports {
-        let import_file = resolve_import_path(&import_path, file_dir, base_dir)?;
-        resolve_imports(&import_file, base_dir, parsed, order)?;
+        let import_file = resolve_import_path(&import_path, file_dir, base_dir, project_root, aliases)?;
+        resolve_imports(&import_file, base_dir, project_root, parsed, order, aliases)?;
     }
 
     // Add this file to the order (after its dependencies)
@@ -544,7 +578,38 @@ fn resolve_imports(
 }
 
 /// Resolve an import path relative to the current file or base directory
-fn resolve_import_path(import_path: &str, file_dir: &std::path::Path, base_dir: &PathBuf) -> Result<PathBuf> {
+/// Supports configurable path aliases (e.g., @/components/atoms/text.tp)
+fn resolve_import_path(
+    import_path: &str,
+    file_dir: &std::path::Path,
+    base_dir: &PathBuf,
+    project_root: &PathBuf,
+    aliases: &HashMap<String, String>,
+) -> Result<PathBuf> {
+    // Check for alias prefix (e.g., "@/", "~/", etc.)
+    for (alias, target) in aliases {
+        let alias_prefix = format!("{}/", alias);
+        if import_path.starts_with(&alias_prefix) {
+            let alias_path = &import_path[alias_prefix.len()..];
+            // Resolve target relative to project root (where topo.config.json is)
+            let target_dir = if target == "." {
+                project_root.clone()
+            } else {
+                project_root.join(target)
+            };
+            let resolved = target_dir.join(alias_path);
+            if resolved.exists() {
+                return Ok(resolved.canonicalize()?);
+            }
+            // Try with .tp extension
+            let with_ext = target_dir.join(format!("{}.tp", alias_path));
+            if with_ext.exists() {
+                return Ok(with_ext.canonicalize()?);
+            }
+            anyhow::bail!("Cannot resolve import: {} (resolved to {:?})", import_path, resolved)
+        }
+    }
+
     // Try relative to current file first
     let relative_path = file_dir.join(import_path);
     if relative_path.exists() {
@@ -1572,6 +1637,31 @@ fn show_config() -> Result<()> {
         }
     }
     Ok(())
+}
+
+/// Find project root by looking for topo.config.json
+/// Searches from input directory upwards, falls back to input's parent
+fn find_project_root(input: &PathBuf) -> Result<PathBuf> {
+    let start_dir = if input.is_file() {
+        input.parent().unwrap_or(input).to_path_buf()
+    } else {
+        input.clone()
+    };
+
+    // Search upwards for topo.config.json
+    let mut current = start_dir.canonicalize().unwrap_or(start_dir.clone());
+    loop {
+        if current.join("topo.config.json").exists() {
+            return Ok(current);
+        }
+        match current.parent() {
+            Some(parent) => current = parent.to_path_buf(),
+            None => break,
+        }
+    }
+
+    // Fallback: use input directory's parent (for pages -> project root)
+    Ok(start_dir.parent().unwrap_or(&start_dir).to_path_buf())
 }
 
 fn find_tp_files(dir: &PathBuf) -> Result<Vec<PathBuf>> {

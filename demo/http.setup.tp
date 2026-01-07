@@ -1,0 +1,37 @@
+// HTTP Client Configuration
+// This file is loaded before any components
+
+// Base URL for all API requests
+http.defaults.baseURL = '/api';
+
+// Default headers
+http.defaults.headers['Content-Type'] = 'application/json';
+
+// Request interceptor: Add auth token
+http.interceptors.request.push(config => {
+  const token = localStorage.getItem('auth_token');
+  if (token) {
+    config.headers = config.headers || {};
+    config.headers['Authorization'] = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// Response interceptor: Log responses (dev only)
+http.interceptors.response.push((data, res) => {
+  console.log(`[HTTP] ${res.status} ${res.url}`);
+  return data;
+});
+
+// Error interceptor: Handle auth errors
+http.interceptors.error.push(err => {
+  if (err.status === 401) {
+    // Clear token and redirect to login
+    localStorage.removeItem('auth_token');
+    window.location.href = '/login';
+  }
+  if (err.status === 403) {
+    console.error('Access denied');
+  }
+  throw err;
+});
