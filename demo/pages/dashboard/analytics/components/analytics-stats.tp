@@ -1,0 +1,67 @@
+// Analytics Stats component with store
+AnalyticsStats | {
+    State {
+        stats: []
+        isLoading: true
+    }
+
+    Actions {
+        Load
+        SetStats(stats)
+    }
+
+    Reducers {
+        on Load { isLoading: true }
+        on SetStats(stats) { stats: stats }
+    }
+
+    Effects {
+        on Load {
+            try {
+                stats: await http.get("/api/analytics/stats")
+                dispatch: SetStats(stats)
+            } catch(e) {
+                dispatch: SetStats([])
+            }
+        }
+    }
+}
+
+AnalyticsStatsGrid -> {
+    init: AnalyticsStats.Load
+    style: "grid grid-cols-1 md:grid-cols-4 gap-6"
+    children: AnalyticsStats.stats.for(stat => {
+        AnalyticsStat({
+            label: stat.label,
+            value: stat.value,
+            change: stat.change
+        })
+    })
+}
+
+AnalyticsStat(label, value, change) -> {
+    style: "bg-white rounded-xl shadow-sm border border-gray-100 p-6"
+    children: [
+        AnalyticsStatLabel({ label: label }),
+        AnalyticsStatValue({ value: value }),
+        AnalyticsStatChange({ change: change })
+    ]
+}
+
+AnalyticsStatLabel(label) -> {
+    type: text
+    content: label
+    style: "text-sm text-gray-500"
+}
+
+AnalyticsStatValue(value) -> {
+    type: text
+    content: value
+    style: "text-2xl font-bold text-gray-900 mt-2"
+}
+
+AnalyticsStatChange(change) -> {
+    type: text
+    content: change
+    style: "text-sm text-green-600 mt-1"
+}

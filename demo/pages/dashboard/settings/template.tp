@@ -1,6 +1,6 @@
-// Settings template
+// Settings template - layout only
 import { DashboardLayout } from "../../../components/templates/dashboard-layout.tp"
-import { Settings } from "./index.tp"
+import { ProfileForm } from "./components/profile-form.tp"
 
 SettingsTemplate -> DashboardLayout([SettingsHeader, SettingsContent])
 
@@ -45,55 +45,5 @@ SettingsNavItem(label, active) -> {
 
 SettingsMain -> {
     style: "lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 p-6"
-    children: [ProfileSettings]
-}
-
-ProfileSettings -> {
-    align: vertical
-    style: "space-y-6"
-    children: [ProfileSettingsTitle, ProfileForm]
-}
-
-ProfileSettingsTitle -> {
-    type: text
-    content: "Profile Settings"
-    style: "text-lg font-semibold text-gray-900 pb-4 border-b border-gray-100"
-}
-
-ProfileForm -> {
-    align: vertical
-    style: "space-y-4 pt-4"
-    children: [
-        FormField({ label: "Full Name", value: Settings.fullName, type: "text" }),
-        FormField({ label: "Email", value: Settings.email, type: "email" }),
-        FormField({ label: "Bio", value: Settings.bio, type: "textarea" }),
-        SaveButton
-    ]
-}
-
-FormField(label, value, type) -> {
-    align: vertical
-    style: "space-y-2"
-    children: [
-        FormFieldLabel({ label: label }),
-        FormFieldInput({ value: value, type: type })
-    ]
-}
-
-FormFieldLabel(label) -> {
-    type: text
-    content: label
-    style: "text-sm font-medium text-gray-700"
-}
-
-FormFieldInput(value, type) -> {
-    type: input
-    inputType: type
-    style: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-}
-
-SaveButton -> {
-    type: button
-    content: "Save Changes"
-    style: "mt-4 px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 w-fit"
+    children: [ProfileForm]
 }

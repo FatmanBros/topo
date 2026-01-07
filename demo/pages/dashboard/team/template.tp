@@ -1,6 +1,6 @@
-// Team template
+// Team template - layout only
 import { DashboardLayout } from "../../../components/templates/dashboard-layout.tp"
-import { Team } from "./index.tp"
+import { TeamGrid } from "./components/team-grid.tp"
 
 TeamTemplate -> DashboardLayout([TeamHeader, TeamGrid])
 
@@ -19,54 +19,4 @@ TeamSubtitle -> {
     type: text
     content: "Manage your team and their roles"
     style: "text-gray-500 mt-2"
-}
-
-TeamGrid -> {
-    style: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-    children: Team.members.for(member => {
-        TeamMemberCard({
-            name: member.name,
-            role: member.role,
-            email: member.email
-        })
-    })
-}
-
-TeamMemberCard(name, role, email) -> {
-    style: "bg-white rounded-xl shadow-sm border border-gray-100 p-6 text-center"
-    children: [
-        TeamMemberAvatar({ name: name }),
-        TeamMemberName({ name: name }),
-        TeamMemberRole({ role: role }),
-        TeamMemberEmail({ email: email })
-    ]
-}
-
-TeamMemberAvatar(name) -> {
-    style: "w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4"
-    children: [TeamMemberInitial({ name: name })]
-}
-
-TeamMemberInitial(name) -> {
-    type: text
-    content: name
-    style: "text-2xl font-bold text-indigo-600"
-}
-
-TeamMemberName(name) -> {
-    type: text
-    content: name
-    style: "text-lg font-semibold text-gray-900"
-}
-
-TeamMemberRole(role) -> {
-    type: text
-    content: role
-    style: "text-sm text-indigo-600 mt-1"
-}
-
-TeamMemberEmail(email) -> {
-    type: text
-    content: email
-    style: "text-sm text-gray-500 mt-2"
 }

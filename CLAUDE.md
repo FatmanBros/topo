@@ -112,31 +112,42 @@ Page -> {
 
 ```
 demo/components/
-├── atoms/           # 最小単位のUI要素
+├── atoms/           # 最小単位のUI要素（type: text, button等はここだけ）
 │   ├── button.tp
 │   ├── heading.tp
 │   ├── text.tp
-│   ├── sidebar-logo.tp
-│   └── sidebar-item.tp
+│   └── card.tp
 ├── molecules/       # atomsを組み合わせた機能単位
-│   ├── lang-switcher.tp
-│   └── sidebar-nav.tp
+│   ├── project-card.tp
+│   ├── member-card.tp
+│   └── progress-bar.tp
 ├── organisms/       # molecules/atomsを組み合わせた独立セクション
 │   ├── login-form.tp
-│   ├── dashboard-sidebar.tp
-│   ├── dashboard-header.tp
-│   └── stat-cards.tp
+│   └── dashboard-sidebar.tp
 └── templates/       # ページレイアウト
-    ├── login-page.tp
-    └── dashboard-page.tp
+    └── dashboard-layout.tp
 ```
+
+### Atomic Design 原則（厳守）
+
+1. **`type: text`, `type: button` 等のプリミティブは atoms のみ**
+   - pages/components で直接 `type: text` を書くのは禁止
+   - 必ず `Text`, `Heading`, `Button` 等の atoms を import して使う
+
+2. **pages は molecules/organisms のみ使用**
+   - atoms を直接使うのは molecules/organisms の責務
+   - pages/components は molecules/organisms を組み合わせる
+
+3. **共有コンポーネントは demo/components/ に配置**
+   - 複数ページで使うものは共有化
+   - ページ固有のものは pages/{page}/components/ に配置（ただし atoms は使わない）
 
 ### 命名規則
 
-- **atoms**: 単一機能を表す名前 (`Button`, `Text`, `SidebarItem`)
-- **molecules**: 機能グループを表す名前 (`SidebarNav`, `LangSwitcher`)
+- **atoms**: 単一機能を表す名前 (`Button`, `Text`, `Card`)
+- **molecules**: 機能グループを表す名前 (`ProjectCard`, `MemberCard`, `ProgressBar`)
 - **organisms**: セクション名 (`LoginForm`, `DashboardSidebar`)
-- **templates**: `{機能}Page` (`LoginPage`, `DashboardPage`)
+- **templates**: `{機能}Layout` (`DashboardLayout`)
 
 ## フォーム実装パターン
 

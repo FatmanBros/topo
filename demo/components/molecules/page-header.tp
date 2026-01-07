@@ -1,0 +1,36 @@
+// Page Header molecule
+import { Text } from "../atoms/text.tp"
+import { Button } from "../atoms/button.tp"
+
+PageHeader(props) -> {
+    style: "mb-8"
+    children: props.actions ? [
+        PageTitle({ title: props.title }),
+        PageActions({ children: props.actions })
+    ] : [
+        PageTitle({ title: props.title }),
+        props.subtitle ? PageSubtitle({ subtitle: props.subtitle }) : null
+    ]
+}
+
+PageTitle(title) -> Text({
+    text: title,
+    style: "text-2xl font-bold text-gray-900"
+})
+
+PageSubtitle(subtitle) -> Text({
+    text: subtitle,
+    style: "text-gray-500 mt-2"
+})
+
+PageActions(children) -> {
+    style: "mt-4"
+    children: children
+}
+
+PrimaryActionButton(props) -> Button(
+    props.label,
+    props.onClick,
+    "px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700",
+    "button"
+)

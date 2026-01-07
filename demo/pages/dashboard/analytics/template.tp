@@ -1,6 +1,7 @@
-// Analytics template
+// Analytics template - layout only
 import { DashboardLayout } from "../../../components/templates/dashboard-layout.tp"
-import { Analytics } from "./index.tp"
+import { AnalyticsStatsGrid } from "./components/analytics-stats.tp"
+import { SourcesChart } from "./components/traffic-sources.tp"
 
 AnalyticsTemplate -> DashboardLayout([AnalyticsHeader, AnalyticsContent])
 
@@ -24,45 +25,7 @@ AnalyticsPeriod -> {
 AnalyticsContent -> {
     align: vertical
     style: "space-y-6"
-    children: [AnalyticsStats, AnalyticsCharts]
-}
-
-AnalyticsStats -> {
-    style: "grid grid-cols-1 md:grid-cols-4 gap-6"
-    children: Analytics.stats.for(stat => {
-        AnalyticsStat({
-            label: stat.label,
-            value: stat.value,
-            change: stat.change
-        })
-    })
-}
-
-AnalyticsStat(label, value, change) -> {
-    style: "bg-white rounded-xl shadow-sm border border-gray-100 p-6"
-    children: [
-        AnalyticsStatLabel({ label: label }),
-        AnalyticsStatValue({ value: value }),
-        AnalyticsStatChange({ change: change })
-    ]
-}
-
-AnalyticsStatLabel(label) -> {
-    type: text
-    content: label
-    style: "text-sm text-gray-500"
-}
-
-AnalyticsStatValue(value) -> {
-    type: text
-    content: value
-    style: "text-2xl font-bold text-gray-900 mt-2"
-}
-
-AnalyticsStatChange(change) -> {
-    type: text
-    content: change
-    style: "text-sm text-green-600 mt-1"
+    children: [AnalyticsStatsGrid, AnalyticsCharts]
 }
 
 AnalyticsCharts -> {
@@ -90,59 +53,4 @@ TrafficChartText -> {
     type: text
     content: "Chart visualization"
     style: "text-gray-400"
-}
-
-SourcesChart -> {
-    style: "bg-white rounded-xl shadow-sm border border-gray-100 p-6"
-    children: [SourcesChartTitle, SourcesList]
-}
-
-SourcesChartTitle -> {
-    type: text
-    content: "Traffic Sources"
-    style: "text-lg font-semibold text-gray-900 mb-4"
-}
-
-SourcesList -> {
-    align: vertical
-    style: "space-y-4"
-    children: Analytics.sources.for(source => {
-        SourceItem({
-            name: source.name,
-            value: source.value,
-            color: source.color
-        })
-    })
-}
-
-SourceItem(name, value, color) -> {
-    style: "flex items-center justify-between"
-    children: [
-        SourceItemLeft({ name: name, color: color }),
-        SourceItemValue({ value: value })
-    ]
-}
-
-SourceItemLeft(name, color) -> {
-    style: "flex items-center gap-3"
-    children: [
-        SourceItemDot({ color: color }),
-        SourceItemName({ name: name })
-    ]
-}
-
-SourceItemDot(color) -> {
-    style: color + " w-3 h-3 rounded-full"
-}
-
-SourceItemName(name) -> {
-    type: text
-    content: name
-    style: "text-gray-700"
-}
-
-SourceItemValue(value) -> {
-    type: text
-    content: value
-    style: "font-semibold text-gray-900"
 }
