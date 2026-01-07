@@ -1,58 +1,6 @@
-// Home page
-
-HomeTitle -> {
-    type: text
-    content: "Welcome to topo!"
-    style: "text-4xl font-bold text-gray-900 mb-4"
-}
-
-HomeDescription -> {
-    type: text
-    content: "A UI framework that eliminates nesting hell"
-    style: "text-lg text-gray-600 mb-8"
-}
-
-NavLinks -> {
-    style: "flex gap-4"
-    children: [AboutLink, UsersLink, LoginLink, DashboardLink]
-}
-
-AboutLink -> {
-    type: link
-    href: "/about"
-    content: "About"
-    style: "px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-}
-
-UsersLink -> {
-    type: link
-    href: "/users"
-    content: "Users"
-    style: "px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
-}
-
-LoginLink -> {
-    type: link
-    href: "/login"
-    content: "Login"
-    style: "px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600"
-}
-
-DashboardLink -> {
-    type: link
-    href: "/dashboard"
-    content: "Dashboard"
-    style: "px-4 py-2 bg-indigo-500 text-white rounded hover:bg-indigo-600"
-}
-
-CurrentPath -> {
-    type: text
-    content: $route.path
-    style: "mt-8 text-sm text-gray-400"
-}
+// Landing Page
+import { HomeTemplate } from "./home/template.tp"
 
 AppPage -> {
-    style: "min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100"
-    align: vertical
-    children: [HomeTitle, HomeDescription, NavLinks, CurrentPath]
+    children: HomeTemplate
 }

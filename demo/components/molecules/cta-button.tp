@@ -1,0 +1,24 @@
+// CTA button molecule - gradient buttons for LP
+CTAButton(props) -> {
+    type: props.href ? "link" : "button"
+    href: props.href
+    content: props.content
+    click: props.onClick
+    style: "inline-block px-8 py-4 bg-gradient-to-r from-pink-500 to-violet-500 text-white font-semibold rounded-full hover:from-pink-600 hover:to-violet-600 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+}
+
+SecondaryButton(props) -> {
+    type: props.href ? "link" : "button"
+    href: props.href
+    content: props.content
+    click: props.onClick
+    style: "inline-block px-8 py-4 bg-white text-gray-700 font-semibold rounded-full border-2 border-gray-200 hover:border-pink-300 hover:text-pink-600 transition-all duration-300"
+}
+
+SmallCTAButton(props) -> {
+    type: props.href ? "link" : "button"
+    href: props.href
+    content: props.content
+    click: props.onClick
+    style: "inline-block px-6 py-2 bg-gradient-to-r from-pink-500 to-violet-500 text-white text-sm font-semibold rounded-full hover:from-pink-600 hover:to-violet-600 transition-all duration-300"
+}

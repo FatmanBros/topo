@@ -1,0 +1,64 @@
+// LP Hero section - main hero with pastel gradient background
+import { PastelBadge } from "../../../components/atoms/pastel-badge.tp"
+import { PinkGradientText } from "../../../components/atoms/gradient-text.tp"
+import { CTAButton, SecondaryButton } from "../../../components/molecules/cta-button.tp"
+
+LPHero -> {
+    style: "relative bg-gradient-to-br from-pink-50 via-violet-50 to-sky-50 pt-32 pb-24 overflow-hidden"
+    children: [HeroBackground, HeroContent]
+}
+
+HeroBackground -> {
+    style: "absolute inset-0 overflow-hidden pointer-events-none"
+    children: [
+        HeroBlob("absolute -top-40 -right-40 w-80 h-80 bg-pink-200 rounded-full mix-blend-multiply filter blur-3xl opacity-50"),
+        HeroBlob("absolute -bottom-40 -left-40 w-80 h-80 bg-violet-200 rounded-full mix-blend-multiply filter blur-3xl opacity-50"),
+        HeroBlob("absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-sky-200 rounded-full mix-blend-multiply filter blur-3xl opacity-50")
+    ]
+}
+
+HeroBlob(style) -> {
+    style: style
+}
+
+HeroContent -> {
+    style: "relative max-w-4xl mx-auto px-6 text-center"
+    align: vertical
+    children: [
+        HeroBadge,
+        HeroTitle,
+        HeroSubtitle,
+        HeroDescription,
+        HeroCTAs
+    ]
+}
+
+HeroBadge -> {
+    style: "mb-6"
+    children: [PastelBadge("v0.1.0 - Alpha Release", "pink")]
+}
+
+HeroTitle -> {
+    style: "mb-4"
+    children: [PinkGradientText("topo", "text-7xl md:text-8xl")]
+}
+
+HeroSubtitle -> {
+    type: text
+    content: "A UI framework that eliminates nesting hell"
+    style: "text-2xl md:text-3xl text-gray-700 font-medium mb-6"
+}
+
+HeroDescription -> {
+    type: text
+    content: "Write flat, readable UI code. No more callback pyramids or deeply nested components. Just clean, declarative definitions."
+    style: "text-lg text-gray-600 mb-10 max-w-2xl mx-auto leading-relaxed"
+}
+
+HeroCTAs -> {
+    style: "flex flex-col sm:flex-row gap-4 justify-center"
+    children: [
+        CTAButton({ href: "#getting-started", content: "Get Started" }),
+        SecondaryButton({ href: "/dashboard", content: "View Demo" })
+    ]
+}

@@ -1,0 +1,54 @@
+// LP Footer section - simple footer with branding
+LPFooter -> {
+    style: "py-16 bg-gradient-to-br from-gray-50 to-pink-50 border-t border-gray-100"
+    children: [FooterContainer]
+}
+
+FooterContainer -> {
+    style: "max-w-6xl mx-auto px-6"
+    children: [FooterContent]
+}
+
+FooterContent -> {
+    style: "flex flex-col md:flex-row items-center justify-between gap-8"
+    children: [FooterBrand, FooterLinks, FooterCopyright]
+}
+
+FooterBrand -> {
+    style: "flex items-center gap-4"
+    children: [FooterLogo, FooterTagline]
+}
+
+FooterLogo -> {
+    type: text
+    content: "topo"
+    style: "text-2xl font-bold bg-gradient-to-r from-pink-500 to-violet-500 bg-clip-text text-transparent"
+}
+
+FooterTagline -> {
+    type: text
+    content: "Flat UI for modern apps"
+    style: "text-gray-500"
+}
+
+FooterLinks -> {
+    style: "flex gap-8"
+    children: [
+        FooterLink({ href: "https://github.com/FatmanBros/topo", label: "GitHub" }),
+        FooterLink({ href: "https://github.com/FatmanBros/topo", label: "Docs" }),
+        FooterLink({ href: "/dashboard", label: "Demo" })
+    ]
+}
+
+FooterLink(props) -> {
+    type: link
+    href: props.href
+    content: props.label
+    style: "text-gray-600 hover:text-pink-500 transition-colors"
+}
+
+FooterCopyright -> {
+    type: text
+    content: "Built with topo - MIT License"
+    style: "text-gray-400 text-sm"
+}
