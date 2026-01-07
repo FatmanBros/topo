@@ -1,0 +1,12 @@
+// LP Layout template - full page layout for landing page
+import { LPNavbar } from "../organisms/lp-navbar.tp"
+
+LPLayout(children) -> {
+    style: "min-h-screen bg-white"
+    children: [LPNavbar, LPLayoutMain({ children: children })]
+}
+
+LPLayoutMain(props) -> {
+    style: "pt-20"
+    children: props.children
+}

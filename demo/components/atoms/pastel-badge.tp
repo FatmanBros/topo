@@ -1,0 +1,12 @@
+// Pastel badge atom - soft colored badges for LP
+PastelBadge(content, variant) -> {
+    type: text
+    content: content
+    style: variant == "pink"
+        ? "inline-block px-4 py-1.5 bg-pink-100 text-pink-700 rounded-full text-sm font-medium"
+        : variant == "violet"
+        ? "inline-block px-4 py-1.5 bg-violet-100 text-violet-700 rounded-full text-sm font-medium"
+        : variant == "sky"
+        ? "inline-block px-4 py-1.5 bg-sky-100 text-sky-700 rounded-full text-sm font-medium"
+        : "inline-block px-4 py-1.5 bg-amber-100 text-amber-700 rounded-full text-sm font-medium"
+}

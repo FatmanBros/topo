@@ -1,0 +1,70 @@
+// LP Features section - 4 feature cards with pastel colors
+import { FeatureCard } from "../../../components/molecules/feature-card.tp"
+
+LPFeatures -> {
+    id: "features"
+    style: "py-24 bg-white"
+    children: [FeaturesContainer]
+}
+
+FeaturesContainer -> {
+    style: "max-w-6xl mx-auto px-6"
+    align: vertical
+    children: [FeaturesHeader, FeaturesGrid]
+}
+
+FeaturesHeader -> {
+    style: "text-center mb-16"
+    align: vertical
+    children: [FeaturesTitle, FeaturesSubtitle]
+}
+
+FeaturesTitle -> {
+    type: text
+    content: "Why topo?"
+    style: "text-4xl font-bold text-gray-900 mb-4"
+}
+
+FeaturesSubtitle -> {
+    type: text
+    content: "Four powerful concepts that make UI development a breeze"
+    style: "text-xl text-gray-600"
+}
+
+FeaturesGrid -> {
+    style: "grid grid-cols-1 md:grid-cols-2 gap-8"
+    children: [
+        FeatureCard({
+            icon: "📋",
+            title: "Flat Definitions",
+            description: "Define components at the top level. Compose by reference with children: [A, B, C]. No more nesting nightmares.",
+            bgColor: "bg-pink-50",
+            textColor: "text-pink-700",
+            borderColor: "border-pink-200"
+        }),
+        FeatureCard({
+            icon: "🔄",
+            title: "Built-in State Management",
+            description: "NgRx-style state with Actions, Reducers, Effects, and Selectors. Everything you need, built right in.",
+            bgColor: "bg-violet-50",
+            textColor: "text-violet-700",
+            borderColor: "border-violet-200"
+        }),
+        FeatureCard({
+            icon: "⚡",
+            title: "Auto API Services",
+            description: "Define REST endpoints, get CRUD methods auto-generated. Focus on your app, not boilerplate.",
+            bgColor: "bg-sky-50",
+            textColor: "text-sky-700",
+            borderColor: "border-sky-200"
+        }),
+        FeatureCard({
+            icon: "✨",
+            title: "4 Definition Operators",
+            description: "-> for Components, | for Stores, :: for APIs, {} for Methods. Simple, consistent, powerful.",
+            bgColor: "bg-amber-50",
+            textColor: "text-amber-700",
+            borderColor: "border-amber-200"
+        })
+    ]
+}

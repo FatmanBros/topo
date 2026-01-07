@@ -1,0 +1,19 @@
+// Gradient text atom - pastel gradient text for LP
+GradientText(content, gradient, size) -> {
+    type: text
+    content: content
+    style: size + " font-bold bg-clip-text text-transparent " + gradient
+}
+
+// Presets for common gradients
+PinkGradientText(content, size) -> GradientText(
+    content,
+    "bg-gradient-to-r from-pink-500 to-violet-500",
+    size || "text-4xl"
+)
+
+VioletGradientText(content, size) -> GradientText(
+    content,
+    "bg-gradient-to-r from-violet-500 to-sky-500",
+    size || "text-4xl"
+)

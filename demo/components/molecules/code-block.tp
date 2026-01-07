@@ -1,0 +1,41 @@
+// Code block molecule - syntax highlighted code display for LP
+CodeBlock(props) -> {
+    style: "relative bg-gray-900 rounded-2xl overflow-hidden shadow-xl"
+    children: [
+        CodeBlockHeader({ filename: props.filename }),
+        CodeBlockContent({ code: props.code })
+    ]
+}
+
+CodeBlockHeader(props) -> {
+    style: "flex items-center gap-2 px-4 py-3 bg-gray-800 border-b border-gray-700"
+    children: [
+        CodeBlockDots,
+        CodeBlockFilename({ name: props.filename })
+    ]
+}
+
+CodeBlockDots -> {
+    style: "flex gap-1.5"
+    children: [
+        CodeBlockDot("bg-red-500"),
+        CodeBlockDot("bg-yellow-500"),
+        CodeBlockDot("bg-green-500")
+    ]
+}
+
+CodeBlockDot(color) -> {
+    style: "w-3 h-3 rounded-full " + color
+}
+
+CodeBlockFilename(props) -> {
+    type: text
+    content: props.name
+    style: "text-gray-400 text-sm ml-2"
+}
+
+CodeBlockContent(props) -> {
+    type: text
+    content: props.code
+    style: "p-6 font-mono text-sm text-green-400 whitespace-pre-wrap leading-relaxed"
+}
