@@ -1,0 +1,6 @@
+[
+  { "user": "Alice", "action": "created a new project", "time": "2 minutes ago" },
+  { "user": "Bob", "action": "updated the dashboard", "time": "15 minutes ago" },
+  { "user": "Carol", "action": "completed a task", "time": "1 hour ago" },
+  { "user": "Dave", "action": "joined the team", "time": "3 hours ago" }
+]

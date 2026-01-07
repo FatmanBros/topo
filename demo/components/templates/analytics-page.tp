@@ -1,5 +1,6 @@
 // Analytics page template
 import { DashboardLayout } from "./dashboard-layout.tp"
+import { Analytics } from "../../stores/analytics-store.tp"
 
 AnalyticsPage -> DashboardLayout([AnalyticsHeader, AnalyticsContent])
 
@@ -28,12 +29,13 @@ AnalyticsContent -> {
 
 AnalyticsStats -> {
     style: "grid grid-cols-1 md:grid-cols-4 gap-6"
-    children: [
-        AnalyticsStat({ label: "Page Views", value: "124,532", change: "+12.3%" }),
-        AnalyticsStat({ label: "Unique Visitors", value: "45,234", change: "+8.1%" }),
-        AnalyticsStat({ label: "Bounce Rate", value: "32.4%", change: "-2.4%" }),
-        AnalyticsStat({ label: "Avg. Session", value: "4m 23s", change: "+18.2%" })
-    ]
+    children: Analytics.stats.for(stat => {
+        AnalyticsStat({
+            label: stat.label,
+            value: stat.value,
+            change: stat.change
+        })
+    })
 }
 
 AnalyticsStat(label, value, change) -> {
@@ -104,12 +106,13 @@ SourcesChartTitle -> {
 SourcesList -> {
     align: vertical
     style: "space-y-4"
-    children: [
-        SourceItem({ name: "Direct", value: "42%", color: "bg-indigo-600" }),
-        SourceItem({ name: "Organic Search", value: "28%", color: "bg-blue-500" }),
-        SourceItem({ name: "Social Media", value: "18%", color: "bg-green-500" }),
-        SourceItem({ name: "Referral", value: "12%", color: "bg-yellow-500" })
-    ]
+    children: Analytics.sources.for(source => {
+        SourceItem({
+            name: source.name,
+            value: source.value,
+            color: source.color
+        })
+    })
 }
 
 SourceItem(name, value, color) -> {

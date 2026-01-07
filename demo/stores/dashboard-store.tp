@@ -1,30 +1,40 @@
-// Dashboard store - manages dashboard data
+// Dashboard store - manages dashboard data with API fetching
 Dashboard | {
     State {
-        stats: [
-            { label: "Total Users", value: "12,345", change: "+12.5%", positive: true },
-            { label: "Revenue", value: "$45,678", change: "+8.2%", positive: true },
-            { label: "Active Sessions", value: "1,234", change: "-3.1%", positive: false },
-            { label: "Conversion Rate", value: "3.24%", change: "+0.8%", positive: true }
-        ]
-        activities: [
-            { user: "Alice", action: "created a new project", time: "2 minutes ago" },
-            { user: "Bob", action: "updated the dashboard", time: "15 minutes ago" },
-            { user: "Carol", action: "completed a task", time: "1 hour ago" },
-            { user: "Dave", action: "joined the team", time: "3 hours ago" }
-        ]
-        isLoading: false
+        stats: []
+        activities: []
+        isLoading: true
     }
 
     Actions {
+        Load
         SetStats(stats)
         SetActivities(activities)
         SetLoading(loading)
     }
 
     Reducers {
+        on Load { isLoading: true }
         on SetStats(stats) { stats: stats }
         on SetActivities(activities) { activities: activities }
         on SetLoading(loading) { isLoading: loading }
+    }
+
+    Effects {
+        on Load {
+            try {
+                stats: await http.get("/api/dashboard/stats")
+                dispatch: SetStats(stats)
+            } catch(e) {
+                dispatch: SetStats([])
+            }
+            try {
+                activities: await http.get("/api/dashboard/activities")
+                dispatch: SetActivities(activities)
+            } catch(e) {
+                dispatch: SetActivities([])
+            }
+            dispatch: SetLoading(false)
+        }
     }
 }

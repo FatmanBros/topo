@@ -1025,33 +1025,42 @@ fn start_dev_server(port: u16, config: &Config) -> Result<()> {
         }
     }
 
+    // Load mock data if exists (look in parent directory of pages, i.e., demo/mocks)
+    let mocks_dir = input.parent().unwrap_or(&input).join("mocks");
+
     // Serve files
     for request in server.incoming_requests() {
         let url_path = request.url().trim_start_matches('/');
-        let file_path = if url_path.is_empty() || url_path == "/" {
-            output.join("index.html")
-        } else {
-            output.join(url_path)
-        };
 
-        let response = if file_path.exists() && file_path.is_file() {
-            match fs::read(&file_path) {
-                Ok(content) => {
-                    let content_type = get_content_type(&file_path);
-                    Response::from_data(content).with_header(
-                        tiny_http::Header::from_bytes(&b"Content-Type"[..], content_type.as_bytes()).unwrap()
-                    )
-                }
-                Err(_) => Response::from_string("500 Internal Server Error")
-                    .with_status_code(500),
-            }
+        // Handle API mock routes
+        let response = if url_path.starts_with("api/") {
+            serve_mock_api(url_path, &mocks_dir)
         } else {
-            // For SPA, serve index.html for non-existent paths
-            match fs::read(output.join("index.html")) {
-                Ok(content) => Response::from_data(content).with_header(
-                    tiny_http::Header::from_bytes(&b"Content-Type"[..], b"text/html").unwrap()
-                ),
-                Err(_) => Response::from_string("404 Not Found").with_status_code(404),
+            let file_path = if url_path.is_empty() || url_path == "/" {
+                output.join("index.html")
+            } else {
+                output.join(url_path)
+            };
+
+            if file_path.exists() && file_path.is_file() {
+                match fs::read(&file_path) {
+                    Ok(content) => {
+                        let content_type = get_content_type(&file_path);
+                        Response::from_data(content).with_header(
+                            tiny_http::Header::from_bytes(&b"Content-Type"[..], content_type.as_bytes()).unwrap()
+                        )
+                    }
+                    Err(_) => Response::from_string("500 Internal Server Error")
+                        .with_status_code(500),
+                }
+            } else {
+                // For SPA, serve index.html for non-existent paths
+                match fs::read(output.join("index.html")) {
+                    Ok(content) => Response::from_data(content).with_header(
+                        tiny_http::Header::from_bytes(&b"Content-Type"[..], b"text/html").unwrap()
+                    ),
+                    Err(_) => Response::from_string("404 Not Found").with_status_code(404),
+                }
             }
         };
 
@@ -1059,6 +1068,39 @@ fn start_dev_server(port: u16, config: &Config) -> Result<()> {
     }
 
     Ok(())
+}
+
+/// Serve mock API responses from mocks directory
+/// URL pattern: /api/{service}/{endpoint} -> mocks/{service}/{endpoint}.json
+fn serve_mock_api(url_path: &str, mocks_dir: &PathBuf) -> Response<std::io::Cursor<Vec<u8>>> {
+    // Parse: api/dashboard/stats -> mocks/dashboard/stats.json
+    let api_path = url_path.strip_prefix("api/").unwrap_or(url_path);
+    let mock_file = mocks_dir.join(format!("{}.json", api_path));
+
+    if mock_file.exists() {
+        match fs::read(&mock_file) {
+            Ok(content) => {
+                Response::from_data(content)
+                    .with_header(
+                        tiny_http::Header::from_bytes(&b"Content-Type"[..], b"application/json").unwrap()
+                    )
+                    .with_header(
+                        tiny_http::Header::from_bytes(&b"Access-Control-Allow-Origin"[..], b"*").unwrap()
+                    )
+            }
+            Err(_) => Response::from_string(r#"{"error": "Failed to read mock file"}"#)
+                .with_status_code(500)
+                .with_header(
+                    tiny_http::Header::from_bytes(&b"Content-Type"[..], b"application/json").unwrap()
+                ),
+        }
+    } else {
+        Response::from_string(format!(r#"{{"error": "Mock not found", "path": "{}"}}"#, mock_file.display()))
+            .with_status_code(404)
+            .with_header(
+                tiny_http::Header::from_bytes(&b"Content-Type"[..], b"application/json").unwrap()
+            )
+    }
 }
 
 fn run_tests(headed: bool, ui: bool, file: Option<String>) -> Result<()> {

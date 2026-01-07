@@ -1,5 +1,6 @@
 // Team page template
 import { DashboardLayout } from "./dashboard-layout.tp"
+import { Team } from "../../stores/team-store.tp"
 
 TeamPage -> DashboardLayout([TeamHeader, TeamGrid])
 
@@ -22,14 +23,13 @@ TeamSubtitle -> {
 
 TeamGrid -> {
     style: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-    children: [
-        TeamMemberCard({ name: "Alice Johnson", role: "Project Manager", email: "alice@example.com" }),
-        TeamMemberCard({ name: "Bob Smith", role: "Developer", email: "bob@example.com" }),
-        TeamMemberCard({ name: "Carol Williams", role: "Designer", email: "carol@example.com" }),
-        TeamMemberCard({ name: "Dave Brown", role: "Developer", email: "dave@example.com" }),
-        TeamMemberCard({ name: "Eve Davis", role: "QA Engineer", email: "eve@example.com" }),
-        TeamMemberCard({ name: "Frank Miller", role: "DevOps", email: "frank@example.com" })
-    ]
+    children: Team.members.for(member => {
+        TeamMemberCard({
+            name: member.name,
+            role: member.role,
+            email: member.email
+        })
+    })
 }
 
 TeamMemberCard(name, role, email) -> {

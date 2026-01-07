@@ -1544,10 +1544,46 @@ impl Parser {
             } else if self.check(TokenKind::Dot) {
                 self.advance();
                 let property = self.expect_identifier_or_keyword()?;
-                expr = Expression::MemberAccess {
-                    object: Box::new(expr),
-                    property,
-                };
+
+                // Check for .for() method - items.for(item => { body }) or items.for((item, index) => { body })
+                if property == "for" && self.check(TokenKind::LParen) {
+                    self.advance(); // consume '('
+
+                    let (item, index) = if self.check(TokenKind::LParen) {
+                        // (item, index) form
+                        self.advance(); // consume inner '('
+                        let item = self.expect_identifier()?;
+                        let index = if self.match_token(TokenKind::Comma) {
+                            Some(self.expect_identifier()?)
+                        } else {
+                            None
+                        };
+                        self.expect(TokenKind::RParen)?; // consume inner ')'
+                        (item, index)
+                    } else {
+                        // item form (single identifier)
+                        let item = self.expect_identifier()?;
+                        (item, None)
+                    };
+
+                    self.expect(TokenKind::FatArrow)?; // consume '=>'
+                    self.expect(TokenKind::LBrace)?;
+                    let body = self.expression()?;
+                    self.expect(TokenKind::RBrace)?;
+                    self.expect(TokenKind::RParen)?; // consume outer ')'
+
+                    expr = Expression::ForIn {
+                        item,
+                        index,
+                        items: Box::new(expr),
+                        body: Box::new(body),
+                    };
+                } else {
+                    expr = Expression::MemberAccess {
+                        object: Box::new(expr),
+                        property,
+                    };
+                }
             } else {
                 break;
             }
@@ -1604,6 +1640,7 @@ impl Parser {
                 self.expect(TokenKind::RBrace)?;
                 Ok(Expression::ForIn {
                     item,
+                    index: None,
                     items: Box::new(items),
                     body: Box::new(body),
                 })
@@ -1776,6 +1813,7 @@ impl Parser {
                 | TokenKind::Hidden
                 | TokenKind::Url
                 | TokenKind::Fill
+                | TokenKind::For
         );
 
         if is_valid {

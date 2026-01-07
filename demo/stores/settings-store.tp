@@ -1,0 +1,23 @@
+// Settings store - manages user settings data
+Settings | {
+    State {
+        fullName: "John Doe"
+        email: "john@example.com"
+        bio: "Software developer"
+        isLoading: false
+    }
+
+    Actions {
+        SetFullName(name)
+        SetEmail(email)
+        SetBio(bio)
+        SetLoading(loading)
+    }
+
+    Reducers {
+        on SetFullName(name) { fullName: name }
+        on SetEmail(email) { email: email }
+        on SetBio(bio) { bio: bio }
+        on SetLoading(loading) { isLoading: loading }
+    }
+}

@@ -365,9 +365,11 @@ pub enum Expression {
     /// Array: `[a, b, c]`
     Array { elements: Vec<Expression> },
 
-    /// For loop: `for item in items { Component(item) }`
+    /// For loop: `items.for(item => { ... })` or `items.for((item, index) => { ... })`
     ForIn {
         item: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        index: Option<String>,
         items: Box<Expression>,
         body: Box<Expression>,
     },
