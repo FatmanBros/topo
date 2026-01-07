@@ -1,0 +1,7 @@
+[
+  { "user": "Takuma", "action": "created a new project", "time": "2 hours ago" },
+  { "user": "Yuki", "action": "updated dashboard settings", "time": "3 hours ago" },
+  { "user": "Kenji", "action": "added new team member", "time": "5 hours ago" },
+  { "user": "Sakura", "action": "completed task review", "time": "1 day ago" },
+  { "user": "Takuma", "action": "deployed to production", "time": "2 days ago" }
+]

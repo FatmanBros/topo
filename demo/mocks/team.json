@@ -1,0 +1,7 @@
+[
+  { "name": "Takuma", "role": "Lead Developer", "avatar": "T", "status": "online" },
+  { "name": "Yuki", "role": "Designer", "avatar": "Y", "status": "online" },
+  { "name": "Kenji", "role": "Backend Developer", "avatar": "K", "status": "away" },
+  { "name": "Sakura", "role": "Project Manager", "avatar": "S", "status": "online" },
+  { "name": "Ryu", "role": "DevOps Engineer", "avatar": "R", "status": "offline" }
+]
