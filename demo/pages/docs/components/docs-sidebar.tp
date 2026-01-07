@@ -1,0 +1,39 @@
+// Docs sidebar navigation
+import { SidebarSection, DocsSidebarItem } from "../../../components/molecules/sidebar-section.tp"
+
+DocsSidebar -> {
+    style: "w-64 border-r border-gray-100 h-screen sticky top-20 overflow-y-auto p-6 hidden md:block"
+    children: [DocsSidebarNav]
+}
+
+DocsSidebarNav -> {
+    align: vertical
+    style: "space-y-6"
+    children: [
+        SidebarSection({
+            title: "Getting Started",
+            items: [
+                DocsSidebarItem({ label: "Introduction", href: "#introduction", active: true }),
+                DocsSidebarItem({ label: "Installation", href: "#installation", active: false }),
+                DocsSidebarItem({ label: "Quick Start", href: "#quick-start", active: false })
+            ]
+        }),
+        SidebarSection({
+            title: "Core Concepts",
+            items: [
+                DocsSidebarItem({ label: "Components", href: "#components", active: false }),
+                DocsSidebarItem({ label: "Store", href: "#store", active: false }),
+                DocsSidebarItem({ label: "API Services", href: "#api-services", active: false }),
+                DocsSidebarItem({ label: "Routing", href: "#routing", active: false })
+            ]
+        }),
+        SidebarSection({
+            title: "Guides",
+            items: [
+                DocsSidebarItem({ label: "Styling", href: "#styling", active: false }),
+                DocsSidebarItem({ label: "Forms", href: "#forms", active: false }),
+                DocsSidebarItem({ label: "i18n", href: "#i18n", active: false })
+            ]
+        })
+    ]
+}

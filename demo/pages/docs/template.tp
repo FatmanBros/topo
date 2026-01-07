@@ -1,0 +1,14 @@
+// Docs template - documentation layout
+import { LPNavbar } from "../../components/organisms/lp-navbar.tp"
+import { DocsSidebar } from "./components/docs-sidebar.tp"
+import { DocsContent } from "./components/docs-content.tp"
+
+DocsTemplate -> {
+    style: "min-h-screen bg-white"
+    children: [LPNavbar, DocsMain]
+}
+
+DocsMain -> {
+    style: "pt-20 flex"
+    children: [DocsSidebar, DocsContent]
+}

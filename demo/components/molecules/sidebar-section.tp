@@ -1,0 +1,26 @@
+// Sidebar section molecule - grouped navigation items
+import { Text } from "../atoms/text.tp"
+import { DocsSidebarLink } from "../atoms/nav-link.tp"
+
+SidebarSection(props) -> {
+    align: vertical
+    style: "space-y-2"
+    children: [
+        SidebarSectionTitle({ text: props.title }),
+        SidebarSectionItems({ items: props.items })
+    ]
+}
+
+SidebarSectionTitle(props) -> Text({
+    text: props.text,
+    style: "text-xs font-semibold text-gray-400 uppercase tracking-wider"
+})
+
+SidebarSectionItems(props) -> {
+    align: vertical
+    style: "space-y-1"
+    children: props.items
+}
+
+// Re-export for convenience
+DocsSidebarItem(props) -> DocsSidebarLink(props)
