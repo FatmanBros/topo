@@ -1,0 +1,6 @@
+// Sidebar logo atom
+SidebarLogo -> {
+    type: text
+    content: "topo"
+    style: "text-2xl font-bold text-indigo-600 mb-8"
+}
