@@ -1,0 +1,234 @@
+{
+  "Component Definition": {
+    "prefix": ["comp", "component"],
+    "body": [
+      "${1:ComponentName}${2:(${3:props})} -> {",
+      "    ${4:type: ${5|text,button,input,link,container|}}",
+      "    ${6:content: ${7:\"$8\"}}",
+      "    ${9:style: \"$10\"}",
+      "}"
+    ],
+    "description": "Create a new component definition"
+  },
+  "Component with Children": {
+    "prefix": ["compc", "component-children"],
+    "body": [
+      "${1:ComponentName} -> {",
+      "    style: \"$2\"",
+      "    align: ${3|vertical,horizontal|}",
+      "    children: [",
+      "        $0",
+      "    ]",
+      "}"
+    ],
+    "description": "Create a component with children"
+  },
+  "Component Alias": {
+    "prefix": ["alias", "component-alias"],
+    "body": [
+      "${1:AliasName}(${2:props}) -> ${3:BaseComponent}($2, ${4:\"defaultValue\"})"
+    ],
+    "description": "Create a component alias"
+  },
+  "Store Definition": {
+    "prefix": ["store"],
+    "body": [
+      "${1:StoreName} | {",
+      "    State {",
+      "        ${2:field}: ${3:\"\"}"
+      ,
+      "    }",
+      "",
+      "    Actions {",
+      "        ${4:ActionName}",
+      "    }",
+      "",
+      "    Reducers {",
+      "        on ${4:ActionName} {",
+      "            ${2:field}: $0",
+      "        }",
+      "    }",
+      "}"
+    ],
+    "description": "Create a store with state, actions, and reducers"
+  },
+  "API Service": {
+    "prefix": ["api", "service"],
+    "body": [
+      "${1:ServiceName} :: {",
+      "    baseUrl: \"${2:/api}\"",
+      "",
+      "    ${3:getItems}() {",
+      "        method: GET",
+      "        path: \"/${4:items}\"",
+      "    }",
+      "}"
+    ],
+    "description": "Create an API service"
+  },
+  "Import Statement": {
+    "prefix": ["imp", "import"],
+    "body": [
+      "import { ${1:Component} } from \"${2:./path/to/file.tp}\""
+    ],
+    "description": "Import a component"
+  },
+  "Text Component": {
+    "prefix": ["text"],
+    "body": [
+      "${1:TextName} -> {",
+      "    type: text",
+      "    content: ${2:\"$3\"}",
+      "    style: \"$4\"",
+      "}"
+    ],
+    "description": "Create a text component"
+  },
+  "Button Component": {
+    "prefix": ["button", "btn"],
+    "body": [
+      "${1:ButtonName} -> {",
+      "    type: button",
+      "    content: ${2:\"$3\"}",
+      "    click: ${4:action}",
+      "    style: \"${5:px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600}\"",
+      "}"
+    ],
+    "description": "Create a button component"
+  },
+  "Input Component": {
+    "prefix": ["input"],
+    "body": [
+      "${1:InputName} -> {",
+      "    type: input",
+      "    inputType: ${2|text,email,password,number|}",
+      "    placeholder: \"${3:Enter value}\"",
+      "    value: ${4:\\$Store.field}",
+      "    onInput: ${5:Store.SetField}",
+      "    style: \"${6:w-full px-4 py-2 border rounded}\"",
+      "}"
+    ],
+    "description": "Create an input component"
+  },
+  "Link Component": {
+    "prefix": ["link"],
+    "body": [
+      "${1:LinkName} -> {",
+      "    type: link",
+      "    href: \"${2:/path}\"",
+      "    content: \"${3:Link Text}\"",
+      "    style: \"${4:text-blue-500 hover:underline}\"",
+      "}"
+    ],
+    "description": "Create a link component"
+  },
+  "Form Field": {
+    "prefix": ["field", "form-field"],
+    "body": [
+      "FormField({",
+      "    label: ${1:\"Label\"}",
+      "    inputType: \"${2|text,email,password,number|}\"",
+      "    placeholder: ${3:\"Placeholder\"}",
+      "    value: ${4:\\$Store.field}",
+      "    onInput: ${5:Store.SetField}",
+      "    errorMsg: ${6:\\$Store.fieldError}",
+      "})"
+    ],
+    "description": "Create a form field with label, input, and error"
+  },
+  "State Field with Validation": {
+    "prefix": ["sfield", "state-field"],
+    "body": [
+      "@label(\"${1:Field Label}\")",
+      "@${2|required,email,minLength,maxLength,pattern|}${3:(${4:arg})}",
+      "${5:fieldName}: ${6:\"\"}"
+    ],
+    "description": "Create a state field with validation annotations"
+  },
+  "Reducer": {
+    "prefix": ["reducer", "on"],
+    "body": [
+      "on ${1:ActionName}${2:(${3:value})} {",
+      "    ${4:field}: ${5:value}",
+      "}"
+    ],
+    "description": "Create a reducer"
+  },
+  "Children Array": {
+    "prefix": ["children"],
+    "body": [
+      "children: [",
+      "    ${1:Child1},",
+      "    ${2:Child2}",
+      "]"
+    ],
+    "description": "Create a children array"
+  },
+  "i18n Translation": {
+    "prefix": ["t", "translate"],
+    "body": [
+      "t(\"${1:key}\")"
+    ],
+    "description": "Translate a key"
+  },
+  "Store Access": {
+    "prefix": ["$", "state"],
+    "body": [
+      "\\$${1:Store}.${2:field}"
+    ],
+    "description": "Access store state"
+  },
+  "Store Dispatch": {
+    "prefix": ["dispatch", "action"],
+    "body": [
+      "${1:Store}.${2:Action}"
+    ],
+    "description": "Dispatch store action"
+  },
+  "Route Access": {
+    "prefix": ["route"],
+    "body": [
+      "\\$route.${1|path,params,query|}"
+    ],
+    "description": "Access route information"
+  },
+  "Page Component": {
+    "prefix": ["page"],
+    "body": [
+      "// ${1:Page Name}",
+      "",
+      "${2:PageTitle} -> {",
+      "    type: text",
+      "    content: \"${3:Title}\"",
+      "    style: \"text-2xl font-bold\"",
+      "}",
+      "",
+      "${4:${1}Page} -> {",
+      "    style: \"min-h-screen p-8\"",
+      "    align: vertical",
+      "    children: [${2:PageTitle}]",
+      "}"
+    ],
+    "description": "Create a page component"
+  },
+  "Tailwind Flex Container": {
+    "prefix": ["flex"],
+    "body": [
+      "${1:Container} -> {",
+      "    style: \"flex ${2|flex-row,flex-col|} ${3|items-center,items-start,items-end|} ${4|justify-center,justify-start,justify-end,justify-between|}\"",
+      "    children: [$0]",
+      "}"
+    ],
+    "description": "Create a flex container with Tailwind classes"
+  },
+  "Tailwind Grid Container": {
+    "prefix": ["grid"],
+    "body": [
+      "${1:Grid} -> {",
+      "    style: \"grid grid-cols-${2|1,2,3,4,6,12|} gap-${3|2,4,6,8|}\"",
+      "    children: [$0]",
+      "}"
+    ],
+    "description": "Create a grid container with Tailwind classes"
+  }
+}

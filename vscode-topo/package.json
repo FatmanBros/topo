@@ -1,0 +1,82 @@
+{
+  "name": "topo-lang",
+  "displayName": "Topo Language Support",
+  "description": "Syntax highlighting, formatting, linting, and IntelliSense for Topo (.tp) files",
+  "version": "0.1.0",
+  "publisher": "topo",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/FatmanBros/topo"
+  },
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Formatters",
+    "Linters",
+    "Snippets"
+  ],
+  "activationEvents": [
+    "onLanguage:topo"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "topo",
+        "aliases": ["Topo", "topo"],
+        "extensions": [".tp"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "topo",
+        "scopeName": "source.topo",
+        "path": "./syntaxes/topo.tmLanguage.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "topo",
+        "path": "./snippets/topo.json"
+      }
+    ],
+    "configuration": {
+      "title": "Topo",
+      "properties": {
+        "topo.lsp.path": {
+          "type": "string",
+          "default": "",
+          "description": "Path to topo-lsp binary. If empty, uses bundled or PATH."
+        },
+        "topo.format.maxLineLength": {
+          "type": "number",
+          "default": 100,
+          "description": "Maximum line length before props are broken into multiple lines"
+        },
+        "topo.tailwind.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable Tailwind CSS class suggestions"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^18.0.0",
+    "@types/vscode": "^1.74.0",
+    "typescript": "^5.0.0",
+    "@vscode/vsce": "^2.0.0"
+  }
+}
