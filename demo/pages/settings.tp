@@ -1,0 +1,2 @@
+// Settings page - exports SettingsPage for router
+import { SettingsPage } from "../components/templates/settings-page.tp"
