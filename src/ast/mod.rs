@@ -424,6 +424,13 @@ pub enum Expression {
 
     /// Spread expression: `...arr`
     Spread { expr: Box<Expression> },
+
+    /// Conditional (ternary) expression: `condition ? then : else`
+    Conditional {
+        condition: Box<Expression>,
+        then_branch: Box<Expression>,
+        else_branch: Box<Expression>,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

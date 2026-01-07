@@ -1331,7 +1331,25 @@ impl Parser {
     // ========================================================================
 
     fn expression(&mut self) -> Result<Expression, ParseError> {
-        self.or_expression()
+        self.ternary()
+    }
+
+    fn ternary(&mut self) -> Result<Expression, ParseError> {
+        let condition = self.or_expression()?;
+
+        if self.check(TokenKind::Question) {
+            self.advance();
+            let then_branch = self.expression()?;
+            self.expect(TokenKind::Colon)?;
+            let else_branch = self.expression()?;
+            return Ok(Expression::Conditional {
+                condition: Box::new(condition),
+                then_branch: Box::new(then_branch),
+                else_branch: Box::new(else_branch),
+            });
+        }
+
+        Ok(condition)
     }
 
     fn or_expression(&mut self) -> Result<Expression, ParseError> {
@@ -1628,6 +1646,10 @@ impl Parser {
                 let mut properties = Vec::new();
                 while !self.check(TokenKind::RBrace) && !self.is_at_end() {
                     properties.push(self.property()?);
+                    // Handle optional comma between properties
+                    if !self.check(TokenKind::RBrace) {
+                        let _ = self.match_token(TokenKind::Comma);
+                    }
                 }
                 self.expect(TokenKind::RBrace)?;
                 Ok(Expression::Object { properties })
