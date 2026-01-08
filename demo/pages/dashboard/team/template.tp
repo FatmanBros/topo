@@ -1,5 +1,5 @@
 // Team template - layout only
-import { DashboardLayout } from "../../../components/templates/dashboard-layout.tp"
+import { DashboardLayout } from "@/components/templates/dashboard-layout.tp"
 import { TeamGrid } from "./components/team-grid.tp"
 
 TeamTemplate -> DashboardLayout([TeamHeader, TeamGrid])

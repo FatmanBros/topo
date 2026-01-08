@@ -1,13 +1,31 @@
-import { Input } from "../atoms/input.tp"
-import { Label } from "../atoms/label.tp"
-import { ErrorText } from "../atoms/error-text.tp"
+// Form Field - Reusable form input component with label
 
-FormField(label, inputType, placeholder, value, onInput, errorMsg, dataError, dataField) -> {
-    style: "mb-4"
+FormField(label, value, type) -> {
     align: vertical
+    style: "space-y-2"
     children: [
-        Label(label),
-        Input(inputType, placeholder, value, onInput, dataField),
-        ErrorText(errorMsg, dataError)
+        FormFieldLabel({ label: label }),
+        type == "textarea"
+            ? FormTextarea({ value: value })
+            : FormFieldInput({ value: value, type: type })
     ]
+}
+
+FormFieldLabel(label) -> {
+    type: text
+    content: label
+    style: "text-sm font-medium text-gray-700"
+}
+
+FormFieldInput(value, type) -> {
+    type: input
+    inputType: type
+    value: value
+    style: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+}
+
+FormTextarea(value) -> {
+    type: textarea
+    value: value
+    style: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 h-24 resize-none"
 }

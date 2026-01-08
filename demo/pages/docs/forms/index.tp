@@ -1,9 +1,10 @@
 // Forms docs page
 import { DocsTemplate } from "../template.tp"
-import { DocsSection, DocsText, DocsDescription } from "../../../components/molecules/docs-section.tp"
-import { CodeBlock } from "../../../components/molecules/code-block.tp"
-import { CodePreview } from "../../../components/molecules/code-preview.tp"
-import { Text } from "../../../components/atoms/text.tp"
+import { DocsSection, DocsText, DocsDescription } from "@/components/molecules/docs-section.tp"
+import { CodeBlock } from "@/components/molecules/code-block.tp"
+import { CodePreview } from "@/components/molecules/code-preview.tp"
+import { SectionTitle } from "@/components/molecules/section-title.tp"
+import { Text } from "@/components/atoms/text.tp"
 
 Page -> DocsTemplate({ children: [FormsContent] })
 
@@ -39,11 +40,6 @@ BasicFormSection -> {
         BasicFormExample
     ]
 }
-
-SectionTitle(props) -> DocsText({
-    text: props.text,
-    style: "text-xl font-semibold text-gray-900"
-})
 
 BasicFormExample -> CodePreview({
     filename: "login-form.tp",

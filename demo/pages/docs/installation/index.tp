@@ -1,7 +1,8 @@
 // Installation docs page
 import { DocsTemplate } from "../template.tp"
-import { DocsSection, DocsText, DocsDescription } from "../../../components/molecules/docs-section.tp"
-import { CodeBlock } from "../../../components/molecules/code-block.tp"
+import { DocsSection, DocsText, DocsDescription } from "@/components/molecules/docs-section.tp"
+import { CodeBlock } from "@/components/molecules/code-block.tp"
+import { SectionTitle } from "@/components/molecules/section-title.tp"
 
 Page -> DocsTemplate({ children: [InstallationContent] })
 
@@ -35,11 +36,6 @@ PrerequisitesSection -> {
         PrereqList
     ]
 }
-
-SectionTitle(props) -> DocsText({
-    text: props.text,
-    style: "text-xl font-semibold text-gray-900"
-})
 
 PrereqList -> {
     align: vertical

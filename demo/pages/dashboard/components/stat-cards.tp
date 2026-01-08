@@ -1,5 +1,5 @@
 // Stat Cards component with store
-import { StatCard } from "../../../components/atoms/stat-card.tp"
+import { StatCard } from "@/components/atoms/stat-card.tp"
 
 StatCards | {
     State {

@@ -1,5 +1,5 @@
 // LP Code Example section - showing topo syntax
-import { CodeBlock } from "../../../components/molecules/code-block.tp"
+import { CodeBlock } from "@/components/molecules/code-block.tp"
 
 LPCodeExample -> {
     id: "example"

@@ -1,7 +1,7 @@
 // LP Hero section - main hero with pastel gradient background
-import { PastelBadge } from "../../../components/atoms/pastel-badge.tp"
-import { PinkGradientText } from "../../../components/atoms/gradient-text.tp"
-import { CTAButton, SecondaryButton } from "../../../components/molecules/cta-button.tp"
+import { PastelBadge } from "@/components/atoms/pastel-badge.tp"
+import { PinkGradientText } from "@/components/atoms/gradient-text.tp"
+import { CTAButton, SecondaryButton } from "@/components/molecules/cta-button.tp"
 
 LPHero -> {
     style: "relative bg-gradient-to-br from-pink-50 via-violet-50 to-sky-50 pt-32 pb-24 overflow-hidden"
