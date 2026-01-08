@@ -1,4 +1,5 @@
 // LP Getting Started section - 3 step guide
+import { Text } from "@/components/atoms/text.tp"
 import { CTAButton } from "@/components/molecules/cta-button.tp"
 
 LPGettingStarted -> {
@@ -18,17 +19,15 @@ GettingStartedContainer -> {
     ]
 }
 
-GettingStartedTitle -> {
-    type: text
-    content: "Get Started in Seconds"
+GettingStartedTitle -> Text({
+    text: "Get Started in Seconds",
     style: "text-4xl font-bold text-gray-900 mb-4"
-}
+})
 
-GettingStartedSubtitle -> {
-    type: text
-    content: "Three simple commands to start building"
+GettingStartedSubtitle -> Text({
+    text: "Three simple commands to start building",
     style: "text-xl text-gray-600 mb-12"
-}
+})
 
 GettingStartedSteps -> {
     style: "space-y-4 mb-12"
@@ -47,31 +46,18 @@ GettingStartedStep(props) -> {
     ]
 }
 
-StepNumber(props) -> {
-    type: text
-    content: props.number
+StepNumber(props) -> Text({
+    text: props.number,
     style: "w-10 h-10 bg-gradient-to-r from-pink-500 to-violet-500 text-white rounded-full flex items-center justify-center font-bold flex-shrink-0"
-}
+})
 
 StepContent(props) -> {
     style: "flex-1"
     align: vertical
     children: [
-        StepCommand({ command: props.command }),
-        StepLabel({ label: props.label })
+        Text({ text: props.command, style: "font-mono text-gray-900 font-medium" }),
+        Text({ text: props.label, style: "text-sm text-gray-500" })
     ]
-}
-
-StepCommand(props) -> {
-    type: text
-    content: props.command
-    style: "font-mono text-gray-900 font-medium"
-}
-
-StepLabel(props) -> {
-    type: text
-    content: props.label
-    style: "text-sm text-gray-500"
 }
 
 GettingStartedCTA -> {
