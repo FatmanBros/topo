@@ -415,14 +415,21 @@ fn build_project(input: &PathBuf, output: &PathBuf, mode: &str) -> Result<()> {
     let routes = generate_routes(&entry_files, input)?;
 
     let mut has_app = false;
+    let mut entry_component: Option<String> = None;
     for file in &compile_order {
         println!("  Compiling: {:?}", file);
         if let Some(program) = parsed_files.get(file) {
-            // Check if this file contains App component
+            // Check if this file contains App/AppPage/Page component
             for decl in &program.declarations {
                 if let Declaration::Component(comp) = decl {
                     if comp.name == "App" {
                         has_app = true;
+                        entry_component = Some("App".to_string());
+                    } else if comp.name == "AppPage" || comp.name == "Page" {
+                        // Track entry component for SSG builds
+                        if entry_component.is_none() {
+                            entry_component = Some(comp.name.clone());
+                        }
                     }
                 }
             }
@@ -442,10 +449,13 @@ fn build_project(input: &PathBuf, output: &PathBuf, mode: &str) -> Result<()> {
     }
 
     // Add mount call at the end
-    // If App component exists, use it; otherwise if routes exist, let router handle it
+    // If App component exists, use it; otherwise if entry component exists, use it; otherwise if routes exist, let router handle it
     if has_app {
         all_output.push_str("// Mount app\n");
         all_output.push_str("mount(App, '#app');\n");
+    } else if let Some(entry) = &entry_component {
+        all_output.push_str("// Mount entry component\n");
+        all_output.push_str(&format!("mount({}, '#app');\n", entry));
     } else if !routes.is_empty() {
         all_output.push_str("// Mount with router\n");
         all_output.push_str("mount(null, '#app');\n");
