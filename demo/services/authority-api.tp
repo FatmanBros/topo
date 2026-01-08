@@ -1,0 +1,9 @@
+// Authority API service (authentication)
+AuthorityApi :: {
+    rest: "/api/authority"
+
+    login: post("/login")
+    signUp: post("/sign-up")
+    logout: post("/logout")
+    refreshToken: post("/refresh-token")
+}

@@ -1763,24 +1763,52 @@ fn show_config() -> Result<()> {
 fn show_info_list(pages_only: bool, apis_only: bool) -> Result<()> {
     let config = Config::load_or_default();
     let paths_config = config.paths_config();
-    let pages_dir = PathBuf::from(&paths_config.pages);
 
-    // Try config services path first, then fallback to "services" in current dir
+    // Auto-detect pages directory from common locations
+    let pages_dir = {
+        let config_path = PathBuf::from(&paths_config.pages);
+        if config_path.exists() {
+            config_path
+        } else {
+            let candidates = vec![
+                PathBuf::from("pages"),
+                PathBuf::from("src/pages"),
+                PathBuf::from("demo/pages"),
+                PathBuf::from("app/pages"),
+            ];
+            candidates.into_iter().find(|p| p.exists()).unwrap_or_else(|| PathBuf::from("pages"))
+        }
+    };
+
+    // Auto-detect services directory from common locations
     let services_dir = {
         let config_path = PathBuf::from(&paths_config.services);
         if config_path.exists() {
             config_path
         } else {
-            PathBuf::from("services")
+            let candidates = vec![
+                PathBuf::from("services"),
+                PathBuf::from("src/services"),
+                PathBuf::from("demo/services"),
+                PathBuf::from("app/services"),
+            ];
+            candidates.into_iter().find(|p| p.exists()).unwrap_or_else(|| PathBuf::from("services"))
         }
     };
 
+    // Auto-detect components directory from common locations
     let components_dir = {
         let config_path = PathBuf::from(&paths_config.components);
         if config_path.exists() {
             config_path
         } else {
-            PathBuf::from("components")
+            let candidates = vec![
+                PathBuf::from("components"),
+                PathBuf::from("src/components"),
+                PathBuf::from("demo/components"),
+                PathBuf::from("app/components"),
+            ];
+            candidates.into_iter().find(|p| p.exists()).unwrap_or_else(|| PathBuf::from("components"))
         }
     };
 

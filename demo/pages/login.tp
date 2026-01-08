@@ -1,2 +1,7 @@
-// Login page - exports LoginPage for router
+/**
+ * @name ログインページ
+ * @description ユーザー認証を行うログインフォームを提供するページ
+ * @author Takuma
+ * @version 1.0.0
+ */
 import { LoginPage } from "../components/templates/login-page.tp"

@@ -2,6 +2,7 @@ import { LangSwitcher } from "../molecules/lang-switcher.tp"
 import { SubmitButton } from "../atoms/button.tp"
 import { Heading } from "../atoms/heading.tp"
 import { Text } from "../atoms/text.tp"
+import { AuthorityApi } from "../../services/authority-api.tp"
 
 // ─── Store定義 ───
 LoginFormCard | {
@@ -18,6 +19,9 @@ LoginFormCard | {
 
         @hidden
         isSubmitting: false
+
+        @hidden
+        error: ""
     }
 
     Commands {
@@ -29,6 +33,8 @@ LoginFormCard | {
         SetEmail(value)
         SetPassword(value)
         SetSubmitting(value)
+        SetError(value)
+        LoginSuccess(user)
     }
 
     Reducers {
@@ -40,6 +46,31 @@ LoginFormCard | {
         }
         on SetSubmitting(value) {
             isSubmitting: value
+        }
+        on SetError(value) {
+            error: value
+        }
+        on LoginSuccess(user) {
+            isSubmitting: false
+            error: ""
+        }
+    }
+
+    Effects {
+        on Submit {
+            dispatch: SetSubmitting(true)
+            dispatch: SetError("")
+            try {
+                response: await AuthorityApi.login({
+                    email: $email,
+                    password: $password
+                })
+                dispatch: LoginSuccess(response.user)
+                router.push("/dashboard")
+            } catch(e) {
+                dispatch: SetError(e.message)
+                dispatch: SetSubmitting(false)
+            }
         }
     }
 }
