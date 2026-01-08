@@ -2,7 +2,7 @@
 import { DocsTemplate } from "../template.tp"
 import { DocsSection, DocsDescription } from "@/components/molecules/docs-section.tp"
 import { DocsCodeSection } from "@/components/organisms/docs-code-section.tp"
-import { ApiPreview, ApiLine } from "@/components/molecules/api-preview.tp"
+import { ApiPreview } from "@/components/molecules/api-preview.tp"
 import { Text } from "@/components/atoms/text.tp"
 
 Page -> DocsTemplate({ children: [APIContent] })
@@ -40,20 +40,16 @@ BasicAPISection -> DocsCodeSection({
 UserApi :: {
     rest: "/api/users"
 }`,
-    preview: [BasicAPIPreview]
+    preview: [ApiPreview({
+        endpoints: [
+            { method: "GET", path: "/api/users", desc: "getAll()" },
+            { method: "GET", path: "/api/users/:id", desc: "getById(id)" },
+            { method: "POST", path: "/api/users", desc: "create(data)" },
+            { method: "PUT", path: "/api/users/:id", desc: "update(id, data)" },
+            { method: "DELETE", path: "/api/users/:id", desc: "delete(id)" }
+        ]
+    })]
 })
-
-BasicAPIPreview -> {
-    align: vertical
-    style: "space-y-2 font-mono text-sm"
-    children: [
-        ApiLine({ method: "GET", path: "/api/users", desc: "getAll()" }),
-        ApiLine({ method: "GET", path: "/api/users/:id", desc: "getById(id)" }),
-        ApiLine({ method: "POST", path: "/api/users", desc: "create(data)" }),
-        ApiLine({ method: "PUT", path: "/api/users/:id", desc: "update(id, data)" }),
-        ApiLine({ method: "DELETE", path: "/api/users/:id", desc: "delete(id)" })
-    ]
-}
 
 AutoGenNote -> {
     style: "p-4 bg-green-50 rounded-lg border border-green-200"
@@ -81,15 +77,23 @@ CustomEndpointsSection -> DocsCodeSection({
 
 CustomAPIPreview -> {
     align: vertical
-    style: "space-y-2 font-mono text-sm"
+    style: "space-y-2"
     children: [
         Text({ text: "Auto-generated:", style: "text-gray-500 text-xs mb-1" }),
-        ApiLine({ method: "GET", path: "/api/users", desc: "getAll()" }),
-        ApiLine({ method: "POST", path: "/api/users", desc: "create(data)" }),
+        ApiPreview({
+            endpoints: [
+                { method: "GET", path: "/api/users", desc: "getAll()" },
+                { method: "POST", path: "/api/users", desc: "create(data)" }
+            ]
+        }),
         Text({ text: "Custom:", style: "text-gray-500 text-xs mt-2 mb-1" }),
-        ApiLine({ method: "GET", path: "/api/users/search", desc: "search(query)" }),
-        ApiLine({ method: "POST", path: "/api/users/:id/activate", desc: "activate(id)" }),
-        ApiLine({ method: "DELETE", path: "/api/users/bulk", desc: "bulkDelete(ids)" })
+        ApiPreview({
+            endpoints: [
+                { method: "GET", path: "/api/users/search", desc: "search(query)" },
+                { method: "POST", path: "/api/users/:id/activate", desc: "activate(id)" },
+                { method: "DELETE", path: "/api/users/bulk", desc: "bulkDelete(ids)" }
+            ]
+        })
     ]
 }
 
@@ -123,19 +127,23 @@ InterceptorsSection -> DocsCodeSection({
         }
     }
 }`,
-    preview: [InterceptorsPreview]
+    preview: [ConfigPreview({
+        items: [
+            { label: "baseUrl", desc: "Common prefix for all endpoints" },
+            { label: "headers", desc: "Default headers" },
+            { label: "request", desc: "Modify before sending" },
+            { label: "response", desc: "Transform response data" },
+            { label: "error", desc: "Global error handling" }
+        ]
+    })]
 })
 
-InterceptorsPreview -> {
+ConfigPreview(props) -> {
     align: vertical
     style: "space-y-3"
-    children: [
-        ConfigItem({ label: "baseUrl", desc: "Common prefix for all endpoints" }),
-        ConfigItem({ label: "headers", desc: "Default headers" }),
-        ConfigItem({ label: "request", desc: "Modify before sending" }),
-        ConfigItem({ label: "response", desc: "Transform response data" }),
-        ConfigItem({ label: "error", desc: "Global error handling" })
-    ]
+    children: props.items.for(item => {
+        ConfigItem({ label: item.label, desc: item.desc })
+    })
 }
 
 ConfigItem(props) -> {
@@ -174,18 +182,25 @@ DeleteButton(id) -> {
     content: "Delete"
     onClick: () => UserApi.delete(id)
 }`,
-    preview: [UsagePreview]
+    preview: [FeatureList({
+        title: "API calls are:",
+        items: [
+            { icon: "v", text: "Type-safe" },
+            { icon: "v", text: "Auto-cached (configurable)" },
+            { icon: "v", text: "Cancellable" },
+            { icon: "v", text: "Progress tracking supported" }
+        ]
+    })]
 })
 
-UsagePreview -> {
+FeatureList(props) -> {
     align: vertical
     style: "space-y-2 text-sm"
     children: [
-        Text({ text: "API calls are:", style: "font-medium text-gray-700" }),
-        FeatureItem({ icon: "v", text: "Type-safe" }),
-        FeatureItem({ icon: "v", text: "Auto-cached (configurable)" }),
-        FeatureItem({ icon: "v", text: "Cancellable" }),
-        FeatureItem({ icon: "v", text: "Progress tracking supported" })
+        Text({ text: props.title, style: "font-medium text-gray-700" }),
+        ...props.items.for(item => {
+            FeatureItem({ icon: item.icon, text: item.text })
+        })
     ]
 }
 
