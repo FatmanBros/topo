@@ -1,7 +1,7 @@
 // Docs landing page (Introduction)
 import { DocsTemplate } from "./template.tp"
 import { DocsSection, DocsText, DocsDescription } from "@/components/molecules/docs-section.tp"
-import { CodePreview } from "@/components/molecules/code-preview.tp"
+import { DocsCodeSection } from "@/components/organisms/docs-code-section.tp"
 import { Text } from "@/components/atoms/text.tp"
 import { SectionTitle } from "@/components/molecules/section-title.tp"
 
@@ -30,31 +30,45 @@ HeaderDesc -> DocsDescription({
 })
 
 // Why topo
-WhyTopoSection -> {
-    align: vertical
-    style: "space-y-4"
-    children: [
-        SectionTitle({ text: "Why topo?" }),
-        DocsText({ text: "Modern UI frameworks often lead to deeply nested, hard-to-read code. topo solves this with a flat, declarative syntax that keeps your code clean and maintainable." }),
-        CompareExample
-    ]
-}
-
-CompareExample -> CodePreview({
+WhyTopoSection -> DocsCodeSection({
+    title: "Why topo?",
+    description: "Modern UI frameworks often lead to deeply nested, hard-to-read code. topo solves this with a flat, declarative syntax.",
     filename: "comparison",
-    code: "// Traditional nested JSX\n<div className=\"card\">\n  <div className=\"header\">\n    <h1>{title}</h1>\n    <span>{subtitle}</span>\n  </div>\n  <div className=\"body\">\n    {children}\n  </div>\n</div>\n\n// topo - flat and readable\nCard -> {\n    style: \"card\"\n    children: [Header, Body]\n}\n\nHeader -> {\n    children: [Title, Subtitle]\n}\n\nBody -> {\n    children: content\n}",
-    preview: [ComparePreview]
-})
+    code: `
+    // Traditional nested JSX
+    <div className="card">
+      <div className="header">
+        <h1>{title}</h1>
+        <span>{subtitle}</span>
+      </div>
+      <div className="body">
+        {children}
+      </div>
+    </div>
 
-ComparePreview -> {
-    align: vertical
-    style: "space-y-3"
-    children: [
-        FeatureItem({ icon: "📖", text: "Flat structure - no nesting hell" }),
-        FeatureItem({ icon: "🎯", text: "Each component is self-contained" }),
-        FeatureItem({ icon: "🔧", text: "Easy to refactor and maintain" })
-    ]
-}
+    // topo - flat and readable
+    Card -> {
+        style: "card"
+        children: [Header, Body]
+    }
+
+    Header -> {
+        children: [Title, Subtitle]
+    }
+
+    Body -> {
+        children: content
+    }`,
+    preview: [{
+        align: vertical
+        style: "space-y-3"
+        children: [
+            { style: "flex items-center gap-2", children: [Text({ text: "v", style: "text-green-500" }), Text({ text: "Flat structure - no nesting hell", style: "text-gray-600" })] },
+            { style: "flex items-center gap-2", children: [Text({ text: "v", style: "text-green-500" }), Text({ text: "Each component is self-contained", style: "text-gray-600" })] },
+            { style: "flex items-center gap-2", children: [Text({ text: "v", style: "text-green-500" }), Text({ text: "Easy to refactor and maintain", style: "text-gray-600" })] }
+        ]
+    }]
+})
 
 // Features
 FeaturesSection -> {
@@ -69,37 +83,30 @@ FeaturesSection -> {
 FeaturesGrid -> {
     style: "grid grid-cols-1 md:grid-cols-2 gap-4"
     children: [
-        FeatureCard({ icon: "🧩", title: "Components", desc: "Build UIs with simple, composable components using the -> operator" }),
-        FeatureCard({ icon: "📦", title: "Store", desc: "Built-in state management with Actions, Reducers, and Effects" }),
-        FeatureCard({ icon: "🌐", title: "API Services", desc: "Auto-generated CRUD methods from REST endpoint definitions" }),
-        FeatureCard({ icon: "🛤️", title: "File-based Routing", desc: "Automatic route generation from your file structure" }),
-        FeatureCard({ icon: "🎨", title: "Tailwind CSS", desc: "First-class Tailwind support for styling" }),
-        FeatureCard({ icon: "🧪", title: "Easy Testing", desc: "Test stores and components in isolation" }),
-        FeatureCard({ icon: "📝", title: "Forms", desc: "Declarative form handling with validation annotations" }),
-        FeatureCard({ icon: "🌍", title: "i18n", desc: "Built-in internationalization support" })
+        FeatureCard({ icon: "v", title: "Components", desc: "Build UIs with simple, composable components using the -> operator" }),
+        FeatureCard({ icon: "v", title: "Store", desc: "Built-in state management with Actions, Reducers, and Effects" }),
+        FeatureCard({ icon: "v", title: "API Services", desc: "Auto-generated CRUD methods from REST endpoint definitions" }),
+        FeatureCard({ icon: "v", title: "File-based Routing", desc: "Automatic route generation from your file structure" }),
+        FeatureCard({ icon: "v", title: "Tailwind CSS", desc: "First-class Tailwind support for styling" }),
+        FeatureCard({ icon: "v", title: "Easy Testing", desc: "Test stores and components in isolation" }),
+        FeatureCard({ icon: "v", title: "Forms", desc: "Declarative form handling with validation annotations" }),
+        FeatureCard({ icon: "v", title: "i18n", desc: "Built-in internationalization support" })
     ]
 }
 
 FeatureCard(props) -> {
     style: "p-4 bg-gray-50 rounded-xl border border-gray-100"
     children: [
-        FeatureCardHeader({ icon: props.icon, title: props.title }),
-        FeatureCardDesc({ text: props.desc })
+        {
+            style: "flex items-center gap-2 mb-2"
+            children: [
+                Text({ text: props.icon, style: "text-green-500" }),
+                Text({ text: props.title, style: "font-semibold text-gray-900" })
+            ]
+        },
+        Text({ text: props.desc, style: "text-sm text-gray-600" })
     ]
 }
-
-FeatureCardHeader(props) -> {
-    style: "flex items-center gap-2 mb-2"
-    children: [
-        Text({ text: props.icon, style: "text-xl" }),
-        Text({ text: props.title, style: "font-semibold text-gray-900" })
-    ]
-}
-
-FeatureCardDesc(props) -> Text({
-    text: props.text,
-    style: "text-sm text-gray-600"
-})
 
 // Comparison
 ComparisonSection -> {
@@ -113,63 +120,36 @@ ComparisonSection -> {
 
 ComparisonTable -> {
     style: "overflow-x-auto"
-    children: [ComparisonTableContent]
+    children: [{
+        style: "grid grid-cols-4 gap-2 text-sm min-w-[500px]"
+        children: [
+            Text({ text: "Feature", style: "font-semibold text-gray-700 p-2 bg-gray-100 rounded" }),
+            Text({ text: "topo", style: "font-semibold text-gray-700 p-2 bg-gray-100 rounded" }),
+            Text({ text: "React", style: "font-semibold text-gray-700 p-2 bg-gray-100 rounded" }),
+            Text({ text: "Vue", style: "font-semibold text-gray-700 p-2 bg-gray-100 rounded" }),
+            Text({ text: "Nesting", style: "p-2 text-gray-600" }),
+            Text({ text: "Flat", style: "p-2 text-green-600 font-medium" }),
+            Text({ text: "Deep", style: "p-2 text-gray-400" }),
+            Text({ text: "Deep", style: "p-2 text-gray-400" }),
+            Text({ text: "State", style: "p-2 text-gray-600" }),
+            Text({ text: "Built-in", style: "p-2 text-green-600 font-medium" }),
+            Text({ text: "External", style: "p-2 text-yellow-600" }),
+            Text({ text: "Built-in", style: "p-2 text-green-600 font-medium" }),
+            Text({ text: "API Layer", style: "p-2 text-gray-600" }),
+            Text({ text: "Built-in", style: "p-2 text-green-600 font-medium" }),
+            Text({ text: "Manual", style: "p-2 text-gray-400" }),
+            Text({ text: "Manual", style: "p-2 text-gray-400" }),
+            Text({ text: "Routing", style: "p-2 text-gray-600" }),
+            Text({ text: "File-based", style: "p-2 text-green-600 font-medium" }),
+            Text({ text: "External", style: "p-2 text-yellow-600" }),
+            Text({ text: "External", style: "p-2 text-yellow-600" }),
+            Text({ text: "Forms", style: "p-2 text-gray-600" }),
+            Text({ text: "Built-in", style: "p-2 text-green-600 font-medium" }),
+            Text({ text: "Manual", style: "p-2 text-gray-400" }),
+            Text({ text: "Manual", style: "p-2 text-gray-400" })
+        ]
+    }]
 }
-
-ComparisonTableContent -> {
-    style: "grid grid-cols-4 gap-2 text-sm min-w-[500px]"
-    children: [
-        TableHeader({ text: "Feature" }),
-        TableHeader({ text: "topo" }),
-        TableHeader({ text: "React" }),
-        TableHeader({ text: "Vue" }),
-        TableCell({ text: "Nesting" }),
-        TableCellGood({ text: "Flat" }),
-        TableCellBad({ text: "Deep" }),
-        TableCellBad({ text: "Deep" }),
-        TableCell({ text: "State" }),
-        TableCellGood({ text: "Built-in" }),
-        TableCellNeutral({ text: "External" }),
-        TableCellGood({ text: "Built-in" }),
-        TableCell({ text: "API Layer" }),
-        TableCellGood({ text: "Built-in" }),
-        TableCellBad({ text: "Manual" }),
-        TableCellBad({ text: "Manual" }),
-        TableCell({ text: "Routing" }),
-        TableCellGood({ text: "File-based" }),
-        TableCellNeutral({ text: "External" }),
-        TableCellNeutral({ text: "External" }),
-        TableCell({ text: "Forms" }),
-        TableCellGood({ text: "Built-in" }),
-        TableCellBad({ text: "Manual" }),
-        TableCellBad({ text: "Manual" })
-    ]
-}
-
-TableHeader(props) -> Text({
-    text: props.text,
-    style: "font-semibold text-gray-700 p-2 bg-gray-100 rounded"
-})
-
-TableCell(props) -> Text({
-    text: props.text,
-    style: "p-2 text-gray-600"
-})
-
-TableCellGood(props) -> Text({
-    text: props.text,
-    style: "p-2 text-green-600 font-medium"
-})
-
-TableCellBad(props) -> Text({
-    text: props.text,
-    style: "p-2 text-gray-400"
-})
-
-TableCellNeutral(props) -> Text({
-    text: props.text,
-    style: "p-2 text-yellow-600"
-})
 
 // Get started
 GetStartedSection -> {
@@ -178,17 +158,15 @@ GetStartedSection -> {
     children: [
         SectionTitle({ text: "Get Started" }),
         DocsText({ text: "Ready to try topo? Follow these links to get started:" }),
-        GetStartedLinks
-    ]
-}
-
-GetStartedLinks -> {
-    align: vertical
-    style: "space-y-2"
-    children: [
-        GetStartedLink({ text: "Installation", href: "/docs/installation", desc: "Set up topo on your machine" }),
-        GetStartedLink({ text: "Quick Start", href: "/docs/quick-start", desc: "Create your first project" }),
-        GetStartedLink({ text: "Components", href: "/docs/components-guide", desc: "Learn the component syntax" })
+        {
+            align: vertical
+            style: "space-y-2"
+            children: [
+                GetStartedLink({ text: "Installation", href: "/docs/installation", desc: "Set up topo on your machine" }),
+                GetStartedLink({ text: "Quick Start", href: "/docs/quick-start", desc: "Create your first project" }),
+                GetStartedLink({ text: "Components", href: "/docs/components-guide", desc: "Learn the component syntax" })
+            ]
+        }
     ]
 }
 
@@ -197,29 +175,17 @@ GetStartedLink(props) -> {
     href: props.href
     content: ""
     style: "block p-4 bg-pink-50 rounded-lg border border-pink-100 hover:bg-pink-100 transition-colors"
-    children: [GetStartedLinkContent({ text: props.text, desc: props.desc })]
-}
-
-GetStartedLinkContent(props) -> {
-    style: "flex justify-between items-center"
-    children: [
-        GetStartedLinkText({ text: props.text, desc: props.desc }),
-        Text({ text: "→", style: "text-pink-500 text-xl" })
-    ]
-}
-
-GetStartedLinkText(props) -> {
-    align: vertical
-    children: [
-        Text({ text: props.text, style: "font-semibold text-pink-600" }),
-        Text({ text: props.desc, style: "text-sm text-pink-400" })
-    ]
-}
-
-FeatureItem(props) -> {
-    style: "flex items-center gap-2"
-    children: [
-        Text({ text: props.icon, style: "text-lg" }),
-        Text({ text: props.text, style: "text-gray-600" })
-    ]
+    children: [{
+        style: "flex justify-between items-center"
+        children: [
+            {
+                align: vertical
+                children: [
+                    Text({ text: props.text, style: "font-semibold text-pink-600" }),
+                    Text({ text: props.desc, style: "text-sm text-pink-400" })
+                ]
+            },
+            Text({ text: "->", style: "text-pink-500 text-xl" })
+        ]
+    }]
 }
