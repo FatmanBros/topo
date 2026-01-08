@@ -139,6 +139,7 @@ pub struct ApiEndpoint {
 
 /// Link analyzer for .tp files
 pub struct LinkAnalyzer {
+    #[allow(dead_code)]
     root_dir: PathBuf,
     pages_dir: PathBuf,
     components_dir: PathBuf,
@@ -221,6 +222,7 @@ impl LinkAnalyzer {
     }
 
     /// Find all .tp files recursively from a directory
+    #[allow(dead_code)]
     fn find_tp_files_in_dir(&self, dir: &Path) -> Result<Vec<PathBuf>> {
         let mut files = Vec::new();
         self.collect_tp_files_recursive(dir, &mut files)?;
@@ -228,6 +230,7 @@ impl LinkAnalyzer {
     }
 
     /// Recursively collect .tp files, excluding node_modules, target, .git
+    #[allow(dead_code)]
     fn collect_tp_files_recursive(&self, dir: &Path, files: &mut Vec<PathBuf>) -> Result<()> {
         if !dir.is_dir() {
             return Ok(());
