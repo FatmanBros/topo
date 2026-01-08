@@ -5,7 +5,8 @@
   },
   "build": {
     "mode": "spa",
-    "output": "dist"
+    "output": "dist",
+    "basePath": "/topo"
   },
   "paths": {
     "pages": "pages",

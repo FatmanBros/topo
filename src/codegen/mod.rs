@@ -645,8 +645,12 @@ impl JsCodegen {
         self.emit_line("    // Sanitize href - block dangerous URL schemes");
         self.emit_line("    const href = /^(javascript|data|vbscript):/i.test(rawHref) ? '#' : escapeHtml(rawHref);");
         self.emit_line("    // Support both content and children for links");
-        self.emit_line("    const innerContent = resolvedContent || (children ? renderChildren(children) : '');");
-        self.emit_line("    return `<a href=\"${href}\"${styleAttr} data-link=\"true\">${innerContent}</a>`;");
+        self.emit_line("    if (children) {");
+        self.emit_line("      const childArr = Array.isArray(children) ? children : [children];");
+        self.emit_line("      const inner = childArr.map(c => typeof c === 'function' ? renderVdom(c()) : renderVdom(c)).join('');");
+        self.emit_line("      return `<a href=\"${href}\"${styleAttr} data-link=\"true\">${inner}</a>`;");
+        self.emit_line("    }");
+        self.emit_line("    return `<a href=\"${href}\"${styleAttr} data-link=\"true\">${escapeHtml(resolvedContent || '')}</a>`;");
         self.emit_line("  }");
         self.emit_line("  if (type === 'input') {");
         self.emit_line("    const inputTypeAttr = inputType || 'text';");
@@ -782,6 +786,7 @@ impl JsCodegen {
 
     fn emit_router_runtime(&mut self) {
         self.emit_line("// Router");
+        self.emit_line("const __basePath = window.__TOPO_BASE_PATH || '';");
         self.emit_line("const routeState = { path: '/', params: {}, query: {} };");
         self.emit_line("const routes = [];");
         self.emit_line("let currentPage = null;");
@@ -853,7 +858,7 @@ impl JsCodegen {
         // Navigate function
         self.emit_line("function navigate(path) {");
         self.emit_line("  if (!checkGuards(path)) return;");
-        self.emit_line("  history.pushState(null, '', path);");
+        self.emit_line("  history.pushState(null, '', __basePath + path);");
         self.emit_line("  updateRoute();");
         self.emit_line("  __rerender();");
         self.emit_line("}");
@@ -861,7 +866,10 @@ impl JsCodegen {
 
         // Update route
         self.emit_line("function updateRoute() {");
-        self.emit_line("  const path = location.pathname;");
+        self.emit_line("  let path = location.pathname;");
+        self.emit_line("  if (__basePath && path.startsWith(__basePath)) {");
+        self.emit_line("    path = path.slice(__basePath.length) || '/';");
+        self.emit_line("  }");
         self.emit_line("  const matched = matchRoute(path);");
         self.emit_line("  routeState.path = path;");
         self.emit_line("  routeState.query = parseQuery(location.search);");
