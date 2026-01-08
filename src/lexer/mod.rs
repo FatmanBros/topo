@@ -158,6 +158,9 @@ impl<'a> Lexer<'a> {
             // String literals
             '"' => self.string()?,
 
+            // Template string literals (backtick, supports multiline)
+            '`' => self.template_string()?,
+
             // Numbers
             c if c.is_ascii_digit() => self.number(start)?,
 
@@ -272,6 +275,31 @@ impl<'a> Lexer<'a> {
             }
             if ch == '\n' {
                 return Err(LexerError::UnterminatedString(start_line, start_column));
+            }
+            if ch == '\\' {
+                self.advance(); // consume backslash
+                self.advance(); // consume escaped character
+            } else {
+                self.advance();
+            }
+        }
+
+        Err(LexerError::UnterminatedString(start_line, start_column))
+    }
+
+    fn template_string(&mut self) -> Result<TokenKind, LexerError> {
+        let start_line = self.start_line;
+        let start_column = self.start_column;
+
+        while let Some(ch) = self.peek() {
+            if ch == '`' {
+                self.advance(); // consume closing backtick
+                return Ok(TokenKind::String);
+            }
+            // Allow newlines in template strings
+            if ch == '\n' {
+                self.line += 1;
+                self.column = 0;
             }
             if ch == '\\' {
                 self.advance(); // consume backslash
