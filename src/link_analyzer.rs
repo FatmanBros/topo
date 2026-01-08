@@ -42,17 +42,28 @@ pub struct PageLink {
     pub source_file: String,
 }
 
+/// Node type
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum NodeType {
+    Page,
+    Api,
+    Component,
+}
+
 /// Node in the page graph
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PageNode {
-    /// Route path as ID (e.g., "/dashboard" or "@components/navbar")
+    /// Route path as ID (e.g., "/dashboard" or "@api/users")
     pub id: String,
-    /// Display label (e.g., "Dashboard" or "Navbar")
+    /// Display label (e.g., "Dashboard" or "UserApi")
     pub label: String,
     /// Source file path
     pub file: String,
     /// Whether this is a dynamic route (e.g., /users/[id])
     pub is_dynamic: bool,
+    /// Node type (page, api, component)
+    pub node_type: NodeType,
 }
 
 /// Edge in the page graph
@@ -73,6 +84,7 @@ pub struct PageEdge {
 pub struct PageGraph {
     pub nodes: Vec<PageNode>,
     pub edges: Vec<PageEdge>,
+    pub api_services: Vec<ApiServiceNode>,
 }
 
 /// Shared component info
@@ -85,10 +97,28 @@ struct SharedComponent {
     links: Vec<PageLink>,
 }
 
+/// API Service info for graph
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ApiServiceNode {
+    pub id: String,
+    pub name: String,
+    pub file: String,
+    pub endpoints: Vec<ApiEndpoint>,
+}
+
+/// API Endpoint info
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ApiEndpoint {
+    pub method: String,
+    pub path: String,
+    pub name: String,
+}
+
 /// Link analyzer for .tp files
 pub struct LinkAnalyzer {
     pages_dir: PathBuf,
     components_dir: PathBuf,
+    services_dir: PathBuf,
 }
 
 impl LinkAnalyzer {
@@ -98,10 +128,12 @@ impl LinkAnalyzer {
         let paths_config = config.paths_config();
         let pages_dir = PathBuf::from(&paths_config.pages);
         let components_dir = PathBuf::from(&paths_config.components);
+        let services_dir = PathBuf::from(&paths_config.services);
 
         Ok(Self {
             pages_dir,
             components_dir,
+            services_dir,
         })
     }
 
@@ -153,6 +185,7 @@ impl LinkAnalyzer {
                         .to_string_lossy()
                         .to_string(),
                     is_dynamic,
+                    node_type: NodeType::Page,
                 });
 
                 // Extract links and imports from this file
@@ -187,6 +220,7 @@ impl LinkAnalyzer {
                     .to_string_lossy()
                     .to_string(),
                 is_dynamic: false,
+                node_type: NodeType::Component,
             });
 
             // Add links from this component
@@ -257,7 +291,63 @@ impl LinkAnalyzer {
             }
         }
 
-        Ok(PageGraph { nodes, edges })
+        // Analyze API services
+        let api_services = self.find_api_services()?;
+
+        Ok(PageGraph { nodes, edges, api_services })
+    }
+
+    /// Find API services in services directory
+    fn find_api_services(&self) -> Result<Vec<ApiServiceNode>> {
+        use crate::ast::Declaration;
+
+        let mut services = Vec::new();
+
+        if !self.services_dir.exists() {
+            return Ok(services);
+        }
+
+        for entry in fs::read_dir(&self.services_dir)? {
+            let entry = entry?;
+            let path = entry.path();
+
+            if path.extension().and_then(|e| e.to_str()) == Some("tp") {
+                if let Ok(source) = fs::read_to_string(&path) {
+                    let mut lexer = Lexer::new(&source);
+                    if let Ok(tokens) = lexer.tokenize() {
+                        let mut parser = TopoParser::new(tokens);
+                        if let Ok(program) = parser.parse() {
+                            for decl in program.declarations {
+                                if let Declaration::ApiService(api) = decl {
+                                    let endpoints: Vec<ApiEndpoint> = api
+                                        .endpoints
+                                        .iter()
+                                        .map(|ep| ApiEndpoint {
+                                            method: format!("{:?}", ep.method).to_uppercase(),
+                                            path: ep.path.clone(),
+                                            name: ep.name.clone(),
+                                        })
+                                        .collect();
+
+                                    services.push(ApiServiceNode {
+                                        id: format!("@api/{}", api.name.to_lowercase()),
+                                        name: api.name.clone(),
+                                        file: path
+                                            .file_name()
+                                            .and_then(|n| n.to_str())
+                                            .unwrap_or("")
+                                            .to_string(),
+                                        endpoints,
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(services)
     }
 
     /// Find all .tp files in the pages directory

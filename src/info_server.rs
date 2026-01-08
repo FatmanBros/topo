@@ -23,7 +23,21 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
         }
         #graph { width: 100vw; height: 100vh; }
 
-        /* Node styles */
+        /* Zone backgrounds */
+        .zone-frontend { fill: rgba(88, 166, 255, 0.05); }
+        .zone-backend { fill: rgba(163, 113, 247, 0.05); }
+        .zone-label {
+            font-size: 14px;
+            font-weight: 600;
+            fill: #8b949e;
+        }
+        .center-line {
+            stroke: #30363d;
+            stroke-width: 2;
+            stroke-dasharray: 8,4;
+        }
+
+        /* Node styles - uniform size */
         .node rect {
             stroke-width: 2;
             cursor: pointer;
@@ -31,13 +45,44 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
         }
         .node.page rect { fill: #21262d; stroke: #58a6ff; }
         .node.dynamic rect { fill: #21262d; stroke: #f78166; }
-        .node.component rect { fill: #1c2128; stroke: #a371f7; rx: 12; ry: 12; }
+        .node.component rect { fill: #1c2128; stroke: #a371f7; }
         .node text, .node tspan {
             fill: #c9d1d9;
-            font-size: 12px;
+            font-size: 11px;
             pointer-events: none;
         }
-        .node .route { fill: #8b949e; font-size: 10px; }
+        .node .route { fill: #8b949e; font-size: 9px; }
+
+        /* API Service container */
+        .api-service {
+            fill: #161b22;
+            stroke: #238636;
+            stroke-width: 2;
+            rx: 8;
+            ry: 8;
+        }
+        .api-service-label {
+            fill: #3fb950;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .api-endpoint rect {
+            fill: #21262d;
+            stroke: #238636;
+            stroke-width: 1;
+        }
+        .api-endpoint text {
+            fill: #c9d1d9;
+            font-size: 10px;
+        }
+        .api-method {
+            font-weight: 600;
+            font-size: 9px;
+        }
+        .api-method.GET { fill: #3fb950; }
+        .api-method.POST { fill: #d29922; }
+        .api-method.PUT { fill: #58a6ff; }
+        .api-method.DELETE { fill: #f85149; }
 
         /* Edge styles */
         .edgePath path {
@@ -51,11 +96,6 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
         .edgePath.faded path { opacity: 0.15; }
         .edgePath.highlighted path { stroke-width: 3; opacity: 1; }
 
-        /* Arrowhead */
-        .edgePath marker path { fill: #58a6ff; }
-        .edgePath.programmatic marker path { fill: #a371f7; }
-        .edgePath.component-link marker path { fill: #a371f7; }
-
         /* Legend */
         .legend {
             position: fixed;
@@ -65,27 +105,27 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
             border: 1px solid #30363d;
             padding: 16px;
             border-radius: 8px;
-            font-size: 13px;
+            font-size: 12px;
             z-index: 100;
         }
         .legend h3 {
             margin-bottom: 12px;
-            font-size: 14px;
+            font-size: 13px;
             color: #f0f6fc;
         }
         .legend-item {
             display: flex;
             align-items: center;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
             gap: 8px;
         }
         .legend-color {
-            width: 16px;
-            height: 16px;
+            width: 14px;
+            height: 14px;
             border-radius: 3px;
         }
         .legend-line {
-            width: 24px;
+            width: 20px;
             height: 2px;
         }
 
@@ -161,23 +201,23 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
         <h3>Legend</h3>
         <div class="legend-item">
             <div class="legend-color" style="background: #21262d; border: 2px solid #58a6ff;"></div>
-            <span>Static Page</span>
+            <span>Page</span>
         </div>
         <div class="legend-item">
             <div class="legend-color" style="background: #21262d; border: 2px solid #f78166;"></div>
-            <span>Dynamic Page ([id])</span>
+            <span>Dynamic Page</span>
         </div>
         <div class="legend-item">
-            <div class="legend-color" style="background: #1c2128; border: 2px solid #a371f7; border-radius: 8px;"></div>
-            <span>Shared Component</span>
+            <div class="legend-color" style="background: #161b22; border: 2px solid #238636;"></div>
+            <span>API Service</span>
         </div>
         <div class="legend-item">
             <div class="legend-line" style="background: #58a6ff;"></div>
-            <span>Declarative Link (href)</span>
+            <span>Link (href)</span>
         </div>
         <div class="legend-item">
-            <div class="legend-line" style="background: #a371f7; background: repeating-linear-gradient(90deg, #a371f7, #a371f7 5px, transparent 5px, transparent 10px);"></div>
-            <span>Programmatic (router.push)</span>
+            <div class="legend-line" style="background: repeating-linear-gradient(90deg, #a371f7, #a371f7 4px, transparent 4px, transparent 8px);"></div>
+            <span>router.push</span>
         </div>
     </div>
 
@@ -192,6 +232,8 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
     <script>
         let svg, g, zoom;
         let graphData, nodeData = {};
+        const NODE_WIDTH = 120;
+        const NODE_HEIGHT = 36;
 
         fetch('/api/graph')
             .then(r => r.json())
@@ -204,14 +246,23 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
             const width = window.innerWidth;
             const height = window.innerHeight;
 
-            // Create dagre graph
+            svg = d3.select('#graph')
+                .attr('width', width)
+                .attr('height', height);
+
+            // Background group (for zones)
+            const bgGroup = svg.append('g').attr('class', 'background');
+
+            g = svg.append('g');
+
+            // Create dagre graph for pages
             const dagreGraph = new dagreD3.graphlib.Graph()
                 .setGraph({
-                    rankdir: 'LR',      // Left to Right
-                    nodesep: 50,        // Vertical spacing
-                    ranksep: 120,       // Horizontal spacing
-                    marginx: 50,
-                    marginy: 50
+                    rankdir: 'LR',
+                    nodesep: 40,
+                    ranksep: 100,
+                    marginx: 80,
+                    marginy: 80
                 })
                 .setDefaultEdgeLabel(() => ({}));
 
@@ -220,21 +271,19 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
                 nodeData[n.id] = n;
             });
 
-            // Add nodes
+            // Add page nodes with uniform size
             data.nodes.forEach(n => {
-                const isComponent = n.id.startsWith('@');
+                const isComponent = n.node_type === 'component';
                 const isDynamic = n.is_dynamic;
-                const label = n.label;
-                const route = isComponent ? '' : n.id;
 
                 dagreGraph.setNode(n.id, {
-                    label: label,
-                    labelType: 'html',
+                    label: n.label,
+                    width: NODE_WIDTH,
+                    height: NODE_HEIGHT,
                     class: isComponent ? 'component' : (isDynamic ? 'dynamic' : 'page'),
-                    rx: isComponent ? 12 : 4,
-                    ry: isComponent ? 12 : 4,
-                    padding: 12,
-                    route: route
+                    rx: 4,
+                    ry: 4,
+                    route: isComponent ? '' : n.id
                 });
             });
 
@@ -249,12 +298,6 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
 
             // Create renderer
             const render = new dagreD3.render();
-
-            svg = d3.select('#graph')
-                .attr('width', width)
-                .attr('height', height);
-
-            g = svg.append('g');
 
             // Define arrowheads
             svg.append('defs').html(`
@@ -272,19 +315,115 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
                 </marker>
             `);
 
-            // Render the graph
+            // Render pages graph
             render(g, dagreGraph);
+
+            // Get page graph bounds
+            const graphBounds = dagreGraph.graph();
+            const pageGraphWidth = graphBounds.width || 400;
+            const pageGraphHeight = graphBounds.height || 400;
+
+            // Calculate API section position
+            const apiStartX = pageGraphWidth + 200;
+            const centerLineX = pageGraphWidth + 100;
+
+            // Draw zone backgrounds and center line
+            bgGroup.append('rect')
+                .attr('class', 'zone-frontend')
+                .attr('x', 0)
+                .attr('y', 0)
+                .attr('width', centerLineX)
+                .attr('height', Math.max(pageGraphHeight + 160, height));
+
+            bgGroup.append('rect')
+                .attr('class', 'zone-backend')
+                .attr('x', centerLineX)
+                .attr('y', 0)
+                .attr('width', Math.max(500, width - centerLineX))
+                .attr('height', Math.max(pageGraphHeight + 160, height));
+
+            bgGroup.append('line')
+                .attr('class', 'center-line')
+                .attr('x1', centerLineX)
+                .attr('y1', 0)
+                .attr('x2', centerLineX)
+                .attr('y2', Math.max(pageGraphHeight + 160, height));
+
+            bgGroup.append('text')
+                .attr('class', 'zone-label')
+                .attr('x', centerLineX / 2)
+                .attr('y', 30)
+                .attr('text-anchor', 'middle')
+                .text('Frontend (Pages)');
+
+            bgGroup.append('text')
+                .attr('class', 'zone-label')
+                .attr('x', centerLineX + 150)
+                .attr('y', 30)
+                .attr('text-anchor', 'middle')
+                .text('Backend (API)');
+
+            // Draw API services
+            let apiY = 80;
+            data.api_services.forEach((service, idx) => {
+                const serviceHeight = 50 + service.endpoints.length * 28;
+                const serviceWidth = 180;
+
+                const serviceGroup = g.append('g')
+                    .attr('class', 'api-service-group')
+                    .attr('transform', `translate(${apiStartX}, ${apiY})`);
+
+                // Service container
+                serviceGroup.append('rect')
+                    .attr('class', 'api-service')
+                    .attr('width', serviceWidth)
+                    .attr('height', serviceHeight);
+
+                // Service name
+                serviceGroup.append('text')
+                    .attr('class', 'api-service-label')
+                    .attr('x', 10)
+                    .attr('y', 22)
+                    .text(service.name);
+
+                // Endpoints
+                service.endpoints.forEach((ep, epIdx) => {
+                    const epY = 40 + epIdx * 28;
+
+                    const epGroup = serviceGroup.append('g')
+                        .attr('class', 'api-endpoint')
+                        .attr('transform', `translate(8, ${epY})`);
+
+                    epGroup.append('rect')
+                        .attr('width', serviceWidth - 16)
+                        .attr('height', 24)
+                        .attr('rx', 3)
+                        .attr('ry', 3);
+
+                    epGroup.append('text')
+                        .attr('class', `api-method ${ep.method}`)
+                        .attr('x', 6)
+                        .attr('y', 16)
+                        .text(ep.method);
+
+                    epGroup.append('text')
+                        .attr('x', 45)
+                        .attr('y', 16)
+                        .text(`${ep.path} → ${ep.name}()`);
+                });
+
+                apiY += serviceHeight + 20;
+            });
 
             // Add route labels under node labels
             g.selectAll('.node').each(function(id) {
                 const node = d3.select(this);
                 const data = dagreGraph.node(id);
-                if (data.route) {
-                    const bbox = node.select('rect').node().getBBox();
+                if (data && data.route) {
                     node.append('text')
                         .attr('class', 'route')
                         .attr('x', 0)
-                        .attr('y', bbox.height / 2 - 5)
+                        .attr('y', NODE_HEIGHT / 2 - 3)
                         .attr('text-anchor', 'middle')
                         .text(data.route);
                 }
@@ -308,6 +447,7 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
                 .scaleExtent([0.1, 4])
                 .on('zoom', (event) => {
                     g.attr('transform', event.transform);
+                    bgGroup.attr('transform', event.transform);
                 });
 
             svg.call(zoom);
@@ -315,7 +455,7 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
             // Initial fit
             fitToScreen();
 
-            // Hover events
+            // Hover events for page nodes
             g.selectAll('.node').on('mouseenter', function(event) {
                 const id = d3.select(this).datum();
                 highlightConnections(id);
@@ -334,21 +474,9 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
                 if (e.target === nodeId) connectedNodes.add(e.source);
             });
 
-            g.selectAll('.edgePath').each(function() {
-                const edge = d3.select(this);
-                const path = edge.select('path');
-                // Get edge data from class or data attribute
-                const isConnected = graphData.edges.some(e =>
-                    (e.source === nodeId || e.target === nodeId)
-                );
-            });
-
             g.selectAll('.edgePath')
                 .classed('faded', function() {
                     const edgeId = d3.select(this).datum();
-                    const edge = graphData.edges.find(e =>
-                        dagreD3.graphlib && edgeId && edgeId.v === e.source && edgeId.w === e.target
-                    );
                     return !graphData.edges.some(e =>
                         (e.source === nodeId && e.target === (edgeId?.w)) ||
                         (e.target === nodeId && e.source === (edgeId?.v))
@@ -398,12 +526,12 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
             const bounds = g.node().getBBox();
             const width = window.innerWidth;
             const height = window.innerHeight;
-            const padding = 60;
+            const padding = 80;
 
             const scale = Math.min(
                 (width - padding * 2) / bounds.width,
                 (height - padding * 2) / bounds.height,
-                1.5
+                1.2
             );
 
             const tx = (width - bounds.width * scale) / 2 - bounds.x * scale;
@@ -417,7 +545,6 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
 
         window.addEventListener('resize', () => {
             svg.attr('width', window.innerWidth).attr('height', window.innerHeight);
-            fitToScreen();
         });
     </script>
 </body>
@@ -452,7 +579,11 @@ pub fn start_info_server(port: u16, no_open: bool) -> Result<()> {
     println!("  ────────────────────────────────────────────────────");
     println!("  Local:   http://localhost:{}", port);
     println!();
-    println!("  Found {} pages, {} links", graph.nodes.len(), graph.edges.len());
+    println!("  Found {} pages, {} APIs, {} links",
+        graph.nodes.len(),
+        graph.api_services.len(),
+        graph.edges.len()
+    );
     println!();
     println!("  Press Ctrl+C to stop\n");
 
