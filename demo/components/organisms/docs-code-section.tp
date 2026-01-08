@@ -1,0 +1,19 @@
+// Docs Code Section - Title + description + code preview with result
+import { SectionTitle } from "@/components/molecules/section-title.tp"
+import { DocsText } from "@/components/molecules/docs-section.tp"
+import { CodePreview } from "@/components/molecules/code-preview.tp"
+
+// Main organism: combines title, description, and code preview
+DocsCodeSection(props) -> {
+    align: vertical
+    style: "space-y-4"
+    children: [
+        SectionTitle({ text: props.title }),
+        DocsText({ text: props.description }),
+        CodePreview({
+            filename: props.filename,
+            code: props.code,
+            preview: props.preview
+        })
+    ]
+}
