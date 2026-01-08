@@ -25,7 +25,8 @@ DocsSidebarNav -> {
                 DocsSidebarItem({ label: "Components", href: "/docs/components-guide", active: false }),
                 DocsSidebarItem({ label: "Store", href: "/docs/store", active: false }),
                 DocsSidebarItem({ label: "API Services", href: "/docs/api", active: false }),
-                DocsSidebarItem({ label: "Routing", href: "/docs/routing", active: false })
+                DocsSidebarItem({ label: "Routing", href: "/docs/routing", active: false }),
+                DocsSidebarItem({ label: "Guards", href: "/docs/guards", active: false })
             ]
         }),
         SidebarSection({
