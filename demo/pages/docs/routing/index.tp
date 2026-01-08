@@ -1,10 +1,9 @@
 // Routing docs page
 import { DocsTemplate } from "../template.tp"
-import { DocsSection, DocsText, DocsDescription } from "@/components/molecules/docs-section.tp"
-import { CodeBlock } from "@/components/molecules/code-block.tp"
-import { CodePreview } from "@/components/molecules/code-preview.tp"
+import { DocsSection, DocsDescription } from "@/components/molecules/docs-section.tp"
+import { DocsCodeSection } from "@/components/organisms/docs-code-section.tp"
+import { ConfigPreview } from "@/components/molecules/config-preview.tp"
 import { Text } from "@/components/atoms/text.tp"
-import { SectionTitle } from "@/components/molecules/section-title.tp"
 
 Page -> DocsTemplate({ children: [RoutingContent] })
 
@@ -31,56 +30,61 @@ HeaderDesc -> DocsDescription({
 })
 
 // File-based routing
-FileBasedSection -> {
-    align: vertical
-    style: "space-y-4"
-    children: [
-        SectionTitle({ text: "File-Based Routing" }),
-        DocsText({ text: "Your file structure becomes your routes:" }),
-        FileBasedExample
-    ]
-}
-
-FileBasedExample -> CodePreview({
+FileBasedSection -> DocsCodeSection({
+    title: "File-Based Routing",
+    description: "Your file structure becomes your routes:",
     filename: "pages/",
-    code: "pages/\n├── index.tp          → /\n├── about/\n│   └── index.tp      → /about\n├── blog/\n│   ├── index.tp      → /blog\n│   └── [slug]/\n│       └── index.tp  → /blog/:slug\n├── users/\n│   ├── index.tp      → /users\n│   └── [id]/\n│       ├── index.tp  → /users/:id\n│       └── edit.tp   → /users/:id/edit\n└── docs/\n    └── [...path]/\n        └── index.tp  → /docs/* (catch-all)",
-    preview: [FileBasedPreview]
+    code: `
+    pages/
+    ├── index.tp          -> /
+    ├── about/
+    │   └── index.tp      -> /about
+    ├── blog/
+    │   ├── index.tp      -> /blog
+    │   └── [slug]/
+    │       └── index.tp  -> /blog/:slug
+    ├── users/
+    │   ├── index.tp      -> /users
+    │   └── [id]/
+    │       ├── index.tp  -> /users/:id
+    │       └── edit.tp   -> /users/:id/edit
+    └── docs/
+        └── [...path]/
+            └── index.tp  -> /docs/* (catch-all)`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "/", desc: "pages/index.tp" },
+            { label: "/about", desc: "pages/about/index.tp" },
+            { label: "/blog/:slug", desc: "pages/blog/[slug]/index.tp" },
+            { label: "/users/:id", desc: "pages/users/[id]/index.tp" },
+            { label: "/docs/*", desc: "pages/docs/[...path]/index.tp" }
+        ]
+    })]
 })
 
-FileBasedPreview -> {
-    align: vertical
-    style: "space-y-2"
-    children: [
-        RouteItem({ path: "/", file: "index.tp" }),
-        RouteItem({ path: "/about", file: "about/index.tp" }),
-        RouteItem({ path: "/blog/:slug", file: "blog/[slug]/index.tp" }),
-        RouteItem({ path: "/users/:id", file: "users/[id]/index.tp" })
-    ]
-}
-
-RouteItem(props) -> {
-    style: "flex items-center gap-3 text-sm"
-    children: [
-        Text({ text: props.path, style: "font-mono text-pink-600" }),
-        Text({ text: "→", style: "text-gray-400" }),
-        Text({ text: props.file, style: "text-gray-500" })
-    ]
-}
-
 // Dynamic routes
-DynamicRoutesSection -> {
-    align: vertical
-    style: "space-y-4"
-    children: [
-        SectionTitle({ text: "Dynamic Routes" }),
-        DocsText({ text: "Use brackets for dynamic segments:" }),
-        DynamicRoutesExample
-    ]
-}
-
-DynamicRoutesExample -> CodePreview({
+DynamicRoutesSection -> DocsCodeSection({
+    title: "Dynamic Routes",
+    description: "Use brackets for dynamic segments:",
     filename: "users/[id]/index.tp",
-    code: "// Access route params via props\nPage(props) -> {\n    children: [UserProfile({ id: props.params.id })]\n}\n\n// Or use the router\nUserProfile -> {\n    init: UserStore.FetchUser(router.params.id)\n    children: [\n        UserHeader,\n        UserDetails\n    ]\n}",
+    code: `
+    // Access route params via props
+    Page(props) -> {
+        children: [
+            UserProfile({
+                id: props.params.id
+            })
+        ]
+    }
+
+    // Or use the router
+    UserProfile -> {
+        init: UserStore.FetchUser(router.params.id)
+        children: [
+            UserHeader,
+            UserDetails
+        ]
+    }`,
     preview: [DynamicPreview]
 })
 
@@ -94,19 +98,38 @@ DynamicPreview -> {
 }
 
 // Navigation
-NavigationSection -> {
-    align: vertical
-    style: "space-y-4"
-    children: [
-        SectionTitle({ text: "Navigation" }),
-        DocsText({ text: "Navigate using links or programmatically:" }),
-        NavigationExample
-    ]
-}
-
-NavigationExample -> CodePreview({
+NavigationSection -> DocsCodeSection({
+    title: "Navigation",
+    description: "Navigate using links or programmatically:",
     filename: "nav.tp",
-    code: "// Declarative link\nNavLink -> {\n    type: link\n    href: \"/about\"\n    content: \"About Us\"\n}\n\n// With dynamic params\nUserLink(id) -> {\n    type: link\n    href: \"/users/\" + id\n    content: \"View Profile\"\n}\n\n// Programmatic navigation\nLoginButton -> {\n    type: button\n    content: \"Login\"\n    onClick: () => router.push(\"/login\")\n}\n\n// Go back\nBackButton -> {\n    type: button\n    content: \"Back\"\n    onClick: () => router.back()\n}",
+    code: `
+    // Declarative link
+    NavLink -> {
+        type: link
+        href: "/about"
+        content: "About Us"
+    }
+
+    // With dynamic params
+    UserLink(id) -> {
+        type: link
+        href: "/users/" + id
+        content: "View Profile"
+    }
+
+    // Programmatic navigation
+    LoginButton -> {
+        type: button
+        content: "Login"
+        onClick: () => router.push("/login")
+    }
+
+    // Go back
+    BackButton -> {
+        type: button
+        content: "Back"
+        onClick: () => router.back()
+    }`,
     preview: [NavigationPreview]
 })
 
@@ -133,19 +156,28 @@ NavPreviewButton(props) -> {
 }
 
 // Layouts
-LayoutsSection -> {
-    align: vertical
-    style: "space-y-4"
-    children: [
-        SectionTitle({ text: "Layouts" }),
-        DocsText({ text: "Share layouts across pages with template.tp:" }),
-        LayoutsExample
-    ]
-}
-
-LayoutsExample -> CodePreview({
+LayoutsSection -> DocsCodeSection({
+    title: "Layouts",
+    description: "Share layouts across pages with template.tp:",
     filename: "dashboard/template.tp",
-    code: "// dashboard/template.tp\n// All pages in dashboard/ use this layout\n\nDashboardTemplate(props) -> {\n    style: \"flex min-h-screen\"\n    children: [\n        Sidebar,\n        Main({ children: props.children })\n    ]\n}\n\n// dashboard/index.tp\nimport { DashboardTemplate } from \"./template.tp\"\n\nPage -> DashboardTemplate({\n    children: [DashboardContent]\n})",
+    code: `
+    // dashboard/template.tp
+    // All pages in dashboard/ use this layout
+
+    DashboardTemplate(props) -> {
+        style: "flex min-h-screen"
+        children: [
+            Sidebar,
+            Main({ children: props.children })
+        ]
+    }
+
+    // dashboard/index.tp
+    import { DashboardTemplate } from "./template.tp"
+
+    Page -> DashboardTemplate({
+        children: [DashboardContent]
+    })`,
     preview: [LayoutsPreview]
 })
 
@@ -159,7 +191,7 @@ LayoutsPreview -> {
 
 LayoutSidebar -> {
     style: "w-16 bg-gray-800 flex items-center justify-center"
-    children: [Text({ text: "📋", style: "text-xl" })]
+    children: [Text({ text: "Nav", style: "text-white text-xs" })]
 }
 
 LayoutMain -> {

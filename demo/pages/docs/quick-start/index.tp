@@ -1,10 +1,9 @@
 // Quick Start docs page
 import { DocsTemplate } from "../template.tp"
-import { DocsSection, DocsText, DocsDescription } from "@/components/molecules/docs-section.tp"
-import { CodeBlock } from "@/components/molecules/code-block.tp"
-import { CodePreview } from "@/components/molecules/code-preview.tp"
+import { DocsSection, DocsDescription } from "@/components/molecules/docs-section.tp"
+import { DocsCodeSection } from "@/components/organisms/docs-code-section.tp"
+import { FeatureList } from "@/components/molecules/feature-list.tp"
 import { Text } from "@/components/atoms/text.tp"
-import { SectionTitle } from "@/components/molecules/section-title.tp"
 
 Page -> DocsTemplate({ children: [QuickStartContent] })
 
@@ -31,40 +30,43 @@ HeaderDesc -> DocsDescription({
 })
 
 // Create project
-CreateProjectSection -> {
-    align: vertical
-    style: "space-y-4"
-    children: [
-        SectionTitle({ text: "Create a New Project" }),
-        DocsText({ text: "Use the CLI to scaffold a new project:" }),
-        CodeBlock({ filename: "terminal", code: "topo new my-app\ncd my-app\ntopo dev" }),
-        DocsText({ text: "Open http://localhost:7090 in your browser.", style: "text-gray-500" })
-    ]
-}
+CreateProjectSection -> DocsCodeSection({
+    title: "Create a New Project",
+    description: "Use the CLI to scaffold a new project:",
+    filename: "terminal",
+    code: "topo new my-app\ncd my-app\ntopo dev\n\n# Open http://localhost:7090",
+    preview: [FeatureList({
+        title: "This creates:",
+        items: [
+            { icon: "v", text: "Project structure with pages/" },
+            { icon: "v", text: "Component directories (atoms/molecules/organisms)" },
+            { icon: "v", text: "Tailwind CSS configured" },
+            { icon: "v", text: "Dev server with hot reload" }
+        ]
+    })]
+})
 
 // Project structure
-ProjectStructureSection -> {
-    align: vertical
-    style: "space-y-4"
-    children: [
-        SectionTitle({ text: "Project Structure" }),
-        DocsText({ text: "A new topo project has the following structure:" }),
-        CodeBlock({ filename: "project structure", code: "my-app/\n├── pages/\n│   ├── index.tp        # Home page (/)\n│   └── about/\n│       └── index.tp    # About page (/about)\n├── components/\n│   ├── atoms/          # Basic UI elements\n│   ├── molecules/      # Combined atoms\n│   └── organisms/      # Complex components\n├── stores/             # Global state\n├── services/           # API services\n└── topo.config.json    # Configuration" })
-    ]
-}
+ProjectStructureSection -> DocsCodeSection({
+    title: "Project Structure",
+    description: "A new topo project has the following structure:",
+    filename: "project structure",
+    code: "my-app/\n├── pages/\n│   ├── index.tp        # Home page (/)\n│   └── about/\n│       └── index.tp    # About page (/about)\n├── components/\n│   ├── atoms/          # Basic UI elements\n│   ├── molecules/      # Combined atoms\n│   └── organisms/      # Complex components\n├── stores/             # Global state\n├── services/           # API services\n└── topo.config.json    # Configuration",
+    preview: [FeatureList({
+        title: "Key directories:",
+        items: [
+            { icon: "v", text: "pages/ - File-based routing" },
+            { icon: "v", text: "components/ - Reusable UI" },
+            { icon: "v", text: "stores/ - State management" },
+            { icon: "v", text: "services/ - API definitions" }
+        ]
+    })]
+})
 
 // First component
-FirstComponentSection -> {
-    align: vertical
-    style: "space-y-4"
-    children: [
-        SectionTitle({ text: "Your First Component" }),
-        DocsText({ text: "Edit pages/index.tp to create your first component:" }),
-        FirstComponentExample
-    ]
-}
-
-FirstComponentExample -> CodePreview({
+FirstComponentSection -> DocsCodeSection({
+    title: "Your First Component",
+    description: "Edit pages/index.tp to create your first component:",
     filename: "pages/index.tp",
     code: "Page -> {\n    style: \"p-8\"\n    children: [\n        Greeting,\n        Counter\n    ]\n}\n\nGreeting -> {\n    type: text\n    content: \"Hello, topo!\"\n    style: \"text-3xl font-bold\n           text-pink-500\"\n}",
     preview: [FirstComponentPreview]
@@ -80,14 +82,13 @@ FirstComponentPreview -> {
 }
 
 // Next steps
-NextStepsSection -> {
-    align: vertical
-    style: "space-y-4"
-    children: [
-        SectionTitle({ text: "Next Steps" }),
-        NextStepsList
-    ]
-}
+NextStepsSection -> DocsCodeSection({
+    title: "Next Steps",
+    description: "Continue learning topo with these guides:",
+    filename: "recommended",
+    code: "# Recommended reading order\n1. Components Guide    # UI building blocks\n2. Store              # State management\n3. Routing            # Navigation & pages\n4. API Services       # Data fetching\n5. Styling            # Tailwind integration",
+    preview: [NextStepsList]
+})
 
 NextStepsList -> {
     align: vertical
@@ -102,6 +103,6 @@ NextStepsList -> {
 NextStepItem(props) -> {
     type: link
     href: props.href
-    content: "→ " + props.text
+    content: "-> " + props.text
     style: "text-pink-500 hover:text-pink-600"
 }
