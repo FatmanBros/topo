@@ -120,10 +120,12 @@ ValidationSection -> DocsCodeSection({
 // Auto-generated fields
 AutoGenSection -> DocsCodeSection({
     title: "Auto-Generated Fields",
-    description: "Use Store.Fields to auto-generate form inputs:",
+    description: "Use ...Fields to auto-generate form inputs from the anonymous store:",
     filename: "contact-form.tp",
     code: `
-    ContactForm | {
+    // contact-form.tp
+    // Store name auto-generated from filename!
+    | {
         State {
             @key("name")
             @required
@@ -148,9 +150,9 @@ AutoGenSection -> DocsCodeSection({
     // Auto-generate all fields!
     Form -> {
         type: form
-        onSubmit: ContactForm.Submit
+        onSubmit: .Submit
         children: [
-            ...ContactForm.Fields,
+            ...Fields,
             SubmitButton
         ]
     }`,
