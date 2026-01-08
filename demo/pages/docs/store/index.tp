@@ -62,18 +62,34 @@ BasicStoreSection -> DocsCodeSection({
     preview: [CounterPreview]
 })
 
+// Live counter store for preview
+Counter | {
+    State {
+        count: 0
+    }
+    Actions {
+        Increment
+        Decrement
+    }
+    Reducers {
+        on Increment { count: count + 1 }
+        on Decrement { count: count - 1 }
+    }
+}
+
 CounterPreview -> {
     style: "flex items-center gap-4"
     children: [
-        CounterBtn({ text: "-" }),
-        Text({ text: "0", style: "text-4xl font-bold w-16 text-center" }),
-        CounterBtn({ text: "+" })
+        CounterBtn({ text: "-", onClick: Counter.Decrement }),
+        Text({ text: Counter.count, style: "text-4xl font-bold w-16 text-center" }),
+        CounterBtn({ text: "+", onClick: Counter.Increment })
     ]
 }
 
 CounterBtn(props) -> {
     type: button
     content: props.text
+    onClick: props.onClick
     style: "w-10 h-10 bg-pink-500 text-white rounded-full hover:bg-pink-600 font-bold text-xl"
 }
 
