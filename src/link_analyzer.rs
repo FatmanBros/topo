@@ -64,6 +64,9 @@ pub struct PageNode {
     pub is_dynamic: bool,
     /// Node type (page, api, component)
     pub node_type: NodeType,
+    /// Depth for layout ranking (based on path segments)
+    /// Static segments count as 2, dynamic segments count as 1
+    pub depth: u32,
 }
 
 /// Edge in the page graph
@@ -137,6 +140,31 @@ impl LinkAnalyzer {
         })
     }
 
+    /// Calculate depth for layout ranking based on path segments
+    /// Static segments count as 2, dynamic segments (e.g., [id]) count as 1
+    /// This allows dynamic routes to appear between their parent and sibling static routes
+    /// e.g., / = 0, /user = 2, /user/[id] = 3, /customer/info = 4
+    fn calculate_depth(route: &str) -> u32 {
+        if route == "/" {
+            return 0;
+        }
+
+        let segments: Vec<&str> = route.trim_matches('/').split('/').filter(|s| !s.is_empty()).collect();
+        let mut depth = 0u32;
+
+        for segment in segments {
+            if segment.starts_with('[') && segment.ends_with(']') {
+                // Dynamic segment counts as 1
+                depth += 1;
+            } else {
+                // Static segment counts as 2
+                depth += 2;
+            }
+        }
+
+        depth
+    }
+
     /// Build the complete page graph
     pub fn build_graph(&self) -> Result<PageGraph> {
         let page_files = self.find_page_files()?;
@@ -186,6 +214,7 @@ impl LinkAnalyzer {
                         .to_string(),
                     is_dynamic,
                     node_type: NodeType::Page,
+                    depth: Self::calculate_depth(&route),
                 });
 
                 // Extract links and imports from this file
@@ -221,6 +250,7 @@ impl LinkAnalyzer {
                     .to_string(),
                 is_dynamic: false,
                 node_type: NodeType::Component,
+                depth: 0, // Components are handled separately in layout
             });
 
             // Add links from this component

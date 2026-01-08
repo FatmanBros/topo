@@ -271,29 +271,35 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
                 nodeData[n.id] = n;
             });
 
-            // Add page nodes with uniform size
-            data.nodes.forEach(n => {
-                const isComponent = n.node_type === 'component';
+            // Filter out component nodes (they are handled separately or not shown)
+            const pageNodes = data.nodes.filter(n => n.node_type !== 'component');
+
+            // Add page nodes with uniform size and rank based on depth
+            pageNodes.forEach(n => {
                 const isDynamic = n.is_dynamic;
 
                 dagreGraph.setNode(n.id, {
                     label: n.label,
                     width: NODE_WIDTH,
                     height: NODE_HEIGHT,
-                    class: isComponent ? 'component' : (isDynamic ? 'dynamic' : 'page'),
+                    class: isDynamic ? 'dynamic' : 'page',
                     rx: 4,
                     ry: 4,
-                    route: isComponent ? '' : n.id
+                    route: n.id,
+                    rank: n.depth  // Use depth for column positioning
                 });
             });
 
-            // Add edges
+            // Add edges (only between page nodes)
+            const pageNodeIds = new Set(pageNodes.map(n => n.id));
             data.edges.forEach(e => {
-                dagreGraph.setEdge(e.source, e.target, {
-                    class: e.link_type,
-                    curve: d3.curveBasis,
-                    arrowhead: 'vee'
-                });
+                if (pageNodeIds.has(e.source) && pageNodeIds.has(e.target)) {
+                    dagreGraph.setEdge(e.source, e.target, {
+                        class: e.link_type,
+                        curve: d3.curveBasis,
+                        arrowhead: 'vee'
+                    });
+                }
             });
 
             // Create renderer
