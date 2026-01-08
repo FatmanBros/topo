@@ -3,13 +3,13 @@
   "name": "Topo",
   "scopeName": "source.topo",
   "patterns": [
+    { "include": "#strings" },
     { "include": "#comments" },
     { "include": "#imports" },
     { "include": "#test-definition" },
     { "include": "#store-definition" },
     { "include": "#api-service-definition" },
     { "include": "#component-definition" },
-    { "include": "#strings" },
     { "include": "#numbers" },
     { "include": "#annotations" },
     { "include": "#keywords" },
@@ -171,6 +171,18 @@
     "strings": {
       "patterns": [
         {
+          "name": "string.template.topo",
+          "contentName": "string.template.topo",
+          "begin": "`",
+          "end": "`",
+          "beginCaptures": {
+            "0": { "name": "punctuation.definition.string.begin.topo" }
+          },
+          "endCaptures": {
+            "0": { "name": "punctuation.definition.string.end.topo" }
+          }
+        },
+        {
           "name": "string.quoted.double.topo",
           "begin": "\"",
           "end": "\"",
@@ -185,17 +197,6 @@
           "name": "string.quoted.single.topo",
           "begin": "'",
           "end": "'",
-          "patterns": [
-            {
-              "name": "constant.character.escape.topo",
-              "match": "\\\\."
-            }
-          ]
-        },
-        {
-          "name": "string.template.topo",
-          "begin": "`",
-          "end": "`",
           "patterns": [
             {
               "name": "constant.character.escape.topo",
