@@ -141,9 +141,7 @@ InterceptorsSection -> DocsCodeSection({
 ConfigPreview(props) -> {
     align: vertical
     style: "space-y-3"
-    children: props.items.for(item => {
-        ConfigItem({ label: item.label, desc: item.desc })
-    })
+    children: props.items.for(item => { ConfigItem(item) })
 }
 
 ConfigItem(props) -> {
@@ -198,9 +196,7 @@ FeatureList(props) -> {
     style: "space-y-2 text-sm"
     children: [
         Text({ text: props.title, style: "font-medium text-gray-700" }),
-        ...props.items.for(item => {
-            FeatureItem({ icon: item.icon, text: item.text })
-        })
+        ...props.items.for(item => { FeatureItem(item) })
     ]
 }
 
