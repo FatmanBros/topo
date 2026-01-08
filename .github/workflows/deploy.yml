@@ -41,6 +41,14 @@ jobs:
       - name: Build LP for GitHub Pages
         run: ./target/release/topo build --input demo/pages/index.tp --mode ssg --output _site
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Generate Tailwind CSS
+        run: npx tailwindcss -i input.css -o _site/styles.css --minify
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:

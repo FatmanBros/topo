@@ -868,19 +868,77 @@ fn minify_js(js: &str) -> String {
 }
 
 /// Extract Tailwind classes from JS and generate minimal CSS
+// Note: This function is kept for potential future use but SSG now uses Tailwind CLI
+#[allow(dead_code)]
 fn extract_tailwind_css(js: &str) -> String {
     use std::collections::HashSet;
     use regex::Regex;
 
-    // Regex to find class strings in the JS
-    let class_regex = Regex::new(r#"(?:class|className|style)\s*[:=]\s*["'`]([^"'`]+)["'`]"#).unwrap();
-
     let mut classes: HashSet<&str> = HashSet::new();
 
+    // Method 1: Find class strings in style/class attributes
+    let class_regex = Regex::new(r#"(?:class|className|style)\s*[:=]\s*["'`]([^"'`]+)["'`]"#).unwrap();
     for cap in class_regex.captures_iter(js) {
         if let Some(class_str) = cap.get(1) {
             for class in class_str.as_str().split_whitespace() {
                 classes.insert(class);
+            }
+        }
+    }
+
+    // Method 2: Find ALL quoted strings that look like Tailwind classes
+    // This catches dynamic values like bgColor: 'bg-pink-50'
+    // Find single-quoted strings using string splitting (more reliable than regex)
+    let mut in_quote = false;
+    for part in js.split('\'') {
+        if in_quote {
+            let content = part;
+            if content.contains("bg-") || content.contains("text-") ||
+               content.contains("border-") || content.contains("w-") ||
+               content.contains("h-") || content.contains("blur-") ||
+               content.contains("mix-blend-") || content.contains("-top-") ||
+               content.contains("-right-") || content.contains("-bottom-") ||
+               content.contains("-left-") || content.contains("filter") ||
+               content.contains("opacity-") || content.contains("rounded-") {
+                for class in content.split_whitespace() {
+                    classes.insert(class);
+                }
+            }
+        }
+        in_quote = !in_quote;
+    }
+
+    // Also check double-quoted strings
+    let all_strings_regex = Regex::new(r#""([^"]+)""#).unwrap();
+    for cap in all_strings_regex.captures_iter(js) {
+        if let Some(str_content) = cap.get(1) {
+            let content = str_content.as_str();
+            if content.contains("bg-") || content.contains("text-") ||
+               content.contains("border-") || content.contains("rounded-") ||
+               content.contains("flex") || content.contains("grid") ||
+               content.contains("px-") || content.contains("py-") ||
+               content.contains("p-") || content.contains("m-") ||
+               content.contains("mx-") || content.contains("my-") ||
+               content.contains("mt-") || content.contains("mb-") ||
+               content.contains("w-") || content.contains("h-") ||
+               content.contains("gap-") || content.contains("space-") ||
+               content.contains("font-") || content.contains("shadow") ||
+               content.contains("hover:") || content.contains("focus:") ||
+               content.contains("sm:") || content.contains("md:") ||
+               content.contains("lg:") || content.contains("xl:") ||
+               content.contains("items-") || content.contains("justify-") ||
+               content.contains("opacity-") || content.contains("z-") ||
+               content.contains("transition") || content.contains("duration-") ||
+               content.contains("overflow-") || content.contains("cursor-") ||
+               content.contains("-top-") || content.contains("-right-") ||
+               content.contains("-bottom-") || content.contains("-left-") ||
+               content.contains("filter") || content.contains("blur-") ||
+               content.contains("mix-blend-") || content.contains("backdrop-") ||
+               content.contains("from-") || content.contains("to-") ||
+               content.contains("via-") || content.contains("translate-") {
+                for class in content.split_whitespace() {
+                    classes.insert(class);
+                }
             }
         }
     }
@@ -890,6 +948,7 @@ fn extract_tailwind_css(js: &str) -> String {
 }
 
 /// Generate CSS for specific Tailwind classes
+#[allow(dead_code)]
 fn generate_tailwind_css_for_classes(classes: &std::collections::HashSet<&str>) -> String {
     let mut css = String::new();
 
@@ -1394,6 +1453,72 @@ fn generate_tailwind_css_for_classes(classes: &std::collections::HashSet<&str>) 
         ("stroke-current", ".stroke-current{stroke:currentColor}"),
         // sr-only
         ("sr-only", ".sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border-width:0}"),
+        // Violet colors
+        ("bg-violet-50", ".bg-violet-50{background-color:#f5f3ff}"),
+        ("bg-violet-100", ".bg-violet-100{background-color:#ede9fe}"),
+        ("bg-violet-200", ".bg-violet-200{background-color:#ddd6fe}"),
+        ("bg-violet-500", ".bg-violet-500{background-color:#8b5cf6}"),
+        ("bg-violet-600", ".bg-violet-600{background-color:#7c3aed}"),
+        ("text-violet-500", ".text-violet-500{color:#8b5cf6}"),
+        ("text-violet-700", ".text-violet-700{color:#6d28d9}"),
+        ("border-violet-200", ".border-violet-200{border-color:#ddd6fe}"),
+        ("from-violet-50", ".from-violet-50{--tw-gradient-from:#f5f3ff;--tw-gradient-stops:var(--tw-gradient-from),var(--tw-gradient-to,rgba(245,243,255,0))}"),
+        ("from-violet-500", ".from-violet-500{--tw-gradient-from:#8b5cf6;--tw-gradient-stops:var(--tw-gradient-from),var(--tw-gradient-to,rgba(139,92,246,0))}"),
+        ("to-violet-100", ".to-violet-100{--tw-gradient-to:#ede9fe}"),
+        ("to-violet-500", ".to-violet-500{--tw-gradient-to:#8b5cf6}"),
+        ("to-violet-600", ".to-violet-600{--tw-gradient-to:#7c3aed}"),
+        ("via-violet-50", ".via-violet-50{--tw-gradient-stops:var(--tw-gradient-from),#f5f3ff,var(--tw-gradient-to,rgba(245,243,255,0))}"),
+        // Sky colors
+        ("bg-sky-50", ".bg-sky-50{background-color:#f0f9ff}"),
+        ("bg-sky-100", ".bg-sky-100{background-color:#e0f2fe}"),
+        ("bg-sky-200", ".bg-sky-200{background-color:#bae6fd}"),
+        ("bg-sky-500", ".bg-sky-500{background-color:#0ea5e9}"),
+        ("text-sky-700", ".text-sky-700{color:#0369a1}"),
+        ("border-sky-200", ".border-sky-200{border-color:#bae6fd}"),
+        ("to-sky-50", ".to-sky-50{--tw-gradient-to:#f0f9ff}"),
+        ("to-sky-500", ".to-sky-500{--tw-gradient-to:#0ea5e9}"),
+        // Amber colors
+        ("bg-amber-50", ".bg-amber-50{background-color:#fffbeb}"),
+        ("bg-amber-100", ".bg-amber-100{background-color:#fef3c7}"),
+        ("text-amber-700", ".text-amber-700{color:#b45309}"),
+        ("border-amber-200", ".border-amber-200{border-color:#fde68a}"),
+        ("to-amber-100", ".to-amber-100{--tw-gradient-to:#fef3c7}"),
+        // Orange colors
+        ("from-orange-50", ".from-orange-50{--tw-gradient-from:#fff7ed;--tw-gradient-stops:var(--tw-gradient-from),var(--tw-gradient-to,rgba(255,247,237,0))}"),
+        // Pink colors (additional)
+        ("bg-pink-200", ".bg-pink-200{background-color:#fbcfe8}"),
+        ("text-pink-700", ".text-pink-700{color:#be185d}"),
+        ("from-pink-600", ".from-pink-600{--tw-gradient-from:#db2777;--tw-gradient-stops:var(--tw-gradient-from),var(--tw-gradient-to,rgba(219,39,119,0))}"),
+        // Width/Height specific
+        ("w-10", ".w-10{width:2.5rem}"),
+        ("w-80", ".w-80{width:20rem}"),
+        ("h-10", ".h-10{height:2.5rem}"),
+        ("h-80", ".h-80{height:20rem}"),
+        // Negative positioning
+        ("-top-40", ".-top-40{top:-10rem}"),
+        ("-right-40", ".-right-40{right:-10rem}"),
+        ("-bottom-40", ".-bottom-40{bottom:-10rem}"),
+        ("-left-40", ".-left-40{left:-10rem}"),
+        // Filters
+        ("filter", ".filter{filter:var(--tw-blur,) var(--tw-brightness,) var(--tw-contrast,) var(--tw-grayscale,) var(--tw-hue-rotate,) var(--tw-invert,) var(--tw-saturate,) var(--tw-sepia,) var(--tw-drop-shadow,)}"),
+        ("blur-3xl", ".blur-3xl{--tw-blur:blur(64px);filter:var(--tw-blur,) var(--tw-brightness,) var(--tw-contrast,) var(--tw-grayscale,) var(--tw-hue-rotate,) var(--tw-invert,) var(--tw-saturate,) var(--tw-sepia,) var(--tw-drop-shadow,)}"),
+        ("mix-blend-multiply", ".mix-blend-multiply{mix-blend-mode:multiply}"),
+        // Background clip
+        ("bg-clip-text", ".bg-clip-text{-webkit-background-clip:text;background-clip:text}"),
+        // Opacity modifier backgrounds
+        ("bg-white/80", ".bg-white\\/80{background-color:rgba(255,255,255,0.8)}"),
+        // Padding additional
+        ("py-0.5", ".py-0\\.5{padding-top:0.125rem;padding-bottom:0.125rem}"),
+        ("py-1.5", ".py-1\\.5{padding-top:0.375rem;padding-bottom:0.375rem}"),
+        ("px-0.5", ".px-0\\.5{padding-left:0.125rem;padding-right:0.125rem}"),
+        ("pt-32", ".pt-32{padding-top:8rem}"),
+        ("pb-24", ".pb-24{padding-bottom:6rem}"),
+        // More hover states
+        ("hover:from-pink-600", ".hover\\:from-pink-600:hover{--tw-gradient-from:#db2777;--tw-gradient-stops:var(--tw-gradient-from),var(--tw-gradient-to,rgba(219,39,119,0))}"),
+        ("hover:to-violet-600", ".hover\\:to-violet-600:hover{--tw-gradient-to:#7c3aed}"),
+        ("hover:-translate-y-0.5", ".hover\\:-translate-y-0\\.5:hover{--tw-translate-y:-0.125rem;transform:translateX(var(--tw-translate-x,0)) translateY(-0.125rem)}"),
+        // Flex shrink
+        ("flex-shrink-0", ".flex-shrink-0{flex-shrink:0}"),
     ];
 
     // Responsive prefixes
@@ -1437,16 +1562,14 @@ fn generate_tailwind_css_for_classes(classes: &std::collections::HashSet<&str>) 
 }
 
 /// Generate HTML for SSG (production) - relative paths, inlined CSS, no dev features
-fn generate_html_ssg(config: &Config, js: &str) -> String {
+fn generate_html_ssg(config: &Config, _js: &str) -> String {
     let title = config
         .project
         .as_ref()
         .map(|p| p.name.clone())
         .unwrap_or_else(|| "topo App".to_string());
 
-    // Extract and generate minimal Tailwind CSS
-    let tailwind_css = extract_tailwind_css(js);
-
+    // SSG uses external CSS generated by Tailwind CLI
     format!(
         r#"<!DOCTYPE html>
 <html lang="en">
@@ -1454,7 +1577,7 @@ fn generate_html_ssg(config: &Config, js: &str) -> String {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{}</title>
-    <style>{}</style>
+    <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
     <div id="app"></div>
@@ -1462,7 +1585,7 @@ fn generate_html_ssg(config: &Config, js: &str) -> String {
 </body>
 </html>
 "#,
-        title, tailwind_css
+        title
     )
 }
 
