@@ -1717,7 +1717,16 @@ impl JsCodegen {
 
     fn generate_expression(&mut self, expr: &Expression) -> String {
         match expr {
-            Expression::String { value } => format!("'{}'", value.replace('\'', "\\'")),
+            Expression::String { value } => {
+                // Escape special characters for JavaScript string literals
+                let escaped = value
+                    .replace('\\', "\\\\")  // Backslash first
+                    .replace('\'', "\\'")   // Single quotes
+                    .replace('\n', "\\n")   // Newlines
+                    .replace('\r', "\\r")   // Carriage returns
+                    .replace('\t', "\\t");  // Tabs
+                format!("'{}'", escaped)
+            }
             Expression::Number { value } => value.to_string(),
             Expression::Boolean { value } => value.to_string(),
             Expression::Null => "null".to_string(),
