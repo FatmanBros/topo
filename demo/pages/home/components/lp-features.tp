@@ -1,5 +1,5 @@
 // LP Features section - 4 feature cards with pastel colors
-import { FeatureCard } from "../../../components/molecules/feature-card.tp"
+import { FeatureCard } from "@/components/molecules/feature-card.tp"
 
 LPFeatures -> {
     id: "features"

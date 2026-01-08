@@ -1,8 +1,9 @@
 // Docs landing page (Introduction)
 import { DocsTemplate } from "./template.tp"
-import { DocsSection, DocsText, DocsDescription } from "../../components/molecules/docs-section.tp"
-import { CodePreview } from "../../components/molecules/code-preview.tp"
-import { Text } from "../../components/atoms/text.tp"
+import { DocsSection, DocsText, DocsDescription } from "@/components/molecules/docs-section.tp"
+import { CodePreview } from "@/components/molecules/code-preview.tp"
+import { Text } from "@/components/atoms/text.tp"
+import { SectionTitle } from "@/components/molecules/section-title.tp"
 
 Page -> DocsTemplate({ children: [IntroContent] })
 
@@ -38,11 +39,6 @@ WhyTopoSection -> {
         CompareExample
     ]
 }
-
-SectionTitle(props) -> DocsText({
-    text: props.text,
-    style: "text-xl font-semibold text-gray-900"
-})
 
 CompareExample -> CodePreview({
     filename: "comparison",

@@ -1,5 +1,5 @@
 // Docs template - documentation layout with sidebar
-import { LPNavbar } from "../../components/organisms/lp-navbar.tp"
+import { LPNavbar } from "@/components/organisms/lp-navbar.tp"
 import { DocsSidebar } from "./components/docs-sidebar.tp"
 
 DocsTemplate(props) -> {

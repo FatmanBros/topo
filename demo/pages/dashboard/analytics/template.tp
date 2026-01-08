@@ -1,5 +1,5 @@
 // Analytics template - layout only
-import { DashboardLayout } from "../../../components/templates/dashboard-layout.tp"
+import { DashboardLayout } from "@/components/templates/dashboard-layout.tp"
 import { AnalyticsStatsGrid } from "./components/analytics-stats.tp"
 import { SourcesChart } from "./components/traffic-sources.tp"
 

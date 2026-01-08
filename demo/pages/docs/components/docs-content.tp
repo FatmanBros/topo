@@ -1,9 +1,9 @@
 // Docs main content
-import { DocsSection, DocsText, DocsDescription } from "../../../components/molecules/docs-section.tp"
-import { CodeBlock } from "../../../components/molecules/code-block.tp"
-import { CodePreview } from "../../../components/molecules/code-preview.tp"
-import { Text } from "../../../components/atoms/text.tp"
-import { PrimaryButton } from "../../../components/atoms/button.tp"
+import { DocsSection, DocsText, DocsDescription } from "@/components/molecules/docs-section.tp"
+import { CodeBlock } from "@/components/molecules/code-block.tp"
+import { CodePreview } from "@/components/molecules/code-preview.tp"
+import { Text } from "@/components/atoms/text.tp"
+import { PrimaryButton } from "@/components/atoms/button.tp"
 
 DocsContent -> {
     style: "flex-1 p-8 max-w-5xl"

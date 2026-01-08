@@ -1,5 +1,5 @@
 // Settings template - layout only
-import { DashboardLayout } from "../../../components/templates/dashboard-layout.tp"
+import { DashboardLayout } from "@/components/templates/dashboard-layout.tp"
 import { ProfileForm } from "./components/profile-form.tp"
 
 SettingsTemplate -> DashboardLayout([SettingsHeader, SettingsContent])

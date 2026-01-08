@@ -1,6 +1,6 @@
 // Docs sidebar navigation with search
-import { SidebarSection, DocsSidebarItem } from "../../../components/molecules/sidebar-section.tp"
-import { DocsSearchBox } from "../../../components/molecules/docs-search.tp"
+import { SidebarSection, DocsSidebarItem } from "@/components/molecules/sidebar-section.tp"
+import { DocsSearchBox } from "@/components/molecules/docs-search.tp"
 
 DocsSidebar -> {
     style: "w-64 border-r border-gray-100 h-screen sticky top-20 overflow-y-auto p-6 hidden md:block"

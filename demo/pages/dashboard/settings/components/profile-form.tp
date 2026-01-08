@@ -1,4 +1,6 @@
 // Profile Form component with store
+import { FormField } from "@/components/molecules/form-field.tp"
+
 ProfileSettings | {
     State {
         profile: { fullName: "", email: "", bio: "" }
@@ -49,27 +51,6 @@ ProfileFormFields -> {
         FormField({ label: "Bio", value: ProfileSettings.profile.bio, type: "textarea" }),
         SaveButton
     ]
-}
-
-FormField(label, value, type) -> {
-    align: vertical
-    style: "space-y-2"
-    children: [
-        FormFieldLabel({ label: label }),
-        FormFieldInput({ value: value, type: type })
-    ]
-}
-
-FormFieldLabel(label) -> {
-    type: text
-    content: label
-    style: "text-sm font-medium text-gray-700"
-}
-
-FormFieldInput(value, type) -> {
-    type: input
-    inputType: type
-    style: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
 }
 
 SaveButton -> {

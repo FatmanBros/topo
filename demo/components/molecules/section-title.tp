@@ -1,0 +1,7 @@
+// Section Title - Reusable section heading component
+import { DocsText } from "@/components/molecules/docs-section.tp"
+
+SectionTitle(props) -> DocsText({
+    text: props.text,
+    style: "text-xl font-semibold text-gray-900"
+})
