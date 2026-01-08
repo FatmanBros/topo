@@ -52,6 +52,9 @@ jobs:
       - name: Generate Tailwind CSS
         run: npx tailwindcss -i input.css -o _site/styles.css --minify
 
+      - name: Create 404.html for SPA routing
+        run: cp _site/index.html _site/404.html
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
