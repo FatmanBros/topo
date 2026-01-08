@@ -34,7 +34,12 @@ CreateProjectSection -> DocsCodeSection({
     title: "Create a New Project",
     description: "Use the CLI to scaffold a new project:",
     filename: "terminal",
-    code: "topo new my-app\ncd my-app\ntopo dev\n\n# Open http://localhost:7090",
+    code: `
+    topo new my-app
+    cd my-app
+    topo dev
+
+    # Open http://localhost:7090`,
     preview: [FeatureList({
         title: "This creates:",
         items: [
@@ -51,7 +56,19 @@ ProjectStructureSection -> DocsCodeSection({
     title: "Project Structure",
     description: "A new topo project has the following structure:",
     filename: "project structure",
-    code: "my-app/\n├── pages/\n│   ├── index.tp        # Home page (/)\n│   └── about/\n│       └── index.tp    # About page (/about)\n├── components/\n│   ├── atoms/          # Basic UI elements\n│   ├── molecules/      # Combined atoms\n│   └── organisms/      # Complex components\n├── stores/             # Global state\n├── services/           # API services\n└── topo.config.json    # Configuration",
+    code: `
+    my-app/
+    ├── pages/
+    │   ├── index.tp        # Home page (/)
+    │   └── about/
+    │       └── index.tp    # About page (/about)
+    ├── components/
+    │   ├── atoms/          # Basic UI elements
+    │   ├── molecules/      # Combined atoms
+    │   └── organisms/      # Complex components
+    ├── stores/             # Global state
+    ├── services/           # API services
+    └── topo.config.json    # Configuration`,
     preview: [FeatureList({
         title: "Key directories:",
         items: [
@@ -68,41 +85,50 @@ FirstComponentSection -> DocsCodeSection({
     title: "Your First Component",
     description: "Edit pages/index.tp to create your first component:",
     filename: "pages/index.tp",
-    code: "Page -> {\n    style: \"p-8\"\n    children: [\n        Greeting,\n        Counter\n    ]\n}\n\nGreeting -> {\n    type: text\n    content: \"Hello, topo!\"\n    style: \"text-3xl font-bold\n           text-pink-500\"\n}",
-    preview: [FirstComponentPreview]
-})
+    code: `
+    Page -> {
+        style: "p-8"
+        children: [
+            Greeting,
+            Counter
+        ]
+    }
 
-FirstComponentPreview -> {
-    align: vertical
-    style: "space-y-4"
-    children: [
-        Text({ text: "Hello, topo!", style: "text-3xl font-bold text-pink-500" }),
-        Text({ text: "Your first component!", style: "text-gray-500" })
-    ]
-}
+    Greeting -> {
+        type: text
+        content: "Hello, topo!"
+        style: "text-3xl font-bold
+               text-pink-500"
+    }`,
+    preview: [{
+        align: vertical
+        style: "space-y-4"
+        children: [
+            Text({ text: "Hello, topo!", style: "text-3xl font-bold text-pink-500" }),
+            Text({ text: "Your first component!", style: "text-gray-500" })
+        ]
+    }]
+})
 
 // Next steps
 NextStepsSection -> DocsCodeSection({
     title: "Next Steps",
     description: "Continue learning topo with these guides:",
     filename: "recommended",
-    code: "# Recommended reading order\n1. Components Guide    # UI building blocks\n2. Store              # State management\n3. Routing            # Navigation & pages\n4. API Services       # Data fetching\n5. Styling            # Tailwind integration",
-    preview: [NextStepsList]
+    code: `
+    # Recommended reading order
+    1. Components Guide    # UI building blocks
+    2. Store              # State management
+    3. Routing            # Navigation & pages
+    4. API Services       # Data fetching
+    5. Styling            # Tailwind integration`,
+    preview: [{
+        align: vertical
+        style: "space-y-2"
+        children: [
+            { type: link, href: "/docs/components-guide", content: "-> Learn about Components", style: "text-pink-500 hover:text-pink-600" },
+            { type: link, href: "/docs/store", content: "-> Explore State Management", style: "text-pink-500 hover:text-pink-600" },
+            { type: link, href: "/docs/api", content: "-> Connect to APIs", style: "text-pink-500 hover:text-pink-600" }
+        ]
+    }]
 })
-
-NextStepsList -> {
-    align: vertical
-    style: "space-y-2"
-    children: [
-        NextStepItem({ text: "Learn about Components", href: "/docs/components-guide" }),
-        NextStepItem({ text: "Explore State Management with Store", href: "/docs/store" }),
-        NextStepItem({ text: "Connect to APIs", href: "/docs/api" })
-    ]
-}
-
-NextStepItem(props) -> {
-    type: link
-    href: props.href
-    content: "-> " + props.text
-    style: "text-pink-500 hover:text-pink-600"
-}
