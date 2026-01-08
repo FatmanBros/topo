@@ -800,78 +800,30 @@ fn generate_html(config: &Config) -> String {
     )
 }
 
-/// Simple JS minification (remove comments, extra whitespace)
+/// Simple JS minification - removes line comments at start of lines and collapses whitespace
+/// Does NOT try to parse strings (too complex with template literals)
 fn minify_js(js: &str) -> String {
-    let mut result = String::with_capacity(js.len());
-    let mut in_string = false;
-    let mut string_char = ' ';
-    let mut in_single_comment = false;
-    let mut in_multi_comment = false;
-    let mut prev_char = ' ';
-    let mut chars = js.chars().peekable();
+    let mut result = String::new();
 
-    while let Some(c) = chars.next() {
-        if in_single_comment {
-            if c == '\n' {
-                in_single_comment = false;
-                result.push('\n');
-            }
+    for line in js.lines() {
+        let trimmed = line.trim();
+
+        // Skip empty lines
+        if trimmed.is_empty() {
             continue;
         }
 
-        if in_multi_comment {
-            if prev_char == '*' && c == '/' {
-                in_multi_comment = false;
-            }
-            prev_char = c;
+        // Skip lines that are only single-line comments
+        if trimmed.starts_with("//") {
             continue;
         }
 
-        if in_string {
-            result.push(c);
-            if c == string_char && prev_char != '\\' {
-                in_string = false;
-            }
-            prev_char = c;
-            continue;
+        // For other lines, just collapse leading/trailing whitespace
+        // but preserve internal whitespace and content
+        if !result.is_empty() && !result.ends_with('\n') {
+            result.push('\n');
         }
-
-        match c {
-            '"' | '\'' | '`' => {
-                in_string = true;
-                string_char = c;
-                result.push(c);
-            }
-            '/' => {
-                if let Some(&next) = chars.peek() {
-                    if next == '/' {
-                        in_single_comment = true;
-                        chars.next();
-                    } else if next == '*' {
-                        in_multi_comment = true;
-                        chars.next();
-                    } else {
-                        result.push(c);
-                    }
-                } else {
-                    result.push(c);
-                }
-            }
-            '\n' | '\r' => {
-                // Keep one newline for line-break sensitive code
-                if !result.ends_with('\n') && !result.ends_with(' ') {
-                    result.push('\n');
-                }
-            }
-            ' ' | '\t' => {
-                // Collapse whitespace
-                if !result.is_empty() && !result.ends_with(' ') && !result.ends_with('\n') {
-                    result.push(' ');
-                }
-            }
-            _ => result.push(c),
-        }
-        prev_char = c;
+        result.push_str(trimmed);
     }
 
     result

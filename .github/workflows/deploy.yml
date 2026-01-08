@@ -38,7 +38,7 @@ jobs:
         run: cargo build --release
 
       - name: Build app for GitHub Pages
-        run: ./target/release/topo build --input demo --mode spa --output _site
+        run: ./target/release/topo build --input demo --mode ssg --output _site
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
