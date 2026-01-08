@@ -4,7 +4,7 @@ use crate::link_analyzer::LinkAnalyzer;
 use anyhow::Result;
 use tiny_http::{Header, Response, Server};
 
-/// HTML template for the visualizer
+/// HTML template for the visualizer using dagre-d3
 const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -12,6 +12,7 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>topo - Page Navigation Graph</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dagre-d3@0.6.4/dist/dagre-d3.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -29,36 +30,31 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
             transition: opacity 0.2s;
         }
         .node.page rect { fill: #21262d; stroke: #58a6ff; }
-        .node.page.dynamic rect { stroke: #f78166; }
-        .node.component rect { fill: #1c2128; stroke: #a371f7; rx: 8; ry: 8; }
-        .node text {
+        .node.dynamic rect { fill: #21262d; stroke: #f78166; }
+        .node.component rect { fill: #1c2128; stroke: #a371f7; rx: 12; ry: 12; }
+        .node text, .node tspan {
             fill: #c9d1d9;
             font-size: 12px;
             pointer-events: none;
         }
         .node .route { fill: #8b949e; font-size: 10px; }
-        .node .component-icon {
-            fill: #a371f7;
-            font-size: 10px;
-            cursor: pointer;
-        }
 
-        /* Link styles */
-        .link {
-            fill: none;
+        /* Edge styles */
+        .edgePath path {
             stroke-width: 2;
+            fill: none;
             transition: opacity 0.2s, stroke-width 0.2s;
         }
-        .link.declarative { stroke: #58a6ff; }
-        .link.programmatic { stroke: #a371f7; stroke-dasharray: 5,5; }
-        .link.component-link { stroke: #a371f7; stroke-dasharray: 2,2; }
-        .link.faded { opacity: 0.15; }
-        .link.highlighted { stroke-width: 3; opacity: 1; }
+        .edgePath.declarative path { stroke: #58a6ff; }
+        .edgePath.programmatic path { stroke: #a371f7; stroke-dasharray: 5,5; }
+        .edgePath.component-link path { stroke: #a371f7; stroke-dasharray: 2,2; }
+        .edgePath.faded path { opacity: 0.15; }
+        .edgePath.highlighted path { stroke-width: 3; opacity: 1; }
 
         /* Arrowhead */
-        .arrowhead { fill: #58a6ff; }
-        .arrowhead.programmatic { fill: #a371f7; }
-        .arrowhead.component-link { fill: #a371f7; }
+        .edgePath marker path { fill: #58a6ff; }
+        .edgePath.programmatic marker path { fill: #a371f7; }
+        .edgePath.component-link marker path { fill: #a371f7; }
 
         /* Legend */
         .legend {
@@ -150,7 +146,7 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
             background: #30363d;
         }
 
-        /* Faded state for nodes */
+        /* Faded state */
         .node.faded rect { opacity: 0.3; }
         .node.faded text { opacity: 0.3; }
     </style>
@@ -158,7 +154,7 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
 <body>
     <div class="header">
         <h1>Page Navigation Graph</h1>
-        <p>Drag nodes to rearrange. Hover to highlight connections.</p>
+        <p>Scroll to zoom. Drag to pan. Hover to highlight.</p>
     </div>
 
     <div class="legend">
@@ -187,17 +183,15 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
 
     <div class="controls">
         <button onclick="resetZoom()">Reset View</button>
-        <button onclick="toggleComponents()">Toggle Components</button>
+        <button onclick="fitToScreen()">Fit to Screen</button>
     </div>
 
     <div class="tooltip"></div>
     <svg id="graph"></svg>
 
     <script>
-        let showComponents = true;
-        let simulation;
-        let svg, g;
-        let graphData;
+        let svg, g, zoom;
+        let graphData, nodeData = {};
 
         fetch('/api/graph')
             .then(r => r.json())
@@ -210,29 +204,107 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
             const width = window.innerWidth;
             const height = window.innerHeight;
 
+            // Create dagre graph
+            const dagreGraph = new dagreD3.graphlib.Graph()
+                .setGraph({
+                    rankdir: 'LR',      // Left to Right
+                    nodesep: 50,        // Vertical spacing
+                    ranksep: 120,       // Horizontal spacing
+                    marginx: 50,
+                    marginy: 50
+                })
+                .setDefaultEdgeLabel(() => ({}));
+
+            // Store node data for hover
+            data.nodes.forEach(n => {
+                nodeData[n.id] = n;
+            });
+
+            // Add nodes
+            data.nodes.forEach(n => {
+                const isComponent = n.id.startsWith('@');
+                const isDynamic = n.is_dynamic;
+                const label = n.label;
+                const route = isComponent ? '' : n.id;
+
+                dagreGraph.setNode(n.id, {
+                    label: label,
+                    labelType: 'html',
+                    class: isComponent ? 'component' : (isDynamic ? 'dynamic' : 'page'),
+                    rx: isComponent ? 12 : 4,
+                    ry: isComponent ? 12 : 4,
+                    padding: 12,
+                    route: route
+                });
+            });
+
+            // Add edges
+            data.edges.forEach(e => {
+                dagreGraph.setEdge(e.source, e.target, {
+                    class: e.link_type,
+                    curve: d3.curveBasis,
+                    arrowhead: 'vee'
+                });
+            });
+
+            // Create renderer
+            const render = new dagreD3.render();
+
             svg = d3.select('#graph')
                 .attr('width', width)
                 .attr('height', height);
 
-            // Define arrowhead markers
-            const defs = svg.append('defs');
+            g = svg.append('g');
 
-            ['declarative', 'programmatic', 'component-link'].forEach(type => {
-                defs.append('marker')
-                    .attr('id', `arrowhead-${type}`)
-                    .attr('viewBox', '0 -5 10 10')
-                    .attr('refX', 20)
-                    .attr('refY', 0)
-                    .attr('markerWidth', 6)
-                    .attr('markerHeight', 6)
-                    .attr('orient', 'auto')
-                    .append('path')
-                    .attr('d', 'M0,-5L10,0L0,5')
-                    .attr('class', `arrowhead ${type}`);
+            // Define arrowheads
+            svg.append('defs').html(`
+                <marker id="arrowhead-declarative" viewBox="0 -5 10 10" refX="10" refY="0"
+                        markerWidth="6" markerHeight="6" orient="auto">
+                    <path d="M0,-5L10,0L0,5" fill="#58a6ff"/>
+                </marker>
+                <marker id="arrowhead-programmatic" viewBox="0 -5 10 10" refX="10" refY="0"
+                        markerWidth="6" markerHeight="6" orient="auto">
+                    <path d="M0,-5L10,0L0,5" fill="#a371f7"/>
+                </marker>
+                <marker id="arrowhead-component-link" viewBox="0 -5 10 10" refX="10" refY="0"
+                        markerWidth="6" markerHeight="6" orient="auto">
+                    <path d="M0,-5L10,0L0,5" fill="#a371f7"/>
+                </marker>
+            `);
+
+            // Render the graph
+            render(g, dagreGraph);
+
+            // Add route labels under node labels
+            g.selectAll('.node').each(function(id) {
+                const node = d3.select(this);
+                const data = dagreGraph.node(id);
+                if (data.route) {
+                    const bbox = node.select('rect').node().getBBox();
+                    node.append('text')
+                        .attr('class', 'route')
+                        .attr('x', 0)
+                        .attr('y', bbox.height / 2 - 5)
+                        .attr('text-anchor', 'middle')
+                        .text(data.route);
+                }
             });
 
-            // Create zoom behavior
-            const zoom = d3.zoom()
+            // Set arrowheads
+            g.selectAll('.edgePath').each(function() {
+                const edge = d3.select(this);
+                const cls = edge.attr('class');
+                if (cls.includes('declarative')) {
+                    edge.select('path').attr('marker-end', 'url(#arrowhead-declarative)');
+                } else if (cls.includes('programmatic')) {
+                    edge.select('path').attr('marker-end', 'url(#arrowhead-programmatic)');
+                } else if (cls.includes('component-link')) {
+                    edge.select('path').attr('marker-end', 'url(#arrowhead-component-link)');
+                }
+            });
+
+            // Setup zoom
+            zoom = d3.zoom()
                 .scaleExtent([0.1, 4])
                 .on('zoom', (event) => {
                     g.attr('transform', event.transform);
@@ -240,188 +312,67 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
 
             svg.call(zoom);
 
-            // Create container group
-            g = svg.append('g');
+            // Initial fit
+            fitToScreen();
 
-            // Process nodes - separate pages and components
-            const nodes = data.nodes.map(n => ({
-                ...n,
-                nodeType: n.id.startsWith('@') ? 'component' : 'page'
-            }));
-
-            // Create edges with proper source/target references
-            const nodeMap = new Map(nodes.map(n => [n.id, n]));
-            const edges = data.edges.filter(e => nodeMap.has(e.source) && nodeMap.has(e.target))
-                .map(e => ({
-                    ...e,
-                    source: e.source,
-                    target: e.target
-                }));
-
-            // Force simulation
-            simulation = d3.forceSimulation(nodes)
-                .force('link', d3.forceLink(edges).id(d => d.id).distance(180))
-                .force('charge', d3.forceManyBody().strength(-400))
-                .force('center', d3.forceCenter(width / 2, height / 2))
-                .force('collision', d3.forceCollide().radius(80));
-
-            // Draw links
-            const link = g.append('g')
-                .attr('class', 'links')
-                .selectAll('path')
-                .data(edges)
-                .join('path')
-                .attr('class', d => `link ${d.link_type}`)
-                .attr('marker-end', d => `url(#arrowhead-${d.link_type})`);
-
-            // Draw nodes
-            const node = g.append('g')
-                .attr('class', 'nodes')
-                .selectAll('g')
-                .data(nodes)
-                .join('g')
-                .attr('class', d => {
-                    let cls = `node ${d.nodeType}`;
-                    if (d.is_dynamic) cls += ' dynamic';
-                    return cls;
-                })
-                .call(d3.drag()
-                    .on('start', dragstarted)
-                    .on('drag', dragged)
-                    .on('end', dragended));
-
-            // Node rectangle
-            node.append('rect')
-                .attr('width', d => d.nodeType === 'component' ? 120 : 140)
-                .attr('height', d => d.nodeType === 'component' ? 40 : 50)
-                .attr('x', d => d.nodeType === 'component' ? -60 : -70)
-                .attr('y', d => d.nodeType === 'component' ? -20 : -25)
-                .attr('rx', d => d.nodeType === 'component' ? 8 : 4)
-                .attr('ry', d => d.nodeType === 'component' ? 8 : 4);
-
-            // Node label
-            node.append('text')
-                .attr('text-anchor', 'middle')
-                .attr('dy', d => d.nodeType === 'component' ? 4 : -2)
-                .text(d => d.label);
-
-            // Route path for pages
-            node.filter(d => d.nodeType === 'page')
-                .append('text')
-                .attr('class', 'route')
-                .attr('text-anchor', 'middle')
-                .attr('dy', 14)
-                .text(d => d.id);
-
-            // Component icon for pages that use shared components
-            const pagesWithComponents = new Set(
-                edges.filter(e => e.source.startsWith && !e.source.startsWith('@') && e.target.startsWith('@'))
-                    .map(e => e.source)
-            );
-
-            node.filter(d => d.nodeType === 'page' && pagesWithComponents.has(d.id))
-                .append('text')
-                .attr('class', 'component-icon')
-                .attr('x', 55)
-                .attr('y', -10)
-                .text('◆')
-                .on('mouseenter', function(event, d) {
-                    highlightComponentConnections(d);
-                })
-                .on('mouseleave', clearHighlight);
-
-            // Hover effects
-            node.on('mouseenter', function(event, d) {
-                highlightConnections(d);
-                showTooltip(event, d);
-            })
-            .on('mouseleave', function() {
+            // Hover events
+            g.selectAll('.node').on('mouseenter', function(event) {
+                const id = d3.select(this).datum();
+                highlightConnections(id);
+                showTooltip(event, nodeData[id]);
+            }).on('mouseleave', function() {
                 clearHighlight();
                 hideTooltip();
             });
-
-            // Update positions on tick
-            simulation.on('tick', () => {
-                link.attr('d', d => {
-                    const dx = d.target.x - d.source.x;
-                    const dy = d.target.y - d.source.y;
-                    return `M${d.source.x},${d.source.y}L${d.target.x},${d.target.y}`;
-                });
-
-                node.attr('transform', d => `translate(${d.x},${d.y})`);
-            });
-
-            // Store references
-            window.nodeSelection = node;
-            window.linkSelection = link;
-            window.zoomBehavior = zoom;
         }
 
-        function highlightConnections(d) {
-            const connectedNodes = new Set([d.id]);
+        function highlightConnections(nodeId) {
+            const connectedNodes = new Set([nodeId]);
 
-            window.linkSelection.each(function(link) {
-                const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
-                const targetId = typeof link.target === 'object' ? link.target.id : link.target;
-
-                if (sourceId === d.id) connectedNodes.add(targetId);
-                if (targetId === d.id) connectedNodes.add(sourceId);
+            graphData.edges.forEach(e => {
+                if (e.source === nodeId) connectedNodes.add(e.target);
+                if (e.target === nodeId) connectedNodes.add(e.source);
             });
 
-            window.linkSelection
-                .classed('faded', link => {
-                    const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
-                    const targetId = typeof link.target === 'object' ? link.target.id : link.target;
-                    return sourceId !== d.id && targetId !== d.id;
-                })
-                .classed('highlighted', link => {
-                    const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
-                    const targetId = typeof link.target === 'object' ? link.target.id : link.target;
-                    return sourceId === d.id || targetId === d.id;
-                });
-
-            window.nodeSelection
-                .classed('faded', n => !connectedNodes.has(n.id));
-        }
-
-        function highlightComponentConnections(d) {
-            // Highlight only component connections for this page
-            const connectedComponents = new Set();
-
-            window.linkSelection.each(function(link) {
-                const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
-                const targetId = typeof link.target === 'object' ? link.target.id : link.target;
-
-                if (sourceId === d.id && targetId.startsWith('@')) {
-                    connectedComponents.add(targetId);
-                }
+            g.selectAll('.edgePath').each(function() {
+                const edge = d3.select(this);
+                const path = edge.select('path');
+                // Get edge data from class or data attribute
+                const isConnected = graphData.edges.some(e =>
+                    (e.source === nodeId || e.target === nodeId)
+                );
             });
 
-            window.linkSelection
-                .classed('faded', link => {
-                    const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
-                    const targetId = typeof link.target === 'object' ? link.target.id : link.target;
-                    return !(sourceId === d.id && connectedComponents.has(targetId));
+            g.selectAll('.edgePath')
+                .classed('faded', function() {
+                    const edgeId = d3.select(this).datum();
+                    const edge = graphData.edges.find(e =>
+                        dagreD3.graphlib && edgeId && edgeId.v === e.source && edgeId.w === e.target
+                    );
+                    return !graphData.edges.some(e =>
+                        (e.source === nodeId && e.target === (edgeId?.w)) ||
+                        (e.target === nodeId && e.source === (edgeId?.v))
+                    );
                 })
-                .classed('highlighted', link => {
-                    const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
-                    const targetId = typeof link.target === 'object' ? link.target.id : link.target;
-                    return sourceId === d.id && connectedComponents.has(targetId);
+                .classed('highlighted', function() {
+                    const edgeId = d3.select(this).datum();
+                    return graphData.edges.some(e =>
+                        (e.source === nodeId && e.target === (edgeId?.w)) ||
+                        (e.target === nodeId && e.source === (edgeId?.v))
+                    );
                 });
 
-            window.nodeSelection
-                .classed('faded', n => n.id !== d.id && !connectedComponents.has(n.id));
+            g.selectAll('.node')
+                .classed('faded', id => !connectedNodes.has(id));
         }
 
         function clearHighlight() {
-            window.linkSelection
-                .classed('faded', false)
-                .classed('highlighted', false);
-            window.nodeSelection
-                .classed('faded', false);
+            g.selectAll('.edgePath').classed('faded', false).classed('highlighted', false);
+            g.selectAll('.node').classed('faded', false);
         }
 
         function showTooltip(event, d) {
+            if (!d) return;
             const tooltip = document.querySelector('.tooltip');
             tooltip.innerHTML = `
                 <strong>${d.label}</strong><br>
@@ -436,50 +387,37 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
             document.querySelector('.tooltip').classList.remove('visible');
         }
 
-        function dragstarted(event, d) {
-            if (!event.active) simulation.alphaTarget(0.3).restart();
-            d.fx = d.x;
-            d.fy = d.y;
-        }
-
-        function dragged(event, d) {
-            d.fx = event.x;
-            d.fy = event.y;
-        }
-
-        function dragended(event, d) {
-            if (!event.active) simulation.alphaTarget(0);
-            d.fx = null;
-            d.fy = null;
-        }
-
         function resetZoom() {
-            svg.transition().duration(750).call(
-                window.zoomBehavior.transform,
+            svg.transition().duration(500).call(
+                zoom.transform,
                 d3.zoomIdentity
             );
         }
 
-        function toggleComponents() {
-            showComponents = !showComponents;
-            window.nodeSelection
-                .filter(d => d.nodeType === 'component')
-                .style('display', showComponents ? null : 'none');
-            window.linkSelection
-                .filter(d => {
-                    const targetId = typeof d.target === 'object' ? d.target.id : d.target;
-                    return targetId.startsWith('@');
-                })
-                .style('display', showComponents ? null : 'none');
-        }
-
-        // Handle window resize
-        window.addEventListener('resize', () => {
+        function fitToScreen() {
+            const bounds = g.node().getBBox();
             const width = window.innerWidth;
             const height = window.innerHeight;
-            svg.attr('width', width).attr('height', height);
-            simulation.force('center', d3.forceCenter(width / 2, height / 2));
-            simulation.alpha(0.3).restart();
+            const padding = 60;
+
+            const scale = Math.min(
+                (width - padding * 2) / bounds.width,
+                (height - padding * 2) / bounds.height,
+                1.5
+            );
+
+            const tx = (width - bounds.width * scale) / 2 - bounds.x * scale;
+            const ty = (height - bounds.height * scale) / 2 - bounds.y * scale;
+
+            svg.transition().duration(500).call(
+                zoom.transform,
+                d3.zoomIdentity.translate(tx, ty).scale(scale)
+            );
+        }
+
+        window.addEventListener('resize', () => {
+            svg.attr('width', window.innerWidth).attr('height', window.innerHeight);
+            fitToScreen();
         });
     </script>
 </body>
