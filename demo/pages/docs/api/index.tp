@@ -80,7 +80,15 @@ CustomEndpointsSection -> {
 
 CustomAPIExample -> CodePreview({
     filename: "api.tp",
-    code: "UserApi :: {\n    rest: \"/api/users\"\n    \n    // Custom endpoints\n    search: get(\"/search?q={query}\")\n    activate: post(\"/{id}/activate\")\n    bulkDelete: delete(\"/bulk\")\n    export: get(\"/export\", { responseType: \"blob\" })\n}",
+    code: `UserApi :: {
+    rest: "/api/users"
+
+    // Custom endpoints
+    search: get("/search?q={query}")
+    activate: post("/{id}/activate")
+    bulkDelete: delete("/bulk")
+    export: get("/export", { responseType: "blob" })
+}`,
     preview: [CustomAPIPreview]
 })
 
