@@ -38,10 +38,11 @@ BasicAPISection -> DocsCodeSection({
     title: "Auto-Generated CRUD",
     description: "Just define the base endpoint and get all CRUD methods for free:",
     filename: "api.tp",
-    code: `// This is all you need!
-UserApi :: {
-    rest: "/api/users"
-}`,
+    code: `
+    // This is all you need!
+    UserApi :: {
+        rest: "/api/users"
+    }`,
     preview: [ApiPreview({
         endpoints: [
             { method: "GET", path: "/api/users", desc: "getAll()" },
@@ -65,15 +66,16 @@ CustomEndpointsSection -> DocsCodeSection({
     title: "Custom Endpoints",
     description: "Add custom endpoints alongside auto-generated ones:",
     filename: "api.tp",
-    code: `UserApi :: {
-    rest: "/api/users"
+    code: `
+    UserApi :: {
+        rest: "/api/users"
 
-    // Custom endpoints
-    search: get("/search?q={query}")
-    activate: post("/{id}/activate")
-    bulkDelete: delete("/bulk")
-    export: get("/export", { responseType: "blob" })
-}`,
+        // Custom endpoints
+        search: get("/search?q={query}")
+        activate: post("/{id}/activate")
+        bulkDelete: delete("/bulk")
+        export: get("/export", { responseType: "blob" })
+    }`,
     preview: [CustomAPIPreview]
 })
 
@@ -104,31 +106,32 @@ InterceptorsSection -> DocsCodeSection({
     title: "Interceptors & Configuration",
     description: "Configure common settings and intercept requests/responses:",
     filename: "api-config.tp",
-    code: `Api :: {
-    baseUrl: "/api"
+    code: `
+    Api :: {
+        baseUrl: "/api"
 
-    headers: {
-        "Content-Type": "application/json"
-    }
-
-    interceptors: {
-        request: (config) => {
-            token: getAuthToken()
-            config.headers.Authorization =
-                "Bearer " + token
-            return config
+        headers: {
+            "Content-Type": "application/json"
         }
 
-        response: (res) => res.data
-
-        error: (err) => {
-            if (err.status == 401) {
-                redirect("/login")
+        interceptors: {
+            request: (config) => {
+                token: getAuthToken()
+                config.headers.Authorization =
+                    "Bearer " + token
+                return config
             }
-            throw err
+
+            response: (res) => res.data
+
+            error: (err) => {
+                if (err.status == 401) {
+                    redirect("/login")
+                }
+                throw err
+            }
         }
-    }
-}`,
+    }`,
     preview: [ConfigPreview({
         items: [
             { label: "baseUrl", desc: "Common prefix for all endpoints" },
@@ -149,25 +152,26 @@ UsageSection -> DocsCodeSection({
     title: "Using in Components",
     description: "Call API methods directly in your components and effects:",
     filename: "user-list.tp",
-    code: `// In Effects
-Effects {
-    on FetchUsers {
-        users: await UserApi.getAll()
-        dispatch: SetUsers(users)
+    code: `
+    // In Effects
+    Effects {
+        on FetchUsers {
+            users: await UserApi.getAll()
+            dispatch: SetUsers(users)
+        }
+
+        on SearchUsers(query) {
+            results: await UserApi.search(query)
+            dispatch: SetSearchResults(results)
+        }
     }
 
-    on SearchUsers(query) {
-        results: await UserApi.search(query)
-        dispatch: SetSearchResults(results)
-    }
-}
-
-// In Components
-DeleteButton(id) -> {
-    type: button
-    content: "Delete"
-    onClick: () => UserApi.delete(id)
-}`,
+    // In Components
+    DeleteButton(id) -> {
+        type: button
+        content: "Delete"
+        onClick: () => UserApi.delete(id)
+    }`,
     preview: [FeatureList({
         title: "API calls are:",
         items: [
