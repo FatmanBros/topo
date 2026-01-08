@@ -14,6 +14,7 @@ use std::collections::HashMap;
 use topo::ast::{Declaration, Program};
 use topo::codegen::JsCodegen;
 use topo::config::{Config, BuildMode, I18nConfig};
+use topo::info_server::start_info_server;
 use topo::lexer::Lexer;
 use topo::parser::Parser as TopoParser;
 
@@ -105,8 +106,17 @@ enum Commands {
     /// Show current configuration
     Config,
 
-    /// Show project info (pages and APIs)
+    /// Show project info (pages, APIs, and navigation graph)
     Info {
+        #[command(subcommand)]
+        command: Option<InfoCommands>,
+    },
+}
+
+#[derive(Subcommand)]
+enum InfoCommands {
+    /// List pages and APIs in terminal
+    List {
         /// Show only pages
         #[arg(long)]
         pages: bool,
@@ -114,6 +124,16 @@ enum Commands {
         /// Show only APIs
         #[arg(long)]
         apis: bool,
+    },
+    /// Visualize page navigation graph in browser
+    Web {
+        /// Port number for the visualization server
+        #[arg(short, long, default_value = "4000")]
+        port: u16,
+
+        /// Don't open browser automatically
+        #[arg(long)]
+        no_open: bool,
     },
 }
 
@@ -182,8 +202,19 @@ fn main() -> Result<()> {
         Commands::Config => {
             show_config()?;
         }
-        Commands::Info { pages, apis } => {
-            show_info(pages, apis)?;
+        Commands::Info { command } => {
+            match command {
+                Some(InfoCommands::List { pages, apis }) => {
+                    show_info_list(pages, apis)?;
+                }
+                Some(InfoCommands::Web { port, no_open }) => {
+                    start_info_server(port, no_open)?;
+                }
+                None => {
+                    // Default: show web visualization
+                    start_info_server(4000, false)?;
+                }
+            }
         }
     }
 
@@ -1729,7 +1760,7 @@ fn show_config() -> Result<()> {
     Ok(())
 }
 
-fn show_info(pages_only: bool, apis_only: bool) -> Result<()> {
+fn show_info_list(pages_only: bool, apis_only: bool) -> Result<()> {
     let config = Config::load_or_default();
     let paths_config = config.paths_config();
     let pages_dir = PathBuf::from(&paths_config.pages);
