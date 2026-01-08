@@ -414,6 +414,9 @@ fn build_project(input: &PathBuf, output: &PathBuf, mode: &str) -> Result<()> {
     // Generate file-based routes (registration happens after component definitions)
     let routes = generate_routes(&entry_files, input)?;
 
+    // Track defined function names to avoid duplicates
+    let mut defined_names: std::collections::HashSet<String> = std::collections::HashSet::new();
+
     let mut has_app = false;
     let mut entry_component: Option<String> = None;
     for file in &compile_order {
@@ -434,6 +437,8 @@ fn build_project(input: &PathBuf, output: &PathBuf, mode: &str) -> Result<()> {
                 }
             }
             let js = codegen.generate_with_file_path(program, file.to_str());
+            // Deduplicate function names to avoid conflicts
+            let js = deduplicate_functions(&js, &mut defined_names);
             all_output.push_str(&js);
             all_output.push('\n');
         }
@@ -543,6 +548,9 @@ fn build_project_dev(input: &PathBuf, output: &PathBuf, _mode: &str, ws_port: u1
     // Generate file-based routes (registration happens after component definitions)
     let routes = generate_routes(&entry_files, input)?;
 
+    // Track defined function names to avoid duplicates
+    let mut defined_names: std::collections::HashSet<String> = std::collections::HashSet::new();
+
     let mut has_app = false;
     for file in &compile_order {
         if let Some(program) = parsed_files.get(file) {
@@ -555,6 +563,8 @@ fn build_project_dev(input: &PathBuf, output: &PathBuf, _mode: &str, ws_port: u1
                 }
             }
             let js = codegen.generate_with_file_path(program, file.to_str());
+            // Deduplicate function names to avoid conflicts
+            let js = deduplicate_functions(&js, &mut defined_names);
             all_output.push_str(&js);
             all_output.push('\n');
         }
@@ -798,6 +808,70 @@ fn generate_html(config: &Config) -> String {
 "#,
         title, tailwind_script
     )
+}
+
+/// Deduplicate function names in JS output
+/// Takes a chunk of JS code and a set of already-defined names
+/// Returns the modified JS and updates the defined_names set
+fn deduplicate_functions(js: &str, defined_names: &mut std::collections::HashSet<String>) -> String {
+    use regex::Regex;
+
+    // Find all function declarations: "function Name(" or "function Name ("
+    let func_regex = Regex::new(r"function\s+([A-Z][a-zA-Z0-9_]*)\s*\(").unwrap();
+
+    // First pass: find all function names defined in this chunk
+    let mut local_functions: Vec<String> = Vec::new();
+    for cap in func_regex.captures_iter(js) {
+        if let Some(name_match) = cap.get(1) {
+            let name = name_match.as_str().to_string();
+            if !local_functions.contains(&name) {
+                local_functions.push(name);
+            }
+        }
+    }
+
+    // Build rename map for duplicates
+    let mut rename_map: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+    for name in &local_functions {
+        if defined_names.contains(name) {
+            // Find a unique suffix
+            let mut suffix = 1;
+            loop {
+                let new_name = format!("{}_{}", name, suffix);
+                if !defined_names.contains(&new_name) {
+                    rename_map.insert(name.clone(), new_name.clone());
+                    defined_names.insert(new_name);
+                    break;
+                }
+                suffix += 1;
+            }
+        } else {
+            defined_names.insert(name.clone());
+        }
+    }
+
+    // If no renames needed, return as-is
+    if rename_map.is_empty() {
+        return js.to_string();
+    }
+
+    // Apply renames - replace function declarations and references
+    let mut result = js.to_string();
+    for (old_name, new_name) in &rename_map {
+        // Replace function declaration: "function OldName(" -> "function NewName("
+        let decl_pattern = format!(r"function\s+{}\s*\(", regex::escape(old_name));
+        let decl_regex = Regex::new(&decl_pattern).unwrap();
+        result = decl_regex.replace_all(&result, format!("function {}(", new_name)).to_string();
+
+        // Replace references using word boundaries
+        // \b matches word boundary, so we match Name followed by certain characters
+        // This pattern: word boundary + Name + (optional whitespace + one of the expected chars)
+        let ref_pattern = format!(r"\b{}\b", regex::escape(old_name));
+        let ref_regex = Regex::new(&ref_pattern).unwrap();
+        result = ref_regex.replace_all(&result, new_name.as_str()).to_string();
+    }
+
+    result
 }
 
 /// Simple JS minification - removes line comments at start of lines and collapses whitespace

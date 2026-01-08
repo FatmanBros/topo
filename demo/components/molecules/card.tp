@@ -1,6 +1,6 @@
 import { Text } from "../atoms/text.tp"
 
-Card(title, desc) -> {
+SimpleCard(title, desc) -> {
     style: "bg-white p-6 rounded-xl shadow-sm border border-gray-100"
     align: vertical
     children: [
