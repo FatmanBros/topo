@@ -66,6 +66,10 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
             font-size: 12px;
             font-weight: 600;
         }
+        .api-rest-path {
+            fill: #8b949e;
+            font-size: 10px;
+        }
         .api-endpoint rect {
             fill: #21262d;
             stroke: #238636;
@@ -111,6 +115,7 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
         .link-edge.declarative { stroke: #58a6ff; }
         .link-edge.programmatic { stroke: #a371f7; stroke-dasharray: 5,5; }
         .link-edge.component-link { stroke: #a371f7; stroke-dasharray: 2,2; }
+        .link-edge.api-call { stroke: #3fb950; }
         .link-edge.faded { opacity: 0.15; }
         .link-edge.highlighted { stroke-width: 3; opacity: 1; }
 
@@ -207,12 +212,125 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
         /* Faded state */
         .node.faded rect { opacity: 0.3; }
         .node.faded text { opacity: 0.3; }
+
+        /* Info Panel */
+        .info-panel {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 320px;
+            max-height: calc(100vh - 40px);
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            z-index: 200;
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .info-panel.visible {
+            display: flex;
+        }
+        .info-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 1px solid #30363d;
+            background: #21262d;
+        }
+        .info-panel-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #f0f6fc;
+        }
+        .info-panel-close {
+            background: none;
+            border: none;
+            color: #8b949e;
+            cursor: pointer;
+            font-size: 18px;
+            padding: 0;
+            line-height: 1;
+        }
+        .info-panel-close:hover {
+            color: #f0f6fc;
+        }
+        .info-panel-content {
+            padding: 16px;
+            overflow-y: auto;
+            flex: 1;
+        }
+        .info-section {
+            margin-bottom: 16px;
+        }
+        .info-section:last-child {
+            margin-bottom: 0;
+        }
+        .info-section-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: #8b949e;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+        .info-section-content {
+            font-size: 13px;
+            color: #c9d1d9;
+            line-height: 1.5;
+        }
+        .info-tag {
+            display: inline-block;
+            padding: 2px 8px;
+            background: #21262d;
+            border-radius: 4px;
+            font-size: 11px;
+            margin-right: 6px;
+            margin-bottom: 4px;
+        }
+        .info-tag.page { color: #58a6ff; border: 1px solid #58a6ff; }
+        .info-tag.dynamic { color: #f78166; border: 1px solid #f78166; }
+        .info-tag.component { color: #a371f7; border: 1px solid #a371f7; }
+        .info-tag.api { color: #3fb950; border: 1px solid #3fb950; }
+        .info-file {
+            font-family: monospace;
+            font-size: 12px;
+            color: #8b949e;
+            word-break: break-all;
+        }
+        .info-connections {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .info-connections li {
+            padding: 4px 0;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .info-connections .arrow {
+            color: #8b949e;
+        }
+        .info-connections .target {
+            color: #58a6ff;
+        }
     </style>
 </head>
 <body>
     <div class="header">
         <h1>Page Navigation Graph</h1>
-        <p>Scroll to zoom. Drag to pan. Hover to highlight.</p>
+        <p>Scroll to zoom. Drag to pan. Click node for details.</p>
+    </div>
+
+    <div class="info-panel" id="info-panel">
+        <div class="info-panel-header">
+            <span class="info-panel-title" id="info-panel-title">Node Info</span>
+            <button class="info-panel-close" onclick="closeInfoPanel()">&times;</button>
+        </div>
+        <div class="info-panel-content" id="info-panel-content"></div>
     </div>
 
     <div class="legend">
@@ -236,6 +354,10 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
         <div class="legend-item">
             <div class="legend-line" style="background: repeating-linear-gradient(90deg, #a371f7, #a371f7 4px, transparent 4px, transparent 8px);"></div>
             <span>router.push</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-line" style="background: #3fb950;"></div>
+            <span>API Call</span>
         </div>
     </div>
 
@@ -380,6 +502,10 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
                         markerWidth="6" markerHeight="6" orient="auto">
                     <path d="M0,-5L10,0L0,5" fill="#a371f7"/>
                 </marker>
+                <marker id="arrowhead-api-call" viewBox="0 -5 10 10" refX="10" refY="0"
+                        markerWidth="6" markerHeight="6" orient="auto">
+                    <path d="M0,-5L10,0L0,5" fill="#3fb950"/>
+                </marker>
             `);
 
             // Render pages graph (layout only with hierarchy edges)
@@ -464,14 +590,29 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
                 .attr('text-anchor', 'middle')
                 .text('Backend (API)');
 
-            // Draw API services
+            // Draw API services and track positions (both service and endpoint level)
+            const apiNodePositions = {};
+            const apiEndpointPositions = {};
             let apiY = 80;
+            const serviceWidth = 200;
+
             data.api_services.forEach((service, idx) => {
-                const serviceHeight = 50 + service.endpoints.length * 28;
-                const serviceWidth = 180;
+                // Calculate height: name + rest_path + endpoints
+                const hasRestPath = service.rest_path ? 1 : 0;
+                const headerHeight = 28 + hasRestPath * 16;
+                const serviceHeight = headerHeight + 12 + service.endpoints.length * 28;
+
+                // Store the center position for connection lines (service level)
+                apiNodePositions[service.id] = {
+                    x: apiStartX,
+                    y: apiY + serviceHeight / 2,
+                    width: serviceWidth,
+                    height: serviceHeight
+                };
 
                 const serviceGroup = g.append('g')
                     .attr('class', 'api-service-group')
+                    .attr('data-api-id', service.id)
                     .attr('transform', `translate(${apiStartX}, ${apiY})`);
 
                 // Service container
@@ -484,15 +625,35 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
                 serviceGroup.append('text')
                     .attr('class', 'api-service-label')
                     .attr('x', 10)
-                    .attr('y', 22)
+                    .attr('y', 20)
                     .text(service.name);
 
+                // REST base path (if present)
+                if (service.rest_path) {
+                    serviceGroup.append('text')
+                        .attr('class', 'api-rest-path')
+                        .attr('x', 10)
+                        .attr('y', 36)
+                        .text(service.rest_path);
+                }
+
                 // Endpoints
+                const endpointsStartY = headerHeight + 8;
                 service.endpoints.forEach((ep, epIdx) => {
-                    const epY = 40 + epIdx * 28;
+                    const epY = endpointsStartY + epIdx * 28;
+                    const endpointId = `${service.id}/${ep.name}`;
+
+                    // Store endpoint position for connection lines
+                    apiEndpointPositions[endpointId] = {
+                        x: apiStartX,
+                        y: apiY + epY + 12, // center of endpoint rect
+                        width: serviceWidth,
+                        height: 24
+                    };
 
                     const epGroup = serviceGroup.append('g')
                         .attr('class', 'api-endpoint')
+                        .attr('data-endpoint-id', endpointId)
                         .attr('transform', `translate(8, ${epY})`);
 
                     epGroup.append('rect')
@@ -508,12 +669,38 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
                         .text(ep.method);
 
                     epGroup.append('text')
-                        .attr('x', 45)
+                        .attr('x', 50)
                         .attr('y', 16)
                         .text(`${ep.path} → ${ep.name}()`);
                 });
 
                 apiY += serviceHeight + 20;
+            });
+
+            // Draw API call edges (page -> specific endpoint)
+            const apiEdges = data.edges.filter(e => e.link_type === 'api-call');
+            apiEdges.forEach(e => {
+                const sourceNode = dagreGraph.node(e.source);
+                // Try endpoint-level first, then fall back to service-level
+                const targetEndpoint = apiEndpointPositions[e.target] || apiNodePositions[e.target];
+
+                if (!sourceNode || !targetEndpoint) return;
+
+                // Source right edge -> endpoint left edge
+                const sx = sourceNode.x + NODE_WIDTH / 2;
+                const sy = sourceNode.y;
+                const tx = targetEndpoint.x;
+                const ty = targetEndpoint.y;
+
+                const controlOffset = Math.max((tx - sx) * 0.4, 40);
+                const pathD = `M${sx},${sy} C${sx + controlOffset},${sy} ${tx - controlOffset},${ty} ${tx},${ty}`;
+
+                edgesGroup.append('path')
+                    .attr('class', 'link-edge api-call')
+                    .attr('d', pathD)
+                    .attr('marker-end', 'url(#arrowhead-api-call)')
+                    .attr('data-source', e.source)
+                    .attr('data-target', e.target);
             });
 
             // Add route labels under node labels
@@ -565,6 +752,42 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
             }).on('mouseleave', function() {
                 clearHighlight();
                 hideTooltip();
+            }).on('click', function(event) {
+                const id = d3.select(this).datum();
+                showInfoPanel(nodeData[id]);
+                event.stopPropagation();
+            });
+
+            // Click on API endpoint to show info
+            g.selectAll('.api-endpoint').on('click', function(event) {
+                const endpointId = d3.select(this).attr('data-endpoint-id');
+                if (endpointId) {
+                    // Find the service and endpoint info
+                    const parts = endpointId.split('/');
+                    const serviceName = parts[1]; // @api/servicename/method -> servicename
+                    const methodName = parts[2];
+                    const service = graphData.api_services.find(s => s.id.includes(serviceName));
+                    if (service) {
+                        const endpoint = service.endpoints.find(ep => ep.name === methodName);
+                        showApiEndpointInfo(service, endpoint);
+                    }
+                }
+                event.stopPropagation();
+            });
+
+            // Click on API service header to show service info
+            g.selectAll('.api-service-group').on('click', function(event) {
+                const apiId = d3.select(this).attr('data-api-id');
+                const service = graphData.api_services.find(s => s.id === apiId);
+                if (service) {
+                    showApiServiceInfo(service);
+                }
+                event.stopPropagation();
+            });
+
+            // Close info panel when clicking on background
+            svg.on('click', function() {
+                closeInfoPanel();
             });
         }
 
@@ -644,6 +867,194 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
         window.addEventListener('resize', () => {
             svg.attr('width', window.innerWidth).attr('height', window.innerHeight);
         });
+
+        // Info panel functions
+        function showInfoPanel(node) {
+            if (!node) return;
+
+            const panel = document.getElementById('info-panel');
+            const title = document.getElementById('info-panel-title');
+            const content = document.getElementById('info-panel-content');
+
+            // Set title
+            const displayName = node.doc?.name || node.label;
+            title.textContent = displayName;
+
+            // Build content
+            let html = '';
+
+            // Type tag
+            const typeClass = node.is_dynamic ? 'dynamic' : node.node_type;
+            const typeLabel = node.is_dynamic ? 'Dynamic Page' : (node.node_type === 'component' ? 'Component' : 'Page');
+            html += `<div class="info-section">
+                <span class="info-tag ${typeClass}">${typeLabel}</span>
+            </div>`;
+
+            // Route/ID
+            html += `<div class="info-section">
+                <div class="info-section-title">Route</div>
+                <div class="info-section-content">${node.id}</div>
+            </div>`;
+
+            // Description (from doc comment)
+            if (node.doc?.description) {
+                html += `<div class="info-section">
+                    <div class="info-section-title">Description</div>
+                    <div class="info-section-content">${node.doc.description}</div>
+                </div>`;
+            }
+
+            // File
+            html += `<div class="info-section">
+                <div class="info-section-title">File</div>
+                <div class="info-file">${node.file}</div>
+            </div>`;
+
+            // Author/Version
+            if (node.doc?.author || node.doc?.version) {
+                html += '<div class="info-section">';
+                if (node.doc?.author) {
+                    html += `<div class="info-section-title">Author</div>
+                        <div class="info-section-content">${node.doc.author}</div>`;
+                }
+                if (node.doc?.version) {
+                    html += `<div class="info-section-title">Version</div>
+                        <div class="info-section-content">${node.doc.version}</div>`;
+                }
+                html += '</div>';
+            }
+
+            // Connections
+            const outgoing = graphData.edges.filter(e => e.source === node.id);
+            const incoming = graphData.edges.filter(e => e.target === node.id);
+
+            if (outgoing.length > 0) {
+                html += `<div class="info-section">
+                    <div class="info-section-title">Links To</div>
+                    <ul class="info-connections">`;
+                outgoing.forEach(e => {
+                    const linkType = e.link_type === 'api-call' ? '🔌' : '→';
+                    html += `<li><span class="arrow">${linkType}</span> <span class="target">${e.target}</span></li>`;
+                });
+                html += '</ul></div>';
+            }
+
+            if (incoming.length > 0) {
+                html += `<div class="info-section">
+                    <div class="info-section-title">Linked From</div>
+                    <ul class="info-connections">`;
+                incoming.forEach(e => {
+                    html += `<li><span class="arrow">←</span> <span class="target">${e.source}</span></li>`;
+                });
+                html += '</ul></div>';
+            }
+
+            content.innerHTML = html;
+            panel.classList.add('visible');
+
+            // Hide legend when panel is open
+            document.querySelector('.legend').style.display = 'none';
+        }
+
+        function showApiServiceInfo(service) {
+            const panel = document.getElementById('info-panel');
+            const title = document.getElementById('info-panel-title');
+            const content = document.getElementById('info-panel-content');
+
+            title.textContent = service.name;
+
+            let html = `<div class="info-section">
+                <span class="info-tag api">API Service</span>
+            </div>`;
+
+            if (service.rest_path) {
+                html += `<div class="info-section">
+                    <div class="info-section-title">Base Path</div>
+                    <div class="info-section-content">${service.rest_path}</div>
+                </div>`;
+            }
+
+            html += `<div class="info-section">
+                <div class="info-section-title">File</div>
+                <div class="info-file">${service.file}</div>
+            </div>`;
+
+            html += `<div class="info-section">
+                <div class="info-section-title">Endpoints (${service.endpoints.length})</div>
+                <ul class="info-connections">`;
+            service.endpoints.forEach(ep => {
+                html += `<li><span class="api-method ${ep.method}">${ep.method}</span> ${ep.path} → ${ep.name}()</li>`;
+            });
+            html += '</ul></div>';
+
+            // Find pages that call this service
+            const callers = graphData.edges
+                .filter(e => e.link_type === 'api-call' && e.target.startsWith(service.id))
+                .map(e => e.source);
+            const uniqueCallers = [...new Set(callers)];
+
+            if (uniqueCallers.length > 0) {
+                html += `<div class="info-section">
+                    <div class="info-section-title">Called From</div>
+                    <ul class="info-connections">`;
+                uniqueCallers.forEach(caller => {
+                    html += `<li><span class="arrow">←</span> <span class="target">${caller}</span></li>`;
+                });
+                html += '</ul></div>';
+            }
+
+            content.innerHTML = html;
+            panel.classList.add('visible');
+            document.querySelector('.legend').style.display = 'none';
+        }
+
+        function showApiEndpointInfo(service, endpoint) {
+            const panel = document.getElementById('info-panel');
+            const title = document.getElementById('info-panel-title');
+            const content = document.getElementById('info-panel-content');
+
+            title.textContent = `${service.name}.${endpoint.name}()`;
+
+            let html = `<div class="info-section">
+                <span class="info-tag api">API Endpoint</span>
+                <span class="api-method ${endpoint.method}">${endpoint.method}</span>
+            </div>`;
+
+            html += `<div class="info-section">
+                <div class="info-section-title">Path</div>
+                <div class="info-section-content">${service.rest_path || ''}${endpoint.path}</div>
+            </div>`;
+
+            html += `<div class="info-section">
+                <div class="info-section-title">Service</div>
+                <div class="info-section-content">${service.name}</div>
+            </div>`;
+
+            // Find pages that call this endpoint
+            const endpointId = `${service.id}/${endpoint.name}`;
+            const callers = graphData.edges
+                .filter(e => e.link_type === 'api-call' && e.target === endpointId)
+                .map(e => e.source);
+
+            if (callers.length > 0) {
+                html += `<div class="info-section">
+                    <div class="info-section-title">Called From</div>
+                    <ul class="info-connections">`;
+                callers.forEach(caller => {
+                    html += `<li><span class="arrow">←</span> <span class="target">${caller}</span></li>`;
+                });
+                html += '</ul></div>';
+            }
+
+            content.innerHTML = html;
+            panel.classList.add('visible');
+            document.querySelector('.legend').style.display = 'none';
+        }
+
+        function closeInfoPanel() {
+            document.getElementById('info-panel').classList.remove('visible');
+            document.querySelector('.legend').style.display = 'block';
+        }
     </script>
 </body>
 </html>

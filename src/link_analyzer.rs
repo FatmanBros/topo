@@ -6,7 +6,7 @@
 //! - Shared component relationships
 
 use crate::ast::{BinaryOperator, ComponentDef, Declaration, Expression};
-use crate::config::Config;
+// Config is now optional - we auto-detect directories
 use crate::lexer::Lexer;
 use crate::parser::Parser as TopoParser;
 use anyhow::Result;
@@ -51,6 +51,21 @@ pub enum NodeType {
     Component,
 }
 
+/// Documentation comment parsed from file
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct DocComment {
+    /// Display name from @name tag
+    pub name: Option<String>,
+    /// Description from @description tag
+    pub description: Option<String>,
+    /// Author from @author tag
+    pub author: Option<String>,
+    /// Version from @version tag
+    pub version: Option<String>,
+    /// Raw doc comment text
+    pub raw: Option<String>,
+}
+
 /// Node in the page graph
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PageNode {
@@ -67,6 +82,9 @@ pub struct PageNode {
     /// Depth for layout ranking (based on path segments)
     /// Static segments count as 2, dynamic segments count as 1
     pub depth: u32,
+    /// Documentation comment
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub doc: Option<DocComment>,
 }
 
 /// Edge in the page graph
@@ -106,6 +124,8 @@ pub struct ApiServiceNode {
     pub id: String,
     pub name: String,
     pub file: String,
+    /// REST base path (e.g., "/api/authority")
+    pub rest_path: Option<String>,
     pub endpoints: Vec<ApiEndpoint>,
 }
 
@@ -119,25 +139,118 @@ pub struct ApiEndpoint {
 
 /// Link analyzer for .tp files
 pub struct LinkAnalyzer {
+    root_dir: PathBuf,
     pages_dir: PathBuf,
     components_dir: PathBuf,
-    services_dir: PathBuf,
 }
 
 impl LinkAnalyzer {
-    /// Create a new link analyzer
+    /// Create a new link analyzer from current directory
     pub fn new() -> Result<Self> {
-        let config = Config::load_or_default();
-        let paths_config = config.paths_config();
-        let pages_dir = PathBuf::from(&paths_config.pages);
-        let components_dir = PathBuf::from(&paths_config.components);
-        let services_dir = PathBuf::from(&paths_config.services);
+        let root_dir = std::env::current_dir()?;
+
+        // Try to find pages directory (check multiple common locations)
+        let pages_candidates = vec![
+            root_dir.join("pages"),
+            root_dir.join("src/pages"),
+            root_dir.join("demo/pages"),
+            root_dir.join("app/pages"),
+        ];
+        let pages_dir = pages_candidates
+            .into_iter()
+            .find(|p| p.exists())
+            .unwrap_or_else(|| root_dir.join("pages"));
+
+        // Try to find components directory
+        let components_candidates = vec![
+            root_dir.join("components"),
+            root_dir.join("src/components"),
+            root_dir.join("demo/components"),
+            root_dir.join("app/components"),
+        ];
+        let components_dir = components_candidates
+            .into_iter()
+            .find(|p| p.exists())
+            .unwrap_or_else(|| root_dir.join("components"));
 
         Ok(Self {
+            root_dir,
             pages_dir,
             components_dir,
-            services_dir,
         })
+    }
+
+    /// Extract documentation comment from the beginning of a file
+    /// Parses JSDoc-style comments: /** ... */
+    fn extract_doc_comment(source: &str) -> Option<DocComment> {
+        let trimmed = source.trim_start();
+
+        // Check if file starts with a doc comment
+        if !trimmed.starts_with("/**") {
+            return None;
+        }
+
+        // Find the end of the doc comment
+        let end_pos = trimmed.find("*/")?;
+        let comment_content = &trimmed[3..end_pos]; // Skip "/**"
+
+        let mut doc = DocComment::default();
+        doc.raw = Some(comment_content.trim().to_string());
+
+        // Parse each line for @tags
+        for line in comment_content.lines() {
+            let line = line.trim().trim_start_matches('*').trim();
+
+            if let Some(rest) = line.strip_prefix("@name") {
+                doc.name = Some(rest.trim_start_matches(':').trim().to_string());
+            } else if let Some(rest) = line.strip_prefix("@description") {
+                doc.description = Some(rest.trim_start_matches(':').trim().to_string());
+            } else if let Some(rest) = line.strip_prefix("@author") {
+                doc.author = Some(rest.trim_start_matches(':').trim().to_string());
+            } else if let Some(rest) = line.strip_prefix("@version") {
+                doc.version = Some(rest.trim_start_matches(':').trim().to_string());
+            }
+        }
+
+        // Only return if at least one field is populated
+        if doc.name.is_some() || doc.description.is_some() || doc.author.is_some() || doc.version.is_some() {
+            Some(doc)
+        } else {
+            None
+        }
+    }
+
+    /// Find all .tp files recursively from a directory
+    fn find_tp_files_in_dir(&self, dir: &Path) -> Result<Vec<PathBuf>> {
+        let mut files = Vec::new();
+        self.collect_tp_files_recursive(dir, &mut files)?;
+        Ok(files)
+    }
+
+    /// Recursively collect .tp files, excluding node_modules, target, .git
+    fn collect_tp_files_recursive(&self, dir: &Path, files: &mut Vec<PathBuf>) -> Result<()> {
+        if !dir.is_dir() {
+            return Ok(());
+        }
+
+        let dir_name = dir.file_name().and_then(|n| n.to_str()).unwrap_or("");
+        // Skip common non-source directories
+        if dir_name == "node_modules" || dir_name == "target" || dir_name.starts_with('.') {
+            return Ok(());
+        }
+
+        for entry in fs::read_dir(dir)? {
+            let entry = entry?;
+            let path = entry.path();
+
+            if path.is_dir() {
+                self.collect_tp_files_recursive(&path, files)?;
+            } else if path.extension().and_then(|e| e.to_str()) == Some("tp") {
+                files.push(path);
+            }
+        }
+
+        Ok(())
     }
 
     /// Calculate depth for layout ranking based on path segments
@@ -204,6 +317,11 @@ impl LinkAnalyzer {
                 let label = self.route_to_label(&route, file);
                 let is_dynamic = route.contains('[');
 
+                // Extract doc comment from file
+                let doc = fs::read_to_string(file)
+                    .ok()
+                    .and_then(|source| Self::extract_doc_comment(&source));
+
                 nodes.push(PageNode {
                     id: route.clone(),
                     label,
@@ -215,6 +333,7 @@ impl LinkAnalyzer {
                     is_dynamic,
                     node_type: NodeType::Page,
                     depth: Self::calculate_depth(&route),
+                    doc,
                 });
 
                 // Extract links and imports from this file
@@ -239,6 +358,11 @@ impl LinkAnalyzer {
 
         // Add component nodes (only those with links)
         for (component_id, component) in &components_with_links {
+            // Extract doc comment from component file
+            let doc = fs::read_to_string(&component.file)
+                .ok()
+                .and_then(|source| Self::extract_doc_comment(&source));
+
             nodes.push(PageNode {
                 id: component_id.clone(),
                 label: component.label.clone(),
@@ -251,6 +375,7 @@ impl LinkAnalyzer {
                 is_dynamic: false,
                 node_type: NodeType::Component,
                 depth: 0, // Components are handled separately in layout
+                doc,
             });
 
             // Add links from this component
@@ -321,54 +446,142 @@ impl LinkAnalyzer {
             }
         }
 
-        // Analyze API services
-        let api_services = self.find_api_services()?;
+        // Analyze API services by following imports
+        let (api_services, api_edges) = self.find_api_services(&page_files, &component_files)?;
+
+        // Add API edges (source is already a route)
+        for (source_route, api_id) in api_edges {
+            let edge_key = (source_route.clone(), api_id.clone());
+            if !seen_edges.contains(&edge_key) {
+                seen_edges.insert(edge_key);
+                edges.push(PageEdge {
+                    source: source_route,
+                    target: api_id,
+                    link_type: "api-call".to_string(),
+                    is_dynamic: false,
+                });
+            }
+        }
 
         Ok(PageGraph { nodes, edges, api_services })
     }
 
-    /// Find API services in services directory
-    fn find_api_services(&self) -> Result<Vec<ApiServiceNode>> {
+    /// Find API services by following imports from pages/components
+    /// Returns (api_services, edges) where edges is (source_route, api_endpoint_id)
+    /// api_endpoint_id format: @api/servicename/methodname
+    fn find_api_services(&self, page_files: &[PathBuf], component_files: &[PathBuf]) -> Result<(Vec<ApiServiceNode>, Vec<(String, String)>)> {
         use crate::ast::Declaration;
+        use regex::Regex;
 
         let mut services = Vec::new();
+        let mut api_edges: Vec<(String, String)> = Vec::new();
+        let mut seen_services: std::collections::HashSet<PathBuf> = std::collections::HashSet::new();
 
-        if !self.services_dir.exists() {
-            return Ok(services);
+        // Build maps:
+        // 1. component file -> (api_name, [method_names]) it uses
+        // 2. component file -> other component files it imports
+        // 3. api_name -> service info
+        let mut component_api_calls: HashMap<PathBuf, Vec<(String, String)>> = HashMap::new(); // (api_name, method)
+        let mut component_imports: HashMap<PathBuf, Vec<PathBuf>> = HashMap::new();
+        let mut api_name_to_id: HashMap<String, String> = HashMap::new(); // ApiName -> @api/apiname
+
+        // Helper to extract component imports from source
+        fn extract_component_imports(source: &str, file: &Path) -> Vec<PathBuf> {
+            let mut imports = Vec::new();
+            for line in source.lines() {
+                if line.trim().starts_with("import") {
+                    if let Some(path_start) = line.find('"') {
+                        if let Some(path_end) = line.rfind('"') {
+                            let import_path = &line[path_start + 1..path_end];
+                            // Only track .tp component files
+                            if import_path.ends_with(".tp") && !import_path.contains("services/") {
+                                if let Some(comp_file) = file
+                                    .parent()
+                                    .map(|p| p.join(import_path))
+                                    .and_then(|p| p.canonicalize().ok())
+                                {
+                                    imports.push(comp_file);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            imports
         }
 
-        for entry in fs::read_dir(&self.services_dir)? {
-            let entry = entry?;
-            let path = entry.path();
+        // Helper to extract API method calls from source (e.g., AuthorityApi.login)
+        fn extract_api_calls(source: &str, api_names: &[String]) -> Vec<(String, String)> {
+            let mut calls = Vec::new();
+            for api_name in api_names {
+                // Match ApiName.methodName patterns
+                let pattern = format!(r"{}\s*\.\s*(\w+)\s*\(", regex::escape(api_name));
+                if let Ok(re) = Regex::new(&pattern) {
+                    for cap in re.captures_iter(source) {
+                        if let Some(method) = cap.get(1) {
+                            calls.push((api_name.clone(), method.as_str().to_string()));
+                        }
+                    }
+                }
+            }
+            calls
+        }
 
-            if path.extension().and_then(|e| e.to_str()) == Some("tp") {
-                if let Ok(source) = fs::read_to_string(&path) {
-                    let mut lexer = Lexer::new(&source);
-                    if let Ok(tokens) = lexer.tokenize() {
-                        let mut parser = TopoParser::new(tokens);
-                        if let Ok(program) = parser.parse() {
-                            for decl in program.declarations {
-                                if let Declaration::ApiService(api) = decl {
-                                    let endpoints: Vec<ApiEndpoint> = api
-                                        .endpoints
-                                        .iter()
-                                        .map(|ep| ApiEndpoint {
-                                            method: format!("{:?}", ep.method).to_uppercase(),
-                                            path: ep.path.clone(),
-                                            name: ep.name.clone(),
-                                        })
-                                        .collect();
+        // First pass: collect API service definitions from all component files
+        let mut all_api_names: Vec<String> = Vec::new();
+        for file in component_files {
+            if let Ok(source) = fs::read_to_string(file) {
+                for line in source.lines() {
+                    if line.trim().starts_with("import") && line.contains("services/") {
+                        if let Some(path_start) = line.find('"') {
+                            if let Some(path_end) = line.rfind('"') {
+                                let import_path = &line[path_start + 1..path_end];
+                                let service_file = file
+                                    .parent()
+                                    .map(|p| p.join(import_path))
+                                    .and_then(|p| p.canonicalize().ok());
 
-                                    services.push(ApiServiceNode {
-                                        id: format!("@api/{}", api.name.to_lowercase()),
-                                        name: api.name.clone(),
-                                        file: path
-                                            .file_name()
-                                            .and_then(|n| n.to_str())
-                                            .unwrap_or("")
-                                            .to_string(),
-                                        endpoints,
-                                    });
+                                if let Some(service_path) = service_file {
+                                    if !seen_services.contains(&service_path) {
+                                        if let Ok(service_source) = fs::read_to_string(&service_path) {
+                                            let mut lexer = Lexer::new(&service_source);
+                                            if let Ok(tokens) = lexer.tokenize() {
+                                                let mut parser = TopoParser::new(tokens);
+                                                if let Ok(program) = parser.parse() {
+                                                    for decl in program.declarations {
+                                                        if let Declaration::ApiService(api) = decl {
+                                                            let api_id = format!("@api/{}", api.name.to_lowercase());
+                                                            api_name_to_id.insert(api.name.clone(), api_id.clone());
+                                                            all_api_names.push(api.name.clone());
+
+                                                            let endpoints: Vec<ApiEndpoint> = api
+                                                                .endpoints
+                                                                .iter()
+                                                                .map(|ep| ApiEndpoint {
+                                                                    method: format!("{:?}", ep.method).to_uppercase(),
+                                                                    path: ep.path.clone(),
+                                                                    name: ep.name.clone(),
+                                                                })
+                                                                .collect();
+
+                                                            services.push(ApiServiceNode {
+                                                                id: api_id,
+                                                                name: api.name.clone(),
+                                                                file: service_path
+                                                                    .file_name()
+                                                                    .and_then(|n| n.to_str())
+                                                                    .unwrap_or("")
+                                                                    .to_string(),
+                                                                rest_path: api.rest.clone(),
+                                                                endpoints,
+                                                            });
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        seen_services.insert(service_path);
+                                    }
                                 }
                             }
                         }
@@ -377,7 +590,82 @@ impl LinkAnalyzer {
             }
         }
 
-        Ok(services)
+        // Second pass: collect API calls and component imports
+        for file in component_files {
+            if let Ok(source) = fs::read_to_string(file) {
+                // Track component imports for dependency resolution
+                let comp_imports = extract_component_imports(&source, file);
+                if !comp_imports.is_empty() {
+                    component_imports.insert(file.clone(), comp_imports);
+                }
+
+                // Track API method calls
+                let api_calls = extract_api_calls(&source, &all_api_names);
+                if !api_calls.is_empty() {
+                    component_api_calls.insert(file.clone(), api_calls);
+                }
+            }
+        }
+
+        // Helper to recursively collect all API calls from a component (including transitive)
+        fn collect_all_api_calls(
+            file: &PathBuf,
+            api_calls: &HashMap<PathBuf, Vec<(String, String)>>,
+            imports: &HashMap<PathBuf, Vec<PathBuf>>,
+            visited: &mut HashSet<PathBuf>,
+        ) -> Vec<(String, String)> {
+            if visited.contains(file) {
+                return Vec::new();
+            }
+            visited.insert(file.clone());
+
+            let mut calls = Vec::new();
+
+            // Add direct API calls
+            if let Some(direct) = api_calls.get(file) {
+                calls.extend(direct.clone());
+            }
+
+            // Recursively add API calls from imported components
+            if let Some(imported) = imports.get(file) {
+                for imp in imported {
+                    calls.extend(collect_all_api_calls(imp, api_calls, imports, visited));
+                }
+            }
+
+            calls
+        }
+
+        // Now, for each page, find which components it imports and add API edges
+        for file in page_files {
+            if let Some(route) = self.file_to_route(file) {
+                if let Ok(source) = fs::read_to_string(file) {
+                    // Check for direct API calls in pages
+                    let direct_calls = extract_api_calls(&source, &all_api_names);
+                    for (api_name, method) in direct_calls {
+                        if let Some(api_id) = api_name_to_id.get(&api_name) {
+                            let endpoint_id = format!("{}/{}", api_id, method);
+                            api_edges.push((route.clone(), endpoint_id));
+                        }
+                    }
+
+                    // Check for component imports and transitively inherit their API calls
+                    let comp_imports = extract_component_imports(&source, file);
+                    for comp_path in comp_imports {
+                        let mut visited = HashSet::new();
+                        let calls = collect_all_api_calls(&comp_path, &component_api_calls, &component_imports, &mut visited);
+                        for (api_name, method) in calls {
+                            if let Some(api_id) = api_name_to_id.get(&api_name) {
+                                let endpoint_id = format!("{}/{}", api_id, method);
+                                api_edges.push((route.clone(), endpoint_id));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok((services, api_edges))
     }
 
     /// Find all .tp files in the pages directory
