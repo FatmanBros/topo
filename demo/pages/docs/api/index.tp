@@ -1,10 +1,8 @@
 // API Services docs page
 import { DocsTemplate } from "../template.tp"
-import { DocsSection, DocsText, DocsDescription } from "@/components/molecules/docs-section.tp"
-import { CodeBlock } from "@/components/molecules/code-block.tp"
-import { CodePreview } from "@/components/molecules/code-preview.tp"
+import { DocsSection, DocsDescription } from "@/components/molecules/docs-section.tp"
+import { DocsCodeSection } from "@/components/organisms/docs-code-section.tp"
 import { Text } from "@/components/atoms/text.tp"
-import { SectionTitle } from "@/components/molecules/section-title.tp"
 
 Page -> DocsTemplate({ children: [APIContent] })
 
@@ -14,8 +12,10 @@ APIContent -> {
     children: [
         PageHeader,
         BasicAPISection,
+        AutoGenNote,
         CustomEndpointsSection,
         InterceptorsSection,
+        InterceptorsList,
         UsageSection
     ]
 }
@@ -31,20 +31,14 @@ HeaderDesc -> DocsDescription({
 })
 
 // Basic API
-BasicAPISection -> {
-    align: vertical
-    style: "space-y-4"
-    children: [
-        SectionTitle({ text: "Auto-Generated CRUD" }),
-        DocsText({ text: "Just define the base endpoint and get all CRUD methods for free:" }),
-        BasicAPIExample,
-        AutoGenNote
-    ]
-}
-
-BasicAPIExample -> CodePreview({
+BasicAPISection -> DocsCodeSection({
+    title: "Auto-Generated CRUD",
+    description: "Just define the base endpoint and get all CRUD methods for free:",
     filename: "api.tp",
-    code: "// This is all you need!\nUserApi :: {\n    rest: \"/api/users\"\n}",
+    code: `// This is all you need!
+UserApi :: {
+    rest: "/api/users"
+}`,
     preview: [BasicAPIPreview]
 })
 
@@ -63,22 +57,14 @@ BasicAPIPreview -> {
 AutoGenNote -> {
     style: "p-4 bg-green-50 rounded-lg border border-green-200"
     children: [
-        Text({ text: "✨ All 5 methods generated from 3 lines of code!", style: "text-green-700 font-medium" })
+        Text({ text: "All 5 methods generated from 3 lines of code!", style: "text-green-700 font-medium" })
     ]
 }
 
 // Custom Endpoints
-CustomEndpointsSection -> {
-    align: vertical
-    style: "space-y-4"
-    children: [
-        SectionTitle({ text: "Custom Endpoints" }),
-        DocsText({ text: "Add custom endpoints alongside auto-generated ones:" }),
-        CustomAPIExample
-    ]
-}
-
-CustomAPIExample -> CodePreview({
+CustomEndpointsSection -> DocsCodeSection({
+    title: "Custom Endpoints",
+    description: "Add custom endpoints alongside auto-generated ones:",
     filename: "api.tp",
     code: `UserApi :: {
     rest: "/api/users"
@@ -107,20 +93,35 @@ CustomAPIPreview -> {
 }
 
 // Interceptors
-InterceptorsSection -> {
-    align: vertical
-    style: "space-y-4"
-    children: [
-        SectionTitle({ text: "Interceptors & Configuration" }),
-        DocsText({ text: "Configure common settings and intercept requests/responses:" }),
-        InterceptorsExample,
-        InterceptorsList
-    ]
-}
-
-InterceptorsExample -> CodePreview({
+InterceptorsSection -> DocsCodeSection({
+    title: "Interceptors & Configuration",
+    description: "Configure common settings and intercept requests/responses:",
     filename: "api-config.tp",
-    code: "Api :: {\n    baseUrl: \"/api\"\n    \n    headers: {\n        \"Content-Type\": \"application/json\"\n    }\n    \n    interceptors: {\n        request: (config) => {\n            token: getAuthToken()\n            config.headers.Authorization =\n                \"Bearer \" + token\n            return config\n        }\n        \n        response: (res) => res.data\n        \n        error: (err) => {\n            if (err.status == 401) {\n                redirect(\"/login\")\n            }\n            throw err\n        }\n    }\n}",
+    code: `Api :: {
+    baseUrl: "/api"
+
+    headers: {
+        "Content-Type": "application/json"
+    }
+
+    interceptors: {
+        request: (config) => {
+            token: getAuthToken()
+            config.headers.Authorization =
+                "Bearer " + token
+            return config
+        }
+
+        response: (res) => res.data
+
+        error: (err) => {
+            if (err.status == 401) {
+                redirect("/login")
+            }
+            throw err
+        }
+    }
+}`,
     preview: [InterceptorsPreview]
 })
 
@@ -149,19 +150,29 @@ InterceptorsList -> DocsDescription({
 })
 
 // Usage
-UsageSection -> {
-    align: vertical
-    style: "space-y-4"
-    children: [
-        SectionTitle({ text: "Using in Components" }),
-        DocsText({ text: "Call API methods directly in your components and effects:" }),
-        UsageExample
-    ]
+UsageSection -> DocsCodeSection({
+    title: "Using in Components",
+    description: "Call API methods directly in your components and effects:",
+    filename: "user-list.tp",
+    code: `// In Effects
+Effects {
+    on FetchUsers {
+        users: await UserApi.getAll()
+        dispatch: SetUsers(users)
+    }
+
+    on SearchUsers(query) {
+        results: await UserApi.search(query)
+        dispatch: SetSearchResults(results)
+    }
 }
 
-UsageExample -> CodePreview({
-    filename: "user-list.tp",
-    code: "// In Effects\nEffects {\n    on FetchUsers {\n        users: await UserApi.getAll()\n        dispatch: SetUsers(users)\n    }\n    \n    on SearchUsers(query) {\n        results: await UserApi.search(query)\n        dispatch: SetSearchResults(results)\n    }\n}\n\n// In Components\nDeleteButton(id) -> {\n    type: button\n    content: \"Delete\"\n    onClick: () => UserApi.delete(id)\n}",
+// In Components
+DeleteButton(id) -> {
+    type: button
+    content: "Delete"
+    onClick: () => UserApi.delete(id)
+}`,
     preview: [UsagePreview]
 })
 
@@ -170,14 +181,14 @@ UsagePreview -> {
     style: "space-y-2 text-sm"
     children: [
         Text({ text: "API calls are:", style: "font-medium text-gray-700" }),
-        FeatureItem({ icon: "✓", text: "Type-safe" }),
-        FeatureItem({ icon: "✓", text: "Auto-cached (configurable)" }),
-        FeatureItem({ icon: "✓", text: "Cancellable" }),
-        FeatureItem({ icon: "✓", text: "Progress tracking supported" })
+        FeatureItem({ icon: "v", text: "Type-safe" }),
+        FeatureItem({ icon: "v", text: "Auto-cached (configurable)" }),
+        FeatureItem({ icon: "v", text: "Cancellable" }),
+        FeatureItem({ icon: "v", text: "Progress tracking supported" })
     ]
 }
 
-// Shared components
+// Shared preview components (could be moved to molecules later)
 APILine(props) -> {
     style: "flex items-center gap-2"
     children: [

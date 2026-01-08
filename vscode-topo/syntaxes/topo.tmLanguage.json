@@ -191,6 +191,17 @@
               "match": "\\\\."
             }
           ]
+        },
+        {
+          "name": "string.template.topo",
+          "begin": "`",
+          "end": "`",
+          "patterns": [
+            {
+              "name": "constant.character.escape.topo",
+              "match": "\\\\."
+            }
+          ]
         }
       ]
     },
