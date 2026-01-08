@@ -84,17 +84,35 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
         .api-method.PUT { fill: #58a6ff; }
         .api-method.DELETE { fill: #f85149; }
 
-        /* Edge styles */
-        .edgePath path {
+        /* Path group containers */
+        .path-group rect {
+            fill: rgba(88, 166, 255, 0.03);
+            stroke: #30363d;
+            stroke-width: 1;
+            stroke-dasharray: 4,4;
+            rx: 8;
+            ry: 8;
+        }
+        .path-group-label {
+            fill: #8b949e;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        /* Edge styles - dagre rendered (hierarchy only, hidden) */
+        .edgePath path { display: none; }
+
+        /* Link edge styles - manually drawn */
+        .link-edge {
             stroke-width: 2;
             fill: none;
             transition: opacity 0.2s, stroke-width 0.2s;
         }
-        .edgePath.declarative path { stroke: #58a6ff; }
-        .edgePath.programmatic path { stroke: #a371f7; stroke-dasharray: 5,5; }
-        .edgePath.component-link path { stroke: #a371f7; stroke-dasharray: 2,2; }
-        .edgePath.faded path { opacity: 0.15; }
-        .edgePath.highlighted path { stroke-width: 3; opacity: 1; }
+        .link-edge.declarative { stroke: #58a6ff; }
+        .link-edge.programmatic { stroke: #a371f7; stroke-dasharray: 5,5; }
+        .link-edge.component-link { stroke: #a371f7; stroke-dasharray: 2,2; }
+        .link-edge.faded { opacity: 0.15; }
+        .link-edge.highlighted { stroke-width: 3; opacity: 1; }
 
         /* Legend */
         .legend {
@@ -273,8 +291,18 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
 
             // Filter out component nodes (they are handled separately or not shown)
             const pageNodes = data.nodes.filter(n => n.node_type !== 'component');
+            const pageNodeIds = new Set(pageNodes.map(n => n.id));
 
-            // Add page nodes with uniform size and rank based on depth
+            // Helper: get parent path
+            function getParentPath(path) {
+                if (path === '/') return null;
+                const segments = path.split('/').filter(s => s);
+                if (segments.length <= 1) return '/';
+                segments.pop();
+                return '/' + segments.join('/');
+            }
+
+            // Add page nodes with uniform size
             pageNodes.forEach(n => {
                 const isDynamic = n.is_dynamic;
 
@@ -285,22 +313,26 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
                     class: isDynamic ? 'dynamic' : 'page',
                     rx: 4,
                     ry: 4,
-                    route: n.id,
-                    rank: n.depth  // Use depth for column positioning
+                    route: n.id
                 });
             });
 
-            // Add edges (only between page nodes)
-            const pageNodeIds = new Set(pageNodes.map(n => n.id));
-            data.edges.forEach(e => {
-                if (pageNodeIds.has(e.source) && pageNodeIds.has(e.target)) {
-                    dagreGraph.setEdge(e.source, e.target, {
-                        class: e.link_type,
-                        curve: d3.curveBasis,
-                        arrowhead: 'vee'
+            // Add ONLY hierarchy edges for layout calculation (parent -> child)
+            pageNodes.forEach(n => {
+                const parentPath = getParentPath(n.id);
+                if (parentPath && pageNodeIds.has(parentPath)) {
+                    dagreGraph.setEdge(parentPath, n.id, {
+                        class: 'hierarchy',
+                        minlen: 1
                     });
                 }
             });
+
+            // Store actual link edges for drawing after layout
+            const linkEdges = data.edges.filter(e =>
+                pageNodeIds.has(e.source) && pageNodeIds.has(e.target)
+            );
+
 
             // Create renderer
             const render = new dagreD3.render();
@@ -321,8 +353,97 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
                 </marker>
             `);
 
-            // Render pages graph
+            // Render pages graph (layout only with hierarchy edges)
             render(g, dagreGraph);
+
+            // Draw path group backgrounds
+            // Collect groups: key = parent path (e.g., /docs), value = child node ids
+            const pathGroups = {};
+            pageNodes.forEach(n => {
+                const parts = n.id.split('/').filter(s => s);
+                if (parts.length >= 2) {
+                    const groupPrefix = '/' + parts[0];
+                    if (!pathGroups[groupPrefix]) {
+                        pathGroups[groupPrefix] = [];
+                    }
+                    pathGroups[groupPrefix].push(n.id);
+                }
+            });
+
+
+            // Draw group rectangles behind nodes (insert at beginning so they render behind)
+            const groupsGroup = g.insert('g', ':first-child').attr('class', 'path-groups');
+            const padding = 20;
+
+            Object.entries(pathGroups).forEach(([prefix, childIds]) => {
+                // Include parent node in the group
+                const allNodeIds = pageNodeIds.has(prefix) ? [prefix, ...childIds] : childIds;
+
+                if (allNodeIds.length < 2) return;
+
+                // Calculate bounding box
+                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+                allNodeIds.forEach(id => {
+                    const node = dagreGraph.node(id);
+                    if (node) {
+                        minX = Math.min(minX, node.x - NODE_WIDTH/2);
+                        maxX = Math.max(maxX, node.x + NODE_WIDTH/2);
+                        minY = Math.min(minY, node.y - NODE_HEIGHT/2);
+                        maxY = Math.max(maxY, node.y + NODE_HEIGHT/2);
+                    }
+                });
+
+                if (minX !== Infinity) {
+                    const groupG = groupsGroup.append('g').attr('class', 'path-group');
+
+                    groupG.append('rect')
+                        .attr('x', minX - padding)
+                        .attr('y', minY - padding - 20)
+                        .attr('width', maxX - minX + padding * 2)
+                        .attr('height', maxY - minY + padding * 2 + 20);
+
+                    groupG.append('text')
+                        .attr('class', 'path-group-label')
+                        .attr('x', minX - padding + 8)
+                        .attr('y', minY - padding - 6)
+                        .text(prefix + '/');
+                }
+            });
+
+            // Draw actual link edges manually after layout
+            // Only forward links (left to right) - browser back handles navigation back
+            const edgesGroup = g.append('g').attr('class', 'link-edges');
+
+            linkEdges.forEach((e, i) => {
+                const sourceNode = dagreGraph.node(e.source);
+                const targetNode = dagreGraph.node(e.target);
+
+                if (!sourceNode || !targetNode) return;
+
+                // Only draw forward links (left to right)
+                // Skip backward links - browser back button handles navigation back
+                if (targetNode.x <= sourceNode.x) return;
+
+                // Source right edge -> target left edge
+                const sx = sourceNode.x + NODE_WIDTH / 2;
+                const sy = sourceNode.y;
+                const tx = targetNode.x - NODE_WIDTH / 2;
+                const ty = targetNode.y;
+                const controlOffset = Math.max((tx - sx) * 0.4, 40);
+                const pathD = `M${sx},${sy} C${sx + controlOffset},${sy} ${tx - controlOffset},${ty} ${tx},${ty}`;
+
+                const edgeClass = e.link_type || 'declarative';
+                const markerId = `arrowhead-${edgeClass}`;
+
+                edgesGroup.append('path')
+                    .attr('class', `link-edge ${edgeClass}`)
+                    .attr('d', pathD)
+                    .attr('marker-end', `url(#${markerId})`)
+                    .attr('data-source', e.source)
+                    .attr('data-target', e.target);
+            });
+
 
             // Get page graph bounds
             const graphBounds = dagreGraph.graph();
@@ -429,8 +550,9 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
                     node.append('text')
                         .attr('class', 'route')
                         .attr('x', 0)
-                        .attr('y', NODE_HEIGHT / 2 - 3)
+                        .attr('y', NODE_HEIGHT / 2 - 6)
                         .attr('text-anchor', 'middle')
+                        .attr('dominant-baseline', 'hanging')
                         .text(data.route);
                 }
             });
@@ -480,20 +602,16 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
                 if (e.target === nodeId) connectedNodes.add(e.source);
             });
 
-            g.selectAll('.edgePath')
+            g.selectAll('.link-edge')
                 .classed('faded', function() {
-                    const edgeId = d3.select(this).datum();
-                    return !graphData.edges.some(e =>
-                        (e.source === nodeId && e.target === (edgeId?.w)) ||
-                        (e.target === nodeId && e.source === (edgeId?.v))
-                    );
+                    const source = d3.select(this).attr('data-source');
+                    const target = d3.select(this).attr('data-target');
+                    return source !== nodeId && target !== nodeId;
                 })
                 .classed('highlighted', function() {
-                    const edgeId = d3.select(this).datum();
-                    return graphData.edges.some(e =>
-                        (e.source === nodeId && e.target === (edgeId?.w)) ||
-                        (e.target === nodeId && e.source === (edgeId?.v))
-                    );
+                    const source = d3.select(this).attr('data-source');
+                    const target = d3.select(this).attr('data-target');
+                    return source === nodeId || target === nodeId;
                 });
 
             g.selectAll('.node')
@@ -501,7 +619,7 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
         }
 
         function clearHighlight() {
-            g.selectAll('.edgePath').classed('faded', false).classed('highlighted', false);
+            g.selectAll('.link-edge').classed('faded', false).classed('highlighted', false);
             g.selectAll('.node').classed('faded', false);
         }
 
