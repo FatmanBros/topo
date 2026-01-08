@@ -84,8 +84,8 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
         .api-method.PUT { fill: #58a6ff; }
         .api-method.DELETE { fill: #f85149; }
 
-        /* Path group containers */
-        .path-group rect {
+        /* Cluster (compound graph groups) */
+        .cluster rect {
             fill: rgba(88, 166, 255, 0.03);
             stroke: #30363d;
             stroke-width: 1;
@@ -93,7 +93,7 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
             rx: 8;
             ry: 8;
         }
-        .path-group-label {
+        .cluster text {
             fill: #8b949e;
             font-size: 11px;
             font-weight: 500;
@@ -273,8 +273,8 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
 
             g = svg.append('g');
 
-            // Create dagre graph for pages
-            const dagreGraph = new dagreD3.graphlib.Graph()
+            // Create dagre graph for pages with compound graph support
+            const dagreGraph = new dagreD3.graphlib.Graph({ compound: true })
                 .setGraph({
                     rankdir: 'LR',
                     nodesep: 40,
@@ -302,6 +302,28 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
                 return '/' + segments.join('/');
             }
 
+            // Identify path groups for compound graph
+            const groupPrefixes = new Set();
+            pageNodes.forEach(n => {
+                const parts = n.id.split('/').filter(s => s);
+                if (parts.length >= 2) {
+                    groupPrefixes.add('/' + parts[0]);
+                }
+            });
+
+            // Add cluster nodes for each group
+            groupPrefixes.forEach(prefix => {
+                dagreGraph.setNode(`cluster-${prefix}`, {
+                    label: prefix + '/',
+                    clusterLabelPos: 'top',
+                    style: 'fill: rgba(88, 166, 255, 0.03); stroke: #30363d; stroke-dasharray: 4,4;',
+                    paddingTop: 30,
+                    paddingBottom: 15,
+                    paddingLeft: 15,
+                    paddingRight: 15
+                });
+            });
+
             // Add page nodes with uniform size
             pageNodes.forEach(n => {
                 const isDynamic = n.is_dynamic;
@@ -315,6 +337,13 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
                     ry: 4,
                     route: n.id
                 });
+
+                // Assign node to its cluster (group)
+                const parts = n.id.split('/').filter(s => s);
+                if (parts.length >= 2) {
+                    const groupPrefix = '/' + parts[0];
+                    dagreGraph.setParent(n.id, `cluster-${groupPrefix}`);
+                }
             });
 
             // Add ONLY hierarchy edges for layout calculation (parent -> child)
@@ -355,61 +384,6 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
 
             // Render pages graph (layout only with hierarchy edges)
             render(g, dagreGraph);
-
-            // Draw path group backgrounds
-            // Collect groups: key = parent path (e.g., /docs), value = child node ids
-            const pathGroups = {};
-            pageNodes.forEach(n => {
-                const parts = n.id.split('/').filter(s => s);
-                if (parts.length >= 2) {
-                    const groupPrefix = '/' + parts[0];
-                    if (!pathGroups[groupPrefix]) {
-                        pathGroups[groupPrefix] = [];
-                    }
-                    pathGroups[groupPrefix].push(n.id);
-                }
-            });
-
-
-            // Draw group rectangles behind nodes (insert at beginning so they render behind)
-            const groupsGroup = g.insert('g', ':first-child').attr('class', 'path-groups');
-            const padding = 20;
-
-            Object.entries(pathGroups).forEach(([prefix, childIds]) => {
-                // Include parent node in the group
-                const allNodeIds = pageNodeIds.has(prefix) ? [prefix, ...childIds] : childIds;
-
-                if (allNodeIds.length < 2) return;
-
-                // Calculate bounding box
-                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-
-                allNodeIds.forEach(id => {
-                    const node = dagreGraph.node(id);
-                    if (node) {
-                        minX = Math.min(minX, node.x - NODE_WIDTH/2);
-                        maxX = Math.max(maxX, node.x + NODE_WIDTH/2);
-                        minY = Math.min(minY, node.y - NODE_HEIGHT/2);
-                        maxY = Math.max(maxY, node.y + NODE_HEIGHT/2);
-                    }
-                });
-
-                if (minX !== Infinity) {
-                    const groupG = groupsGroup.append('g').attr('class', 'path-group');
-
-                    groupG.append('rect')
-                        .attr('x', minX - padding)
-                        .attr('y', minY - padding - 20)
-                        .attr('width', maxX - minX + padding * 2)
-                        .attr('height', maxY - minY + padding * 2 + 20);
-
-                    groupG.append('text')
-                        .attr('class', 'path-group-label')
-                        .attr('x', minX - padding + 8)
-                        .attr('y', minY - padding - 6)
-                        .text(prefix + '/');
-                }
-            });
 
             // Draw actual link edges manually after layout
             // Only forward links (left to right) - browser back handles navigation back
