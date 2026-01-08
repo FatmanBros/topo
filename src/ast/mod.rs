@@ -1,10 +1,11 @@
 //! AST (Abstract Syntax Tree) definitions for topo language
 //!
-//! The topo language has 4 types of definitions:
+//! The topo language has 5 types of definitions:
 //! - Component: `Name -> { }` - UI components
 //! - Method: `Name { }` - Logic/functions
 //! - ApiService: `Name :: { }` - API service definitions
 //! - Store: `Name | { }` - State management
+//! - Guard: `Name ? { }` - Route guards
 
 use serde::{Deserialize, Serialize};
 
@@ -50,6 +51,12 @@ pub enum Declaration {
 
     /// AfterOnce hook (runs once after all tests): `AfterOnce { ... }`
     AfterOnce(TestHookDef),
+
+    /// Guard definition: `Name ? { ... }`
+    Guard(GuardDef),
+
+    /// Guard setup: `GuardSetup { ... }`
+    GuardSetup(GuardSetupDef),
 }
 
 // ============================================================================
@@ -132,6 +139,49 @@ pub struct Annotation {
 pub struct ThemeDef {
     pub name: String,
     pub properties: Vec<Property>,
+}
+
+// ============================================================================
+// Guard Definition (?)
+// ============================================================================
+
+/// Guard definition: `Name ? { check: expr, redirect: "/path" }`
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct GuardDef {
+    pub name: String,
+    /// Expression that returns boolean - true allows navigation, false blocks it
+    pub check: Expression,
+    /// Path to redirect to when guard blocks navigation
+    pub redirect: String,
+}
+
+/// Guard setup: configures which guards apply to which routes
+/// ```text
+/// GuardSetup {
+///     global: [AuthGuard]
+///     routes: {
+///         "/admin/*": AdminGuard
+///         "/public/*": none
+///     }
+/// }
+/// ```
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct GuardSetupDef {
+    /// Guards that apply to all routes
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub global: Vec<String>,
+    /// Route-specific guard configurations
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub routes: Vec<RouteGuard>,
+}
+
+/// Route-specific guard configuration
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RouteGuard {
+    /// Route pattern (supports wildcards like "/admin/*")
+    pub pattern: String,
+    /// Guard name or "none" to disable guards for this route
+    pub guard: Option<String>,
 }
 
 // ============================================================================

@@ -825,8 +825,32 @@ impl JsCodegen {
         self.emit_line("}");
         self.emit_line("");
 
+        // Guard checking function
+        self.emit_line("function checkGuards(path) {");
+        self.emit_line("  if (typeof __guardSetup === 'undefined') return true;");
+        self.emit_line("");
+        self.emit_line("  // Check route-specific guards first (to allow 'none' to skip global guards)");
+        self.emit_line("  for (const [pattern, guard] of Object.entries(__guardSetup.routes || {})) {");
+        self.emit_line("    const regex = new RegExp('^' + pattern.replace(/\\*/g, '.*') + '$');");
+        self.emit_line("    if (regex.test(path)) {");
+        self.emit_line("      if (guard === null) return true; // 'none' - skip all guards");
+        self.emit_line("      if (typeof guard === 'function' && !guard()) return false;");
+        self.emit_line("      return true; // Route-specific guard passed, skip global guards");
+        self.emit_line("    }");
+        self.emit_line("  }");
+        self.emit_line("");
+        self.emit_line("  // Check global guards");
+        self.emit_line("  for (const guard of __guardSetup.global || []) {");
+        self.emit_line("    if (typeof guard === 'function' && !guard()) return false;");
+        self.emit_line("  }");
+        self.emit_line("");
+        self.emit_line("  return true;");
+        self.emit_line("}");
+        self.emit_line("");
+
         // Navigate function
         self.emit_line("function navigate(path) {");
+        self.emit_line("  if (!checkGuards(path)) return;");
         self.emit_line("  history.pushState(null, '', path);");
         self.emit_line("  updateRoute();");
         self.emit_line("  __rerender();");
@@ -1024,7 +1048,58 @@ impl JsCodegen {
             Declaration::AfterEach(_) => {}  // Handled separately for Playwright test generation
             Declaration::BeforeOnce(_) => {} // Handled separately for Playwright test generation
             Declaration::AfterOnce(_) => {}  // Handled separately for Playwright test generation
+            Declaration::Guard(guard) => self.generate_guard(guard),
+            Declaration::GuardSetup(setup) => self.generate_guard_setup(setup),
         }
+    }
+
+    fn generate_guard(&mut self, guard: &GuardDef) {
+        // Generate guard function
+        let check_expr = self.generate_expression(&guard.check);
+        let guard_name = guard.name.clone();
+        let redirect = guard.redirect.clone();
+
+        self.emit_line(&format!("function {}Guard() {{", guard_name));
+        self.emit_line(&format!("  const allowed = {};", check_expr));
+        self.emit_line("  if (!allowed) {");
+        self.emit_line(&format!("    window.location.hash = '{}';", redirect));
+        self.emit_line("    return false;");
+        self.emit_line("  }");
+        self.emit_line("  return true;");
+        self.emit_line("}");
+        self.emit_line("");
+    }
+
+    fn generate_guard_setup(&mut self, setup: &GuardSetupDef) {
+        // Generate guard setup configuration
+        self.emit_line("const __guardSetup = {");
+
+        // Global guards
+        if !setup.global.is_empty() {
+            let guards = setup.global.iter()
+                .map(|g| format!("{}Guard", g))
+                .collect::<Vec<_>>()
+                .join(", ");
+            self.emit_line(&format!("  global: [{}],", guards));
+        } else {
+            self.emit_line("  global: [],");
+        }
+
+        // Route-specific guards
+        self.emit_line("  routes: {");
+        for route in &setup.routes {
+            match &route.guard {
+                Some(guard_name) => {
+                    self.emit_line(&format!("    '{}': {}Guard,", route.pattern, guard_name));
+                }
+                None => {
+                    self.emit_line(&format!("    '{}': null,", route.pattern));
+                }
+            }
+        }
+        self.emit_line("  }");
+        self.emit_line("};");
+        self.emit_line("");
     }
 
     fn generate_component(&mut self, comp: &ComponentDef) {
@@ -2315,6 +2390,8 @@ impl TsCodegen {
             Declaration::AfterEach(_) => {}  // Tests don't need type exports
             Declaration::BeforeOnce(_) => {} // Tests don't need type exports
             Declaration::AfterOnce(_) => {}  // Tests don't need type exports
+            Declaration::Guard(_) => {}      // Guards don't need type exports
+            Declaration::GuardSetup(_) => {} // GuardSetup doesn't need type exports
         }
     }
 

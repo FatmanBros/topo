@@ -76,6 +76,11 @@ impl Parser {
             return self.after_once_definition();
         }
 
+        // Check for GuardSetup definition
+        if self.check(TokenKind::GuardSetup) {
+            return self.guard_setup_definition();
+        }
+
         // Check for anonymous store: | { ... }
         if self.check(TokenKind::Pipe) {
             self.advance();
@@ -128,6 +133,10 @@ impl Parser {
             // Theme: Name * { }
             self.advance();
             Ok(Declaration::Theme(self.theme_def(name)?))
+        } else if self.check(TokenKind::Question) {
+            // Guard: Name ? { }
+            self.advance();
+            Ok(Declaration::Guard(self.guard_def(name)?))
         } else if self.check(TokenKind::LBrace) {
             // Method: Name { }
             Ok(Declaration::Method(self.method_def(name)?))
@@ -252,6 +261,112 @@ impl Parser {
         self.expect(TokenKind::RBrace)?;
 
         Ok(ThemeDef { name, properties })
+    }
+
+    // ========================================================================
+    // Guard Definition (?)
+    // ========================================================================
+
+    fn guard_def(&mut self, name: String) -> Result<GuardDef, ParseError> {
+        self.expect(TokenKind::LBrace)?;
+
+        let mut check = None;
+        let mut redirect = None;
+
+        while !self.check(TokenKind::RBrace) && !self.is_at_end() {
+            let key = self.expect_property_key()?;
+            self.expect(TokenKind::Colon)?;
+
+            match key.as_str() {
+                "check" => {
+                    check = Some(self.expression()?);
+                }
+                "redirect" => {
+                    if let Expression::String { value } = self.expression()? {
+                        redirect = Some(value);
+                    }
+                }
+                _ => {
+                    // Skip unknown properties
+                    let _ = self.expression()?;
+                }
+            }
+        }
+
+        self.expect(TokenKind::RBrace)?;
+
+        let check = check.ok_or_else(|| ParseError::UnexpectedToken {
+            expected: "check property".to_string(),
+            found: "missing".to_string(),
+            line: self.peek().line,
+            column: self.peek().column,
+        })?;
+
+        let redirect = redirect.ok_or_else(|| ParseError::UnexpectedToken {
+            expected: "redirect property".to_string(),
+            found: "missing".to_string(),
+            line: self.peek().line,
+            column: self.peek().column,
+        })?;
+
+        Ok(GuardDef {
+            name,
+            check,
+            redirect,
+        })
+    }
+
+    fn guard_setup_definition(&mut self) -> Result<Declaration, ParseError> {
+        self.expect(TokenKind::GuardSetup)?;
+        self.expect(TokenKind::LBrace)?;
+
+        let mut global = Vec::new();
+        let mut routes = Vec::new();
+
+        while !self.check(TokenKind::RBrace) && !self.is_at_end() {
+            if self.check(TokenKind::Global) {
+                self.advance();
+                self.expect(TokenKind::Colon)?;
+                self.expect(TokenKind::LBracket)?;
+
+                while !self.check(TokenKind::RBracket) && !self.is_at_end() {
+                    global.push(self.expect_identifier()?);
+                    if !self.check(TokenKind::RBracket) {
+                        let _ = self.match_token(TokenKind::Comma);
+                    }
+                }
+
+                self.expect(TokenKind::RBracket)?;
+            } else if self.check(TokenKind::Routes) {
+                self.advance();
+                self.expect(TokenKind::Colon)?;
+                self.expect(TokenKind::LBrace)?;
+
+                while !self.check(TokenKind::RBrace) && !self.is_at_end() {
+                    // Pattern: "/path/*"
+                    let pattern = self.expect_string()?;
+                    self.expect(TokenKind::Colon)?;
+
+                    // Guard name or "none"
+                    let guard = if self.check(TokenKind::None) {
+                        self.advance();
+                        None
+                    } else {
+                        Some(self.expect_identifier()?)
+                    };
+
+                    routes.push(RouteGuard { pattern, guard });
+                }
+
+                self.expect(TokenKind::RBrace)?;
+            } else {
+                self.advance();
+            }
+        }
+
+        self.expect(TokenKind::RBrace)?;
+
+        Ok(Declaration::GuardSetup(GuardSetupDef { global, routes }))
     }
 
     // ========================================================================

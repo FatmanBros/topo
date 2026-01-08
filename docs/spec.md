@@ -13,7 +13,7 @@
 
 ## 1. DSL構文仕様
 
-### 1.1 基本構文（4種類の定義演算子）
+### 1.1 基本構文（5種類の定義演算子）
 
 | 構文 | 用途 | 例 |
 |------|------|-----|
@@ -21,6 +21,7 @@
 | `Name { }` | メソッド（ロジック） | `double { value * 2 }` |
 | `Name :: { }` | APIサービス | `User :: { rest: "/api/users" }` |
 | `Name \| { }` | ストア（状態管理） | `User \| { State, Actions, Reducers }` |
+| `Name ? { }` | ルートガード | `AuthGuard ? { check: Auth.isLoggedIn }` |
 
 ```tp
 // コンポーネント定義（UI）
@@ -41,6 +42,12 @@ User :: {
 User | {
   State { items: [] }
   Actions { Load, LoadSuccess(items) }
+}
+
+// ルートガード定義
+AuthGuard ? {
+  check: Auth.isLoggedIn
+  redirect: "/login"
 }
 ```
 
@@ -717,6 +724,115 @@ UserLink -> {
   type: link
   href: "/users/{$user.id}"    // テンプレート記法
   content: $user.name
+}
+```
+
+### 8.6 ルートガード
+
+ページ遷移時の認証・認可チェックを行うガード機能。
+
+#### ガード定義（? 構文）
+
+```tp
+// src/guards/auth.guard.tp
+
+// ガード定義: Name ? { check: 条件式, redirect: "/path" }
+AuthGuard ? {
+  check: AuthStore.isLoggedIn    // true で遷移許可、false で遷移拒否
+  redirect: "/login"             // 拒否時のリダイレクト先
+}
+
+AdminGuard ? {
+  check: AuthStore.isAdmin
+  redirect: "/"
+}
+```
+
+#### GuardSetup（ガード設定）
+
+```tp
+// src/guards/setup.tp
+
+GuardSetup {
+  // 全ルートに適用されるガード
+  global: [AuthGuard]
+
+  // ルート固有のガード設定
+  routes: {
+    "/admin/*": AdminGuard      // /admin 以下に追加ガード
+    "/public/*": none           // グローバルガードを無効化
+    "/api/*": none              // APIルートはガードなし
+  }
+}
+```
+
+#### ガードの動作
+
+| 設定 | 動作 |
+|------|------|
+| `global: [Guard]` | 全ルートで指定ガードをチェック |
+| `routes: { "/path": Guard }` | 特定パスで追加ガードをチェック |
+| `routes: { "/path": none }` | 特定パスでグローバルガードを無効化 |
+
+#### 評価順序
+
+1. ルート固有設定をチェック（パターンマッチ）
+2. `none` の場合、グローバルガードをスキップして遷移許可
+3. ルート固有ガードがある場合、そのガードのみチェック
+4. ルート固有設定がない場合、グローバルガードをチェック
+5. ガードが `false` を返したら、`redirect` 先に遷移
+
+#### 使用例
+
+```tp
+// stores/auth.tp
+AuthStore | {
+  State {
+    isLoggedIn: false
+    isAdmin: false
+    user: null
+  }
+
+  Actions {
+    Login(user)
+    Logout
+  }
+
+  Reducers {
+    on Login(user) {
+      isLoggedIn: true
+      isAdmin: user.role == "admin"
+      user: user
+    }
+    on Logout {
+      isLoggedIn: false
+      isAdmin: false
+      user: null
+    }
+  }
+}
+```
+
+```tp
+// guards/auth.guard.tp
+AuthGuard ? {
+  check: AuthStore.isLoggedIn
+  redirect: "/login"
+}
+
+AdminGuard ? {
+  check: AuthStore.isAdmin
+  redirect: "/dashboard"
+}
+
+GuardSetup {
+  global: [AuthGuard]
+  routes: {
+    "/admin/*": AdminGuard
+    "/login": none
+    "/register": none
+    "/public/*": none
+  }
 }
 ```
 
