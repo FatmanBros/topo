@@ -1,9 +1,12 @@
 // Docs main content
 import { DocsSection, DocsText, DocsDescription } from "@/components/molecules/docs-section.tp"
+import { DocsCodeSection } from "@/components/organisms/docs-code-section.tp"
 import { CodeBlock } from "@/components/molecules/code-block.tp"
-import { CodePreview } from "@/components/molecules/code-preview.tp"
 import { Text } from "@/components/atoms/text.tp"
 import { PrimaryButton } from "@/components/atoms/button.tp"
+import { FeatureList } from "@/components/molecules/feature-list.tp"
+import { ConfigPreview } from "@/components/molecules/config-preview.tp"
+import { ApiPreview } from "@/components/molecules/api-preview.tp"
 
 DocsContent -> {
     style: "flex-1 p-8 max-w-5xl"
@@ -13,11 +16,7 @@ DocsContent -> {
         QuickStartSection,
         ComponentsSection,
         StoreSection,
-        APISection,
-        RoutingSection,
-        StylingSection,
-        FormsSection,
-        I18nSection
+        APISection
     ]
 }
 
@@ -44,9 +43,12 @@ InstallContent -> {
     style: "space-y-4"
     children: [
         DocsText({ text: "Clone and build from source:" }),
-        CodeBlock({ filename: "terminal", code: "git clone https://github.com/FatmanBros/topo.git\ncd topo\ncargo build --release" }),
+        CodeBlock({ filename: "terminal", code: `
+    git clone https://github.com/FatmanBros/topo.git
+    cd topo
+    cargo build --release` }),
         DocsText({ text: "Add to your PATH:" }),
-        CodeBlock({ filename: "terminal", code: "export PATH=\"$PATH:$(pwd)/target/release\"" })
+        CodeBlock({ filename: "terminal", code: `export PATH="$PATH:$(pwd)/target/release"` })
     ]
 }
 
@@ -62,354 +64,203 @@ QuickStartContent -> {
     style: "space-y-4"
     children: [
         DocsText({ text: "Create a new project and start the dev server:" }),
-        CodeBlock({ filename: "terminal", code: "topo new my-app\ncd my-app\ntopo dev" }),
+        CodeBlock({ filename: "terminal", code: `
+    topo new my-app
+    cd my-app
+    topo dev` }),
         DocsText({ text: "Open http://localhost:7090 to see your app.", style: "text-sm text-gray-500" })
     ]
 }
 
 // Components
-ComponentsSection -> DocsSection({
-    id: "components",
+ComponentsSection -> DocsCodeSection({
     title: "Components",
-    children: [ComponentsContent]
-})
-
-ComponentsContent -> {
-    align: vertical
-    style: "space-y-6"
-    children: [
-        DocsText({ text: "Components are defined with the -> operator. They return a configuration object with type, style, content, and children." }),
-        ComponentsExample
-    ]
-}
-
-ComponentsExample -> CodePreview({
+    description: "Components are defined with the -> operator. They return a configuration object with type, style, content, and children.",
     filename: "button.tp",
-    code: "Button(label) -> {\n    type: button\n    content: label\n    style: \"px-4 py-2 bg-blue-500\n           text-white rounded\n           hover:bg-blue-600\"\n}",
-    preview: [ButtonPreview]
+    code: `
+    Button(label) -> {
+        type: button
+        content: label
+        style: "px-4 py-2 bg-blue-500
+               text-white rounded
+               hover:bg-blue-600"
+    }`,
+    preview: [{
+        style: "flex gap-3"
+        children: [
+            PrimaryButton("Click me", null),
+            { type: button, content: "Secondary", style: "px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300" },
+            { type: button, content: "Danger", style: "px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600" }
+        ]
+    }]
 })
-
-ButtonPreview -> {
-    style: "flex gap-3"
-    children: [
-        PreviewButton1,
-        PreviewButton2,
-        PreviewButton3
-    ]
-}
-
-PreviewButton1 -> PrimaryButton("Click me", null)
-PreviewButton2 -> {
-    type: button
-    content: "Secondary"
-    style: "px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
-}
-PreviewButton3 -> {
-    type: button
-    content: "Danger"
-    style: "px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
-}
 
 // Store
-StoreSection -> DocsSection({
-    id: "store",
-    title: "Store (State Management)",
-    children: [StoreContent]
-})
-
-StoreContent -> {
+StoreSection -> {
     align: vertical
     style: "space-y-6"
     children: [
-        DocsText({ text: "Stores are defined with the | operator. They include State, Actions, Reducers, and Effects for complete state management." }),
-        StoreExample,
-        StoreFeatures
-    ]
-}
-
-StoreFeatures -> {
-    align: vertical
-    style: "space-y-4 mt-6"
-    children: [
-        StoreFeaturesTitle,
-        StoreFeature1,
-        StoreFeature2,
-        StoreEffectsSection,
-        StoreTestingSection
-    ]
-}
-
-StoreFeaturesTitle -> DocsText({
-    text: "Store Features:",
-    style: "font-semibold text-gray-900"
-})
-
-StoreFeature1 -> DocsDescription({
-    text: "Name abbreviation: In the same file, you can access store state directly without the store name prefix. For example, 'count' instead of 'Counter.count'."
-})
-
-StoreFeature2 -> DocsDescription({
-    text: "Cross-component access: Parent components can access and dispatch actions to child component stores. This enables coordinated state management across your component tree."
-})
-
-StoreEffectsSection -> {
-    align: vertical
-    style: "space-y-4 mt-6"
-    children: [
-        StoreEffectsTitle,
-        StoreEffectsExample
-    ]
-}
-
-StoreEffectsTitle -> DocsText({
-    text: "Effects (Async Operations):",
-    style: "font-semibold text-gray-900"
-})
-
-StoreEffectsExample -> CodePreview({
-    filename: "user-store.tp",
-    code: "UserStore | {\n    State {\n        users: []\n        isLoading: false\n        error: null\n    }\n    Actions {\n        FetchUsers\n        SetUsers(users)\n        SetError(error)\n    }\n    Reducers {\n        on FetchUsers { isLoading: true }\n        on SetUsers(users) {\n            users: users\n            isLoading: false\n        }\n        on SetError(error) {\n            error: error\n            isLoading: false\n        }\n    }\n    Effects {\n        on FetchUsers {\n            try {\n                users: await UserApi.getAll()\n                dispatch: SetUsers(users)\n            } catch(e) {\n                dispatch: SetError(e.message)\n            }\n        }\n    }\n}",
-    preview: [EffectsPreview]
-})
-
-EffectsPreview -> {
-    align: vertical
-    style: "space-y-3 text-sm"
-    children: [
-        EffectsFeature({ icon: "⚡", text: "Async/await support for API calls" }),
-        EffectsFeature({ icon: "🔄", text: "Automatic loading state management" }),
-        EffectsFeature({ icon: "❌", text: "Built-in error handling with try/catch" }),
-        EffectsFeature({ icon: "📡", text: "Seamless API integration" })
-    ]
-}
-
-EffectsFeature(props) -> {
-    style: "flex items-center gap-2"
-    children: [
-        Text({ text: props.icon, style: "text-lg" }),
-        Text({ text: props.text, style: "text-gray-600" })
-    ]
-}
-
-StoreTestingSection -> {
-    align: vertical
-    style: "space-y-4 mt-6"
-    children: [
-        StoreTestingTitle,
+        StoreSectionHeader,
+        StoreBasicExample,
+        StoreEffectsExample,
         StoreTestingExample
     ]
 }
 
-StoreTestingTitle -> DocsText({
-    text: "Easy Testing:",
-    style: "font-semibold text-gray-900"
+StoreSectionHeader -> DocsSection({
+    id: "store",
+    title: "Store (State Management)",
+    children: [DocsDescription({ text: "Stores are defined with the | operator. They include State, Actions, Reducers, and Effects for complete state management." })]
 })
 
-StoreTestingExample -> CodePreview({
-    filename: "counter.test.tp",
-    code: "test \"Counter increments\" {\n    // Initialize store\n    store: Counter.init()\n    \n    // Dispatch action\n    store.dispatch(Increment)\n    \n    // Assert state\n    expect(store.state.count).toBe(1)\n}\n\ntest \"Counter decrements\" {\n    store: Counter.init({ count: 5 })\n    store.dispatch(Decrement)\n    expect(store.state.count).toBe(4)\n}",
-    preview: [TestingPreview]
-})
-
-TestingPreview -> {
-    align: vertical
-    style: "space-y-3 text-sm"
-    children: [
-        TestingFeature({ icon: "🧪", text: "Simple test syntax" }),
-        TestingFeature({ icon: "🎯", text: "Direct state initialization" }),
-        TestingFeature({ icon: "📦", text: "Isolated store instances" }),
-        TestingFeature({ icon: "✅", text: "Built-in assertions" })
-    ]
-}
-
-TestingFeature(props) -> {
-    style: "flex items-center gap-2"
-    children: [
-        Text({ text: props.icon, style: "text-lg" }),
-        Text({ text: props.text, style: "text-gray-600" })
-    ]
-}
-
-StoreExample -> CodePreview({
+StoreBasicExample -> DocsCodeSection({
+    title: "Basic Store",
+    description: "Define state and actions:",
     filename: "counter.tp",
-    code: "Counter | {\n    State { count: 0 }\n    Actions {\n        Increment\n        Decrement\n    }\n    Reducers {\n        on Increment {\n            count: count + 1\n        }\n        on Decrement {\n            count: count - 1\n        }\n    }\n}",
-    preview: [CounterPreview]
+    code: `
+    Counter | {
+        State { count: 0 }
+        Actions {
+            Increment
+            Decrement
+        }
+        Reducers {
+            on Increment {
+                count: count + 1
+            }
+            on Decrement {
+                count: count - 1
+            }
+        }
+    }`,
+    preview: [{
+        style: "flex items-center gap-4"
+        children: [
+            { type: button, content: "-", style: "w-10 h-10 bg-pink-500 text-white rounded-full hover:bg-pink-600 font-bold text-xl" },
+            Text({ text: "0", style: "text-4xl font-bold text-gray-900 w-16 text-center" }),
+            { type: button, content: "+", style: "w-10 h-10 bg-pink-500 text-white rounded-full hover:bg-pink-600 font-bold text-xl" }
+        ]
+    }]
 })
 
-CounterPreview -> {
-    style: "flex items-center gap-4"
-    children: [
-        CounterMinusBtn,
-        CounterDisplay,
-        CounterPlusBtn
-    ]
-}
-
-CounterMinusBtn -> {
-    type: button
-    content: "-"
-    style: "w-10 h-10 bg-pink-500 text-white rounded-full hover:bg-pink-600 font-bold text-xl"
-}
-
-CounterDisplay -> Text({
-    text: "0",
-    style: "text-4xl font-bold text-gray-900 w-16 text-center"
+StoreEffectsExample -> DocsCodeSection({
+    title: "Effects (Async Operations)",
+    description: "Handle API calls and side effects:",
+    filename: "user-store.tp",
+    code: `
+    UserStore | {
+        State {
+            users: []
+            isLoading: false
+        }
+        Actions {
+            FetchUsers
+            SetUsers(users)
+        }
+        Effects {
+            on FetchUsers {
+                try {
+                    users: await UserApi.getAll()
+                    dispatch: SetUsers(users)
+                } catch(e) {
+                    dispatch: SetError(e.message)
+                }
+            }
+        }
+    }`,
+    preview: [FeatureList({
+        title: "Effects support:",
+        items: [
+            { icon: "v", text: "Async/await syntax" },
+            { icon: "v", text: "Automatic loading states" },
+            { icon: "v", text: "Built-in error handling" }
+        ]
+    })]
 })
 
-CounterPlusBtn -> {
-    type: button
-    content: "+"
-    style: "w-10 h-10 bg-pink-500 text-white rounded-full hover:bg-pink-600 font-bold text-xl"
-}
+StoreTestingExample -> DocsCodeSection({
+    title: "Easy Testing",
+    description: "Test stores in isolation:",
+    filename: "counter.test.tp",
+    code: `
+    test "Counter increments" {
+        store: Counter.init()
+        store.dispatch(Increment)
+        expect(store.state.count).toBe(1)
+    }`,
+    preview: [FeatureList({
+        title: "Testing features:",
+        items: [
+            { icon: "v", text: "Simple test syntax" },
+            { icon: "v", text: "Isolated store instances" },
+            { icon: "v", text: "Built-in assertions" }
+        ]
+    })]
+})
 
 // API Services
-APISection -> DocsSection({
-    id: "api-services",
-    title: "API Services",
-    children: [APIContent]
-})
-
-APIContent -> {
+APISection -> {
     align: vertical
     style: "space-y-6"
     children: [
-        DocsText({ text: "API services are defined with the :: operator. Just define 'rest' and all CRUD methods are auto-generated." }),
-        APIExample,
-        AutoGenNote,
-        CustomEndpointsSection,
-        APIConfigSection
-    ]
-}
-
-CustomEndpointsSection -> {
-    align: vertical
-    style: "space-y-4 mt-4"
-    children: [
-        CustomEndpointsTitle,
-        APICustomExample
-    ]
-}
-
-CustomEndpointsTitle -> DocsText({
-    text: "Custom Endpoints:",
-    style: "font-semibold text-gray-900"
-})
-
-AutoGenNote -> DocsDescription({
-    text: "Methods like getAll(), getById(id), create(data), update(id, data), delete(id) are automatically generated from endpoint definitions. No boilerplate needed!"
-})
-
-APIConfigSection -> {
-    align: vertical
-    style: "space-y-4 mt-6"
-    children: [
-        APIConfigTitle,
+        APISectionHeader,
+        APIBasicExample,
         APIConfigExample
     ]
 }
 
-APIConfigTitle -> DocsText({
-    text: "Common Configuration & Interceptors:",
-    style: "font-semibold text-gray-900"
+APISectionHeader -> DocsSection({
+    id: "api-services",
+    title: "API Services",
+    children: [DocsDescription({ text: "API services are defined with the :: operator. Just define 'rest' and all CRUD methods are auto-generated." })]
 })
 
-APIConfigExample -> CodePreview({
-    filename: "api-config.tp",
-    code: "Api :: {\n    baseUrl: \"/api\"\n    headers: {\n        \"Content-Type\": \"application/json\"\n    }\n    interceptors: {\n        request: (config) => {\n            config.headers.Authorization =\n                \"Bearer \" + getToken()\n            return config\n        }\n        response: (res) => res.data\n        error: (err) => {\n            if (err.status == 401) {\n                redirect(\"/login\")\n            }\n            throw err\n        }\n    }\n}",
-    preview: [APIConfigPreview]
-})
-
-APIConfigPreview -> {
-    align: vertical
-    style: "space-y-3 text-sm"
-    children: [
-        APIConfigItem({ label: "baseUrl", desc: "Common base URL for all endpoints" }),
-        APIConfigItem({ label: "headers", desc: "Default headers for all requests" }),
-        APIConfigItem({ label: "interceptors.request", desc: "Pre-request processing (e.g., attach auth token)" }),
-        APIConfigItem({ label: "interceptors.response", desc: "Response transformation" }),
-        APIConfigItem({ label: "interceptors.error", desc: "Error handling (e.g., 401 redirect)" })
-    ]
-}
-
-APIConfigItem(props) -> {
-    style: "flex items-start gap-2"
-    children: [
-        APIConfigLabel({ text: props.label }),
-        APIConfigDesc({ text: props.desc })
-    ]
-}
-
-APIConfigLabel(props) -> Text({
-    text: props.label,
-    style: "font-mono text-xs px-2 py-0.5 bg-violet-100 text-violet-700 rounded shrink-0"
-})
-
-APIConfigDesc(props) -> Text({
-    text: props.desc,
-    style: "text-gray-600 text-sm"
-})
-
-APIExample -> CodePreview({
+APIBasicExample -> DocsCodeSection({
+    title: "Auto-Generated CRUD",
+    description: "Define once, get all methods:",
     filename: "api.tp",
-    code: "// This is all you need!\nUserApi :: {\n    rest: \"/api/users\"\n}",
-    preview: [APIPreview]
+    code: `
+    // This is all you need!
+    UserApi :: {
+        rest: "/api/users"
+    }`,
+    preview: [ApiPreview({
+        endpoints: [
+            { method: "GET", path: "/api/users", desc: "getAll()" },
+            { method: "GET", path: "/api/users/:id", desc: "getById(id)" },
+            { method: "POST", path: "/api/users", desc: "create(data)" },
+            { method: "PUT", path: "/api/users/:id", desc: "update(id, data)" },
+            { method: "DELETE", path: "/api/users/:id", desc: "delete(id)" }
+        ]
+    })]
 })
 
-APICustomExample -> CodePreview({
-    filename: "custom-api.tp",
-    code: "// Add custom endpoints alongside\n// auto-generated CRUD methods\nUserApi :: {\n    rest: \"/api/users\"\n    search: get(\"/search\")\n    bulkDelete: post(\"/bulk-delete\")\n}",
-    preview: [APICustomPreview]
-})
-
-APICustomPreview -> {
-    align: vertical
-    style: "space-y-2 font-mono text-sm"
-    children: [
-        APIPreviewLine({ method: "GET", path: "/api/users", desc: "getAll() - auto" }),
-        APIPreviewLine({ method: "GET", path: "/api/users/:id", desc: "getById(id) - auto" }),
-        APIPreviewLine({ method: "POST", path: "/api/users", desc: "create(data) - auto" }),
-        APIPreviewLine({ method: "PUT", path: "/api/users/:id", desc: "update(id, data) - auto" }),
-        APIPreviewLine({ method: "DELETE", path: "/api/users/:id", desc: "delete(id) - auto" }),
-        APIPreviewLine({ method: "GET", path: "/api/users/search", desc: "search() - custom" }),
-        APIPreviewLine({ method: "POST", path: "/api/users/bulk-delete", desc: "bulkDelete() - custom" })
-    ]
-}
-
-APIPreview -> {
-    align: vertical
-    style: "space-y-2 font-mono text-sm"
-    children: [
-        APIPreviewLine({ method: "GET", path: "/api/users", desc: "getAll()" }),
-        APIPreviewLine({ method: "GET", path: "/api/users/:id", desc: "getById(id)" }),
-        APIPreviewLine({ method: "POST", path: "/api/users", desc: "create(data)" }),
-        APIPreviewLine({ method: "PUT", path: "/api/users/:id", desc: "update(id, data)" }),
-        APIPreviewLine({ method: "DELETE", path: "/api/users/:id", desc: "delete(id)" })
-    ]
-}
-
-APIPreviewLine(props) -> {
-    style: "flex items-center gap-2"
-    children: [
-        APIMethod({ method: props.method }),
-        APIPath({ path: props.path }),
-        APIDesc({ desc: props.desc })
-    ]
-}
-
-APIMethod(props) -> Text({
-    text: props.method,
-    style: props.method == "GET" ? "px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs font-bold"
-         : props.method == "POST" ? "px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-bold"
-         : props.method == "PUT" ? "px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded text-xs font-bold"
-         : "px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs font-bold"
-})
-
-APIPath(props) -> Text({
-    text: props.path,
-    style: "text-gray-600"
-})
-
-APIDesc(props) -> Text({
-    text: props.desc,
-    style: "text-gray-400 text-xs"
+APIConfigExample -> DocsCodeSection({
+    title: "Interceptors",
+    description: "Configure auth and error handling:",
+    filename: "api-config.tp",
+    code: `
+    Api :: {
+        baseUrl: "/api"
+        interceptors: {
+            request: (config) => {
+                config.headers.Authorization =
+                    "Bearer " + getToken()
+                return config
+            }
+            error: (err) => {
+                if (err.status == 401) {
+                    redirect("/login")
+                }
+                throw err
+            }
+        }
+    }`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "baseUrl", desc: "Common base URL" },
+            { label: "request", desc: "Add auth headers" },
+            { label: "error", desc: "Handle 401 redirect" }
+        ]
+    })]
 })

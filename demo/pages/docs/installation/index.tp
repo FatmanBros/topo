@@ -33,7 +33,11 @@ PrerequisitesSection -> DocsCodeSection({
     title: "Prerequisites",
     description: "Make sure you have the following installed:",
     filename: "requirements",
-    code: "# Required\nRust 1.70+      rustup.rs\nGit             git-scm.com\nNode.js 18+     nodejs.org",
+    code: `
+    # Required
+    Rust 1.70+      rustup.rs
+    Git             git-scm.com
+    Node.js 18+     nodejs.org`,
     preview: [ConfigPreview({
         items: [
             { label: "Rust", desc: "1.70+ (install from rustup.rs)" },
@@ -48,7 +52,17 @@ InstallFromSourceSection -> DocsCodeSection({
     title: "Install from Source",
     description: "Clone the repository and build:",
     filename: "terminal",
-    code: "# Clone and build\ngit clone https://github.com/user/topo.git\ncd topo\ncargo build --release\n\n# Option 1: Add to PATH\nexport PATH=\"$PATH:/path/to/topo/target/release\"\n\n# Option 2: Create symlink\nsudo ln -s $(pwd)/target/release/topo /usr/local/bin/topo",
+    code: `
+    # Clone and build
+    git clone https://github.com/user/topo.git
+    cd topo
+    cargo build --release
+
+    # Option 1: Add to PATH
+    export PATH="$PATH:/path/to/topo/target/release"
+
+    # Option 2: Create symlink
+    sudo ln -s $(pwd)/target/release/topo /usr/local/bin/topo`,
     preview: [FeatureList({
         title: "After installation:",
         items: [
@@ -65,7 +79,12 @@ VerifySection -> DocsCodeSection({
     title: "Verify Installation",
     description: "Check that topo is installed correctly:",
     filename: "terminal",
-    code: "topo --version\n# topo 0.1.0\n\ntopo --help\n# Shows available commands",
+    code: `
+    topo --version
+    # topo 0.1.0
+
+    topo --help
+    # Shows available commands`,
     preview: [FeatureList({
         title: "Available commands:",
         items: [
