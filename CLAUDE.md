@@ -1,3 +1,6 @@
+# 会話に付いて
+返答は全て**日本語**ですること
+
 # Development Guidelines
 
 ## Git Workflow
@@ -109,6 +112,8 @@ Page -> {
 ## コンポーネント設計: Atomic Design
 
 コンポーネントは Atomic Design パターンに従って構成する。
+再利用性を考慮し、すでにあるものは極力再利用すること。
+特定用途にとらわれず、使い勝手のよい構成・命名を考慮すること。
 
 ```
 demo/components/

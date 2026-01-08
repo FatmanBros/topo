@@ -189,6 +189,49 @@ impl JsCodegen {
         })
     }
 
+    /// Resolve page component name: "Page" gets renamed based on file path
+    /// e.g., pages/docs/forms/index.tp -> FormsPage
+    fn resolve_page_component_name(&self, name: &str) -> String {
+        if name != "Page" {
+            return name.to_string();
+        }
+
+        // If no file path, just return "Page"
+        let file_path = match &self.current_file_path {
+            Some(p) => p,
+            None => return name.to_string(),
+        };
+
+        // Extract parent directory name from file path
+        // e.g., "/path/to/pages/docs/forms/index.tp" -> "forms"
+        let path = std::path::Path::new(file_path);
+        let parent_name = path
+            .parent()
+            .and_then(|p| p.file_name())
+            .and_then(|s| s.to_str())
+            .unwrap_or("Page");
+
+        // If parent is "pages" (root index.tp), use "AppPage"
+        if parent_name == "pages" {
+            return "AppPage".to_string();
+        }
+
+        // Convert to PascalCase and append "Page"
+        // e.g., "forms" -> "FormsPage", "quick-start" -> "QuickStartPage"
+        let pascal_case = parent_name
+            .split(|c: char| c == '-' || c == '_')
+            .map(|word| {
+                let mut chars = word.chars();
+                match chars.next() {
+                    None => String::new(),
+                    Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
+                }
+            })
+            .collect::<String>();
+
+        format!("{}Page", pascal_case)
+    }
+
     pub fn generate(&mut self, program: &Program) -> String {
         self.generate_with_file_path(program, None)
     }
@@ -199,6 +242,18 @@ impl JsCodegen {
         self.current_file_store_name = None;
         self.current_file_store_actions.clear();
         self.current_file_store_fields.clear();
+
+        // Check if this is a page file (pages/.../index.tp) that needs IIFE wrapping
+        let is_page_file = file_path.map_or(false, |p| {
+            p.contains("/pages/") && p.ends_with("/index.tp")
+        });
+
+        // Get the Page component's resolved name for this file
+        let page_component_name = if is_page_file {
+            Some(self.resolve_page_component_name("Page"))
+        } else {
+            None
+        };
 
         // First pass: collect API service names, collect theme and component params
         // Also detect stores that have same-name components
@@ -261,6 +316,13 @@ impl JsCodegen {
             self.emit_line("");
         }
 
+        // Start IIFE for page files to isolate local components
+        if is_page_file {
+            self.emit_line("// Page module (IIFE for scope isolation)");
+            self.emit_line("(function() {");
+            self.indent += 1;
+        }
+
         for decl in &program.declarations {
             // Skip Theme - it's handled separately via CSS injection
             if matches!(decl, Declaration::Theme(_)) {
@@ -268,6 +330,15 @@ impl JsCodegen {
             }
             self.generate_declaration(decl);
             self.emit_line("");
+        }
+
+        // Close IIFE and export Page component to global scope
+        if is_page_file {
+            if let Some(ref name) = page_component_name {
+                self.emit_line(&format!("window.{} = {};", name, name));
+            }
+            self.indent -= 1;
+            self.emit_line("})();");
         }
 
         // Note: mount is now handled by the build system to avoid duplicates
@@ -890,6 +961,9 @@ impl JsCodegen {
             self.local_params.insert(param.name.clone());
         }
 
+        // Resolve component name - "Page" gets renamed based on file path to avoid conflicts
+        let component_name = self.resolve_page_component_name(&comp.name);
+
         let params_str = if comp.params.is_empty() {
             String::new()
         } else {
@@ -918,7 +992,7 @@ impl JsCodegen {
                 })
                 .collect::<Vec<_>>()
                 .join(", ");
-            self.emit_line(&format!("function {}({}) {{", comp.name, params_str));
+            self.emit_line(&format!("function {}({}) {{", component_name, params_str));
             self.indent += 1;
             self.emit_line(&format!("return {}({});", alias.base, args_str));
             self.indent -= 1;
@@ -927,7 +1001,7 @@ impl JsCodegen {
             return;
         }
 
-        self.emit_line(&format!("function {}({}) {{", comp.name, params_str));
+        self.emit_line(&format!("function {}({}) {{", component_name, params_str));
         self.indent += 1;
 
         self.emit_line("return {");

@@ -366,15 +366,8 @@ fn build_project(input: &PathBuf, output: &PathBuf, mode: &str) -> Result<()> {
         all_output.push_str("\n");
     }
 
-    // Generate file-based routes
+    // Generate file-based routes (registration happens after component definitions)
     let routes = generate_routes(&entry_files, input)?;
-    if !routes.is_empty() {
-        all_output.push_str("\n// File-based routes\n");
-        for (pattern, component) in &routes {
-            all_output.push_str(&format!("registerRoute('{}', {});\n", pattern, component));
-        }
-        all_output.push_str("\n");
-    }
 
     let mut has_app = false;
     for file in &compile_order {
@@ -392,6 +385,15 @@ fn build_project(input: &PathBuf, output: &PathBuf, mode: &str) -> Result<()> {
             all_output.push_str(&js);
             all_output.push('\n');
         }
+    }
+
+    // Register file-based routes (after all components are defined)
+    if !routes.is_empty() {
+        all_output.push_str("\n// File-based routes\n");
+        for (pattern, component) in &routes {
+            all_output.push_str(&format!("registerRoute('{}', {});\n", pattern, component));
+        }
+        all_output.push_str("\n");
     }
 
     // Add mount call at the end
@@ -472,15 +474,8 @@ fn build_project_dev(input: &PathBuf, output: &PathBuf, _mode: &str, ws_port: u1
         all_output.push_str("\n");
     }
 
-    // Generate file-based routes
+    // Generate file-based routes (registration happens after component definitions)
     let routes = generate_routes(&entry_files, input)?;
-    if !routes.is_empty() {
-        all_output.push_str("\n// File-based routes\n");
-        for (pattern, component) in &routes {
-            all_output.push_str(&format!("registerRoute('{}', {});\n", pattern, component));
-        }
-        all_output.push_str("\n");
-    }
 
     let mut has_app = false;
     for file in &compile_order {
@@ -497,6 +492,15 @@ fn build_project_dev(input: &PathBuf, output: &PathBuf, _mode: &str, ws_port: u1
             all_output.push_str(&js);
             all_output.push('\n');
         }
+    }
+
+    // Register file-based routes (after all components are defined)
+    if !routes.is_empty() {
+        all_output.push_str("\n// File-based routes\n");
+        for (pattern, component) in &routes {
+            all_output.push_str(&format!("registerRoute('{}', {});\n", pattern, component));
+        }
+        all_output.push_str("\n");
     }
 
     // Add mount call at the end
@@ -1879,11 +1883,16 @@ fn file_path_to_route(path: &str) -> String {
     }
 }
 
-/// Capitalize first letter
+/// Convert to PascalCase (handles hyphens and underscores)
+/// e.g., "quick-start" -> "QuickStart", "my_component" -> "MyComponent"
 fn capitalize(s: &str) -> String {
-    let mut chars = s.chars();
-    match chars.next() {
-        None => String::new(),
-        Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
-    }
+    s.split(|c: char| c == '-' || c == '_')
+        .map(|word| {
+            let mut chars = word.chars();
+            match chars.next() {
+                None => String::new(),
+                Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
+            }
+        })
+        .collect()
 }
