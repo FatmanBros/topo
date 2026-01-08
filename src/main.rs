@@ -451,13 +451,24 @@ fn build_project(input: &PathBuf, output: &PathBuf, mode: &str) -> Result<()> {
         all_output.push_str("mount(null, '#app');\n");
     }
 
+    // Minify JS for production (ssg mode)
+    let final_js = if mode == "ssg" {
+        minify_js(&all_output)
+    } else {
+        all_output
+    };
+
     // Write output
     let output_file = output.join("app.js");
-    fs::write(&output_file, &all_output)?;
+    fs::write(&output_file, &final_js)?;
     println!("✓ Build complete: {:?}", output_file);
 
-    // Generate HTML
-    let html = generate_html(&config);
+    // Generate HTML (use SSG version for production)
+    let html = if mode == "ssg" {
+        generate_html_ssg(&config, &final_js)
+    } else {
+        generate_html(&config)
+    };
     fs::write(output.join("index.html"), html)?;
 
     Ok(())
@@ -776,6 +787,682 @@ fn generate_html(config: &Config) -> String {
 </html>
 "#,
         title, tailwind_script
+    )
+}
+
+/// Simple JS minification (remove comments, extra whitespace)
+fn minify_js(js: &str) -> String {
+    let mut result = String::with_capacity(js.len());
+    let mut in_string = false;
+    let mut string_char = ' ';
+    let mut in_single_comment = false;
+    let mut in_multi_comment = false;
+    let mut prev_char = ' ';
+    let mut chars = js.chars().peekable();
+
+    while let Some(c) = chars.next() {
+        if in_single_comment {
+            if c == '\n' {
+                in_single_comment = false;
+                result.push('\n');
+            }
+            continue;
+        }
+
+        if in_multi_comment {
+            if prev_char == '*' && c == '/' {
+                in_multi_comment = false;
+            }
+            prev_char = c;
+            continue;
+        }
+
+        if in_string {
+            result.push(c);
+            if c == string_char && prev_char != '\\' {
+                in_string = false;
+            }
+            prev_char = c;
+            continue;
+        }
+
+        match c {
+            '"' | '\'' | '`' => {
+                in_string = true;
+                string_char = c;
+                result.push(c);
+            }
+            '/' => {
+                if let Some(&next) = chars.peek() {
+                    if next == '/' {
+                        in_single_comment = true;
+                        chars.next();
+                    } else if next == '*' {
+                        in_multi_comment = true;
+                        chars.next();
+                    } else {
+                        result.push(c);
+                    }
+                } else {
+                    result.push(c);
+                }
+            }
+            '\n' | '\r' => {
+                // Keep one newline for line-break sensitive code
+                if !result.ends_with('\n') && !result.ends_with(' ') {
+                    result.push('\n');
+                }
+            }
+            ' ' | '\t' => {
+                // Collapse whitespace
+                if !result.is_empty() && !result.ends_with(' ') && !result.ends_with('\n') {
+                    result.push(' ');
+                }
+            }
+            _ => result.push(c),
+        }
+        prev_char = c;
+    }
+
+    result
+}
+
+/// Extract Tailwind classes from JS and generate minimal CSS
+fn extract_tailwind_css(js: &str) -> String {
+    use std::collections::HashSet;
+    use regex::Regex;
+
+    // Regex to find class strings in the JS
+    let class_regex = Regex::new(r#"(?:class|className|style)\s*[:=]\s*["'`]([^"'`]+)["'`]"#).unwrap();
+
+    let mut classes: HashSet<&str> = HashSet::new();
+
+    for cap in class_regex.captures_iter(js) {
+        if let Some(class_str) = cap.get(1) {
+            for class in class_str.as_str().split_whitespace() {
+                classes.insert(class);
+            }
+        }
+    }
+
+    // Generate minimal Tailwind CSS for extracted classes
+    generate_tailwind_css_for_classes(&classes)
+}
+
+/// Generate CSS for specific Tailwind classes
+fn generate_tailwind_css_for_classes(classes: &std::collections::HashSet<&str>) -> String {
+    let mut css = String::new();
+
+    // CSS Reset
+    css.push_str("*,::after,::before{box-sizing:border-box;border:0 solid #e5e7eb}html{line-height:1.5;-webkit-text-size-adjust:100%;font-family:ui-sans-serif,system-ui,sans-serif}body{margin:0;line-height:inherit}");
+
+    // Common Tailwind utilities
+    let utilities: Vec<(&str, &str)> = vec![
+        // Display
+        ("flex", ".flex{display:flex}"),
+        ("inline-flex", ".inline-flex{display:inline-flex}"),
+        ("grid", ".grid{display:grid}"),
+        ("hidden", ".hidden{display:none}"),
+        ("block", ".block{display:block}"),
+        ("inline-block", ".inline-block{display:inline-block}"),
+        ("inline", ".inline{display:inline}"),
+        // Flex
+        ("flex-col", ".flex-col{flex-direction:column}"),
+        ("flex-row", ".flex-row{flex-direction:row}"),
+        ("flex-wrap", ".flex-wrap{flex-wrap:wrap}"),
+        ("flex-1", ".flex-1{flex:1 1 0%}"),
+        ("flex-auto", ".flex-auto{flex:1 1 auto}"),
+        ("flex-none", ".flex-none{flex:none}"),
+        ("grow", ".grow{flex-grow:1}"),
+        ("shrink-0", ".shrink-0{flex-shrink:0}"),
+        // Justify/Align
+        ("justify-start", ".justify-start{justify-content:flex-start}"),
+        ("justify-end", ".justify-end{justify-content:flex-end}"),
+        ("justify-center", ".justify-center{justify-content:center}"),
+        ("justify-between", ".justify-between{justify-content:space-between}"),
+        ("justify-around", ".justify-around{justify-content:space-around}"),
+        ("items-start", ".items-start{align-items:flex-start}"),
+        ("items-end", ".items-end{align-items:flex-end}"),
+        ("items-center", ".items-center{align-items:center}"),
+        ("items-baseline", ".items-baseline{align-items:baseline}"),
+        ("items-stretch", ".items-stretch{align-items:stretch}"),
+        ("self-center", ".self-center{align-self:center}"),
+        // Gap
+        ("gap-0", ".gap-0{gap:0}"),
+        ("gap-1", ".gap-1{gap:0.25rem}"),
+        ("gap-2", ".gap-2{gap:0.5rem}"),
+        ("gap-3", ".gap-3{gap:0.75rem}"),
+        ("gap-4", ".gap-4{gap:1rem}"),
+        ("gap-5", ".gap-5{gap:1.25rem}"),
+        ("gap-6", ".gap-6{gap:1.5rem}"),
+        ("gap-8", ".gap-8{gap:2rem}"),
+        ("gap-10", ".gap-10{gap:2.5rem}"),
+        ("gap-12", ".gap-12{gap:3rem}"),
+        // Width
+        ("w-full", ".w-full{width:100%}"),
+        ("w-auto", ".w-auto{width:auto}"),
+        ("w-screen", ".w-screen{width:100vw}"),
+        ("w-fit", ".w-fit{width:fit-content}"),
+        ("w-max", ".w-max{width:max-content}"),
+        ("w-min", ".w-min{width:min-content}"),
+        // Max-width
+        ("max-w-sm", ".max-w-sm{max-width:24rem}"),
+        ("max-w-md", ".max-w-md{max-width:28rem}"),
+        ("max-w-lg", ".max-w-lg{max-width:32rem}"),
+        ("max-w-xl", ".max-w-xl{max-width:36rem}"),
+        ("max-w-2xl", ".max-w-2xl{max-width:42rem}"),
+        ("max-w-3xl", ".max-w-3xl{max-width:48rem}"),
+        ("max-w-4xl", ".max-w-4xl{max-width:56rem}"),
+        ("max-w-5xl", ".max-w-5xl{max-width:64rem}"),
+        ("max-w-6xl", ".max-w-6xl{max-width:72rem}"),
+        ("max-w-7xl", ".max-w-7xl{max-width:80rem}"),
+        ("max-w-full", ".max-w-full{max-width:100%}"),
+        ("max-w-screen-sm", ".max-w-screen-sm{max-width:640px}"),
+        ("max-w-screen-md", ".max-w-screen-md{max-width:768px}"),
+        ("max-w-screen-lg", ".max-w-screen-lg{max-width:1024px}"),
+        ("max-w-screen-xl", ".max-w-screen-xl{max-width:1280px}"),
+        // Height
+        ("h-full", ".h-full{height:100%}"),
+        ("h-auto", ".h-auto{height:auto}"),
+        ("h-screen", ".h-screen{height:100vh}"),
+        ("h-fit", ".h-fit{height:fit-content}"),
+        ("min-h-screen", ".min-h-screen{min-height:100vh}"),
+        ("min-h-full", ".min-h-full{min-height:100%}"),
+        // Padding
+        ("p-0", ".p-0{padding:0}"),
+        ("p-1", ".p-1{padding:0.25rem}"),
+        ("p-2", ".p-2{padding:0.5rem}"),
+        ("p-3", ".p-3{padding:0.75rem}"),
+        ("p-4", ".p-4{padding:1rem}"),
+        ("p-5", ".p-5{padding:1.25rem}"),
+        ("p-6", ".p-6{padding:1.5rem}"),
+        ("p-8", ".p-8{padding:2rem}"),
+        ("p-10", ".p-10{padding:2.5rem}"),
+        ("p-12", ".p-12{padding:3rem}"),
+        ("p-16", ".p-16{padding:4rem}"),
+        ("p-20", ".p-20{padding:5rem}"),
+        ("px-0", ".px-0{padding-left:0;padding-right:0}"),
+        ("px-1", ".px-1{padding-left:0.25rem;padding-right:0.25rem}"),
+        ("px-2", ".px-2{padding-left:0.5rem;padding-right:0.5rem}"),
+        ("px-3", ".px-3{padding-left:0.75rem;padding-right:0.75rem}"),
+        ("px-4", ".px-4{padding-left:1rem;padding-right:1rem}"),
+        ("px-5", ".px-5{padding-left:1.25rem;padding-right:1.25rem}"),
+        ("px-6", ".px-6{padding-left:1.5rem;padding-right:1.5rem}"),
+        ("px-8", ".px-8{padding-left:2rem;padding-right:2rem}"),
+        ("px-10", ".px-10{padding-left:2.5rem;padding-right:2.5rem}"),
+        ("px-12", ".px-12{padding-left:3rem;padding-right:3rem}"),
+        ("py-0", ".py-0{padding-top:0;padding-bottom:0}"),
+        ("py-1", ".py-1{padding-top:0.25rem;padding-bottom:0.25rem}"),
+        ("py-2", ".py-2{padding-top:0.5rem;padding-bottom:0.5rem}"),
+        ("py-3", ".py-3{padding-top:0.75rem;padding-bottom:0.75rem}"),
+        ("py-4", ".py-4{padding-top:1rem;padding-bottom:1rem}"),
+        ("py-5", ".py-5{padding-top:1.25rem;padding-bottom:1.25rem}"),
+        ("py-6", ".py-6{padding-top:1.5rem;padding-bottom:1.5rem}"),
+        ("py-8", ".py-8{padding-top:2rem;padding-bottom:2rem}"),
+        ("py-10", ".py-10{padding-top:2.5rem;padding-bottom:2.5rem}"),
+        ("py-12", ".py-12{padding-top:3rem;padding-bottom:3rem}"),
+        ("py-16", ".py-16{padding-top:4rem;padding-bottom:4rem}"),
+        ("py-20", ".py-20{padding-top:5rem;padding-bottom:5rem}"),
+        ("pt-0", ".pt-0{padding-top:0}"),
+        ("pt-4", ".pt-4{padding-top:1rem}"),
+        ("pt-8", ".pt-8{padding-top:2rem}"),
+        ("pt-16", ".pt-16{padding-top:4rem}"),
+        ("pt-20", ".pt-20{padding-top:5rem}"),
+        ("pb-0", ".pb-0{padding-bottom:0}"),
+        ("pb-4", ".pb-4{padding-bottom:1rem}"),
+        ("pb-8", ".pb-8{padding-bottom:2rem}"),
+        ("pb-16", ".pb-16{padding-bottom:4rem}"),
+        ("pb-20", ".pb-20{padding-bottom:5rem}"),
+        ("pl-4", ".pl-4{padding-left:1rem}"),
+        ("pr-4", ".pr-4{padding-right:1rem}"),
+        // Margin
+        ("m-0", ".m-0{margin:0}"),
+        ("m-auto", ".m-auto{margin:auto}"),
+        ("m-1", ".m-1{margin:0.25rem}"),
+        ("m-2", ".m-2{margin:0.5rem}"),
+        ("m-4", ".m-4{margin:1rem}"),
+        ("mx-auto", ".mx-auto{margin-left:auto;margin-right:auto}"),
+        ("mx-0", ".mx-0{margin-left:0;margin-right:0}"),
+        ("mx-4", ".mx-4{margin-left:1rem;margin-right:1rem}"),
+        ("my-0", ".my-0{margin-top:0;margin-bottom:0}"),
+        ("my-2", ".my-2{margin-top:0.5rem;margin-bottom:0.5rem}"),
+        ("my-4", ".my-4{margin-top:1rem;margin-bottom:1rem}"),
+        ("my-8", ".my-8{margin-top:2rem;margin-bottom:2rem}"),
+        ("mt-0", ".mt-0{margin-top:0}"),
+        ("mt-1", ".mt-1{margin-top:0.25rem}"),
+        ("mt-2", ".mt-2{margin-top:0.5rem}"),
+        ("mt-4", ".mt-4{margin-top:1rem}"),
+        ("mt-6", ".mt-6{margin-top:1.5rem}"),
+        ("mt-8", ".mt-8{margin-top:2rem}"),
+        ("mt-10", ".mt-10{margin-top:2.5rem}"),
+        ("mt-12", ".mt-12{margin-top:3rem}"),
+        ("mt-16", ".mt-16{margin-top:4rem}"),
+        ("mt-20", ".mt-20{margin-top:5rem}"),
+        ("mb-0", ".mb-0{margin-bottom:0}"),
+        ("mb-1", ".mb-1{margin-bottom:0.25rem}"),
+        ("mb-2", ".mb-2{margin-bottom:0.5rem}"),
+        ("mb-4", ".mb-4{margin-bottom:1rem}"),
+        ("mb-6", ".mb-6{margin-bottom:1.5rem}"),
+        ("mb-8", ".mb-8{margin-bottom:2rem}"),
+        ("mb-10", ".mb-10{margin-bottom:2.5rem}"),
+        ("mb-12", ".mb-12{margin-bottom:3rem}"),
+        ("mb-16", ".mb-16{margin-bottom:4rem}"),
+        ("ml-0", ".ml-0{margin-left:0}"),
+        ("ml-2", ".ml-2{margin-left:0.5rem}"),
+        ("ml-4", ".ml-4{margin-left:1rem}"),
+        ("ml-auto", ".ml-auto{margin-left:auto}"),
+        ("mr-0", ".mr-0{margin-right:0}"),
+        ("mr-2", ".mr-2{margin-right:0.5rem}"),
+        ("mr-4", ".mr-4{margin-right:1rem}"),
+        ("mr-auto", ".mr-auto{margin-right:auto}"),
+        // Text
+        ("text-xs", ".text-xs{font-size:0.75rem;line-height:1rem}"),
+        ("text-sm", ".text-sm{font-size:0.875rem;line-height:1.25rem}"),
+        ("text-base", ".text-base{font-size:1rem;line-height:1.5rem}"),
+        ("text-lg", ".text-lg{font-size:1.125rem;line-height:1.75rem}"),
+        ("text-xl", ".text-xl{font-size:1.25rem;line-height:1.75rem}"),
+        ("text-2xl", ".text-2xl{font-size:1.5rem;line-height:2rem}"),
+        ("text-3xl", ".text-3xl{font-size:1.875rem;line-height:2.25rem}"),
+        ("text-4xl", ".text-4xl{font-size:2.25rem;line-height:2.5rem}"),
+        ("text-5xl", ".text-5xl{font-size:3rem;line-height:1}"),
+        ("text-6xl", ".text-6xl{font-size:3.75rem;line-height:1}"),
+        ("text-left", ".text-left{text-align:left}"),
+        ("text-center", ".text-center{text-align:center}"),
+        ("text-right", ".text-right{text-align:right}"),
+        ("text-justify", ".text-justify{text-align:justify}"),
+        // Font
+        ("font-thin", ".font-thin{font-weight:100}"),
+        ("font-light", ".font-light{font-weight:300}"),
+        ("font-normal", ".font-normal{font-weight:400}"),
+        ("font-medium", ".font-medium{font-weight:500}"),
+        ("font-semibold", ".font-semibold{font-weight:600}"),
+        ("font-bold", ".font-bold{font-weight:700}"),
+        ("font-extrabold", ".font-extrabold{font-weight:800}"),
+        ("font-mono", ".font-mono{font-family:ui-monospace,SFMono-Regular,monospace}"),
+        ("italic", ".italic{font-style:italic}"),
+        ("underline", ".underline{text-decoration-line:underline}"),
+        ("line-through", ".line-through{text-decoration-line:line-through}"),
+        ("no-underline", ".no-underline{text-decoration-line:none}"),
+        ("leading-none", ".leading-none{line-height:1}"),
+        ("leading-tight", ".leading-tight{line-height:1.25}"),
+        ("leading-snug", ".leading-snug{line-height:1.375}"),
+        ("leading-normal", ".leading-normal{line-height:1.5}"),
+        ("leading-relaxed", ".leading-relaxed{line-height:1.625}"),
+        ("leading-loose", ".leading-loose{line-height:2}"),
+        ("tracking-tight", ".tracking-tight{letter-spacing:-0.025em}"),
+        ("tracking-normal", ".tracking-normal{letter-spacing:0}"),
+        ("tracking-wide", ".tracking-wide{letter-spacing:0.025em}"),
+        ("tracking-wider", ".tracking-wider{letter-spacing:0.05em}"),
+        ("tracking-widest", ".tracking-widest{letter-spacing:0.1em}"),
+        ("uppercase", ".uppercase{text-transform:uppercase}"),
+        ("lowercase", ".lowercase{text-transform:lowercase}"),
+        ("capitalize", ".capitalize{text-transform:capitalize}"),
+        ("truncate", ".truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}"),
+        ("whitespace-nowrap", ".whitespace-nowrap{white-space:nowrap}"),
+        ("whitespace-pre", ".whitespace-pre{white-space:pre}"),
+        ("whitespace-pre-wrap", ".whitespace-pre-wrap{white-space:pre-wrap}"),
+        // Colors
+        ("text-white", ".text-white{color:#fff}"),
+        ("text-black", ".text-black{color:#000}"),
+        ("text-transparent", ".text-transparent{color:transparent}"),
+        ("text-gray-50", ".text-gray-50{color:#f9fafb}"),
+        ("text-gray-100", ".text-gray-100{color:#f3f4f6}"),
+        ("text-gray-200", ".text-gray-200{color:#e5e7eb}"),
+        ("text-gray-300", ".text-gray-300{color:#d1d5db}"),
+        ("text-gray-400", ".text-gray-400{color:#9ca3af}"),
+        ("text-gray-500", ".text-gray-500{color:#6b7280}"),
+        ("text-gray-600", ".text-gray-600{color:#4b5563}"),
+        ("text-gray-700", ".text-gray-700{color:#374151}"),
+        ("text-gray-800", ".text-gray-800{color:#1f2937}"),
+        ("text-gray-900", ".text-gray-900{color:#111827}"),
+        ("text-slate-50", ".text-slate-50{color:#f8fafc}"),
+        ("text-slate-100", ".text-slate-100{color:#f1f5f9}"),
+        ("text-slate-200", ".text-slate-200{color:#e2e8f0}"),
+        ("text-slate-300", ".text-slate-300{color:#cbd5e1}"),
+        ("text-slate-400", ".text-slate-400{color:#94a3b8}"),
+        ("text-slate-500", ".text-slate-500{color:#64748b}"),
+        ("text-slate-600", ".text-slate-600{color:#475569}"),
+        ("text-slate-700", ".text-slate-700{color:#334155}"),
+        ("text-slate-800", ".text-slate-800{color:#1e293b}"),
+        ("text-slate-900", ".text-slate-900{color:#0f172a}"),
+        ("text-indigo-400", ".text-indigo-400{color:#818cf8}"),
+        ("text-indigo-500", ".text-indigo-500{color:#6366f1}"),
+        ("text-indigo-600", ".text-indigo-600{color:#4f46e5}"),
+        ("text-purple-400", ".text-purple-400{color:#c084fc}"),
+        ("text-purple-500", ".text-purple-500{color:#a855f7}"),
+        ("text-purple-600", ".text-purple-600{color:#9333ea}"),
+        ("text-pink-400", ".text-pink-400{color:#f472b6}"),
+        ("text-pink-500", ".text-pink-500{color:#ec4899}"),
+        ("text-blue-400", ".text-blue-400{color:#60a5fa}"),
+        ("text-blue-500", ".text-blue-500{color:#3b82f6}"),
+        ("text-blue-600", ".text-blue-600{color:#2563eb}"),
+        ("text-green-400", ".text-green-400{color:#4ade80}"),
+        ("text-green-500", ".text-green-500{color:#22c55e}"),
+        ("text-green-600", ".text-green-600{color:#16a34a}"),
+        ("text-red-400", ".text-red-400{color:#f87171}"),
+        ("text-red-500", ".text-red-500{color:#ef4444}"),
+        ("text-red-600", ".text-red-600{color:#dc2626}"),
+        ("text-yellow-400", ".text-yellow-400{color:#facc15}"),
+        ("text-yellow-500", ".text-yellow-500{color:#eab308}"),
+        ("text-orange-400", ".text-orange-400{color:#fb923c}"),
+        ("text-orange-500", ".text-orange-500{color:#f97316}"),
+        // Background
+        ("bg-white", ".bg-white{background-color:#fff}"),
+        ("bg-black", ".bg-black{background-color:#000}"),
+        ("bg-transparent", ".bg-transparent{background-color:transparent}"),
+        ("bg-gray-50", ".bg-gray-50{background-color:#f9fafb}"),
+        ("bg-gray-100", ".bg-gray-100{background-color:#f3f4f6}"),
+        ("bg-gray-200", ".bg-gray-200{background-color:#e5e7eb}"),
+        ("bg-gray-300", ".bg-gray-300{background-color:#d1d5db}"),
+        ("bg-gray-400", ".bg-gray-400{background-color:#9ca3af}"),
+        ("bg-gray-500", ".bg-gray-500{background-color:#6b7280}"),
+        ("bg-gray-600", ".bg-gray-600{background-color:#4b5563}"),
+        ("bg-gray-700", ".bg-gray-700{background-color:#374151}"),
+        ("bg-gray-800", ".bg-gray-800{background-color:#1f2937}"),
+        ("bg-gray-900", ".bg-gray-900{background-color:#111827}"),
+        ("bg-slate-50", ".bg-slate-50{background-color:#f8fafc}"),
+        ("bg-slate-100", ".bg-slate-100{background-color:#f1f5f9}"),
+        ("bg-slate-200", ".bg-slate-200{background-color:#e2e8f0}"),
+        ("bg-slate-700", ".bg-slate-700{background-color:#334155}"),
+        ("bg-slate-800", ".bg-slate-800{background-color:#1e293b}"),
+        ("bg-slate-900", ".bg-slate-900{background-color:#0f172a}"),
+        ("bg-indigo-50", ".bg-indigo-50{background-color:#eef2ff}"),
+        ("bg-indigo-100", ".bg-indigo-100{background-color:#e0e7ff}"),
+        ("bg-indigo-500", ".bg-indigo-500{background-color:#6366f1}"),
+        ("bg-indigo-600", ".bg-indigo-600{background-color:#4f46e5}"),
+        ("bg-indigo-700", ".bg-indigo-700{background-color:#4338ca}"),
+        ("bg-purple-50", ".bg-purple-50{background-color:#faf5ff}"),
+        ("bg-purple-100", ".bg-purple-100{background-color:#f3e8ff}"),
+        ("bg-purple-500", ".bg-purple-500{background-color:#a855f7}"),
+        ("bg-purple-600", ".bg-purple-600{background-color:#9333ea}"),
+        ("bg-pink-50", ".bg-pink-50{background-color:#fdf2f8}"),
+        ("bg-pink-100", ".bg-pink-100{background-color:#fce7f3}"),
+        ("bg-blue-50", ".bg-blue-50{background-color:#eff6ff}"),
+        ("bg-blue-100", ".bg-blue-100{background-color:#dbeafe}"),
+        ("bg-blue-500", ".bg-blue-500{background-color:#3b82f6}"),
+        ("bg-blue-600", ".bg-blue-600{background-color:#2563eb}"),
+        ("bg-green-50", ".bg-green-50{background-color:#f0fdf4}"),
+        ("bg-green-100", ".bg-green-100{background-color:#dcfce7}"),
+        ("bg-green-500", ".bg-green-500{background-color:#22c55e}"),
+        ("bg-red-50", ".bg-red-50{background-color:#fef2f2}"),
+        ("bg-red-100", ".bg-red-100{background-color:#fee2e2}"),
+        ("bg-yellow-50", ".bg-yellow-50{background-color:#fefce8}"),
+        ("bg-yellow-100", ".bg-yellow-100{background-color:#fef9c3}"),
+        // Gradient
+        ("bg-gradient-to-r", ".bg-gradient-to-r{background-image:linear-gradient(to right,var(--tw-gradient-stops))}"),
+        ("bg-gradient-to-l", ".bg-gradient-to-l{background-image:linear-gradient(to left,var(--tw-gradient-stops))}"),
+        ("bg-gradient-to-t", ".bg-gradient-to-t{background-image:linear-gradient(to top,var(--tw-gradient-stops))}"),
+        ("bg-gradient-to-b", ".bg-gradient-to-b{background-image:linear-gradient(to bottom,var(--tw-gradient-stops))}"),
+        ("bg-gradient-to-br", ".bg-gradient-to-br{background-image:linear-gradient(to bottom right,var(--tw-gradient-stops))}"),
+        ("bg-gradient-to-tr", ".bg-gradient-to-tr{background-image:linear-gradient(to top right,var(--tw-gradient-stops))}"),
+        ("from-indigo-500", ".from-indigo-500{--tw-gradient-from:#6366f1;--tw-gradient-stops:var(--tw-gradient-from),var(--tw-gradient-to,rgba(99,102,241,0))}"),
+        ("from-indigo-600", ".from-indigo-600{--tw-gradient-from:#4f46e5;--tw-gradient-stops:var(--tw-gradient-from),var(--tw-gradient-to,rgba(79,70,229,0))}"),
+        ("from-purple-500", ".from-purple-500{--tw-gradient-from:#a855f7;--tw-gradient-stops:var(--tw-gradient-from),var(--tw-gradient-to,rgba(168,85,247,0))}"),
+        ("from-purple-600", ".from-purple-600{--tw-gradient-from:#9333ea;--tw-gradient-stops:var(--tw-gradient-from),var(--tw-gradient-to,rgba(147,51,234,0))}"),
+        ("from-pink-500", ".from-pink-500{--tw-gradient-from:#ec4899;--tw-gradient-stops:var(--tw-gradient-from),var(--tw-gradient-to,rgba(236,72,153,0))}"),
+        ("from-blue-500", ".from-blue-500{--tw-gradient-from:#3b82f6;--tw-gradient-stops:var(--tw-gradient-from),var(--tw-gradient-to,rgba(59,130,246,0))}"),
+        ("to-indigo-500", ".to-indigo-500{--tw-gradient-to:#6366f1}"),
+        ("to-purple-500", ".to-purple-500{--tw-gradient-to:#a855f7}"),
+        ("to-purple-600", ".to-purple-600{--tw-gradient-to:#9333ea}"),
+        ("to-pink-500", ".to-pink-500{--tw-gradient-to:#ec4899}"),
+        ("to-pink-600", ".to-pink-600{--tw-gradient-to:#db2777}"),
+        ("to-blue-500", ".to-blue-500{--tw-gradient-to:#3b82f6}"),
+        ("via-purple-500", ".via-purple-500{--tw-gradient-stops:var(--tw-gradient-from),#a855f7,var(--tw-gradient-to,rgba(168,85,247,0))}"),
+        // Border
+        ("border", ".border{border-width:1px}"),
+        ("border-0", ".border-0{border-width:0}"),
+        ("border-2", ".border-2{border-width:2px}"),
+        ("border-4", ".border-4{border-width:4px}"),
+        ("border-t", ".border-t{border-top-width:1px}"),
+        ("border-b", ".border-b{border-bottom-width:1px}"),
+        ("border-l", ".border-l{border-left-width:1px}"),
+        ("border-r", ".border-r{border-right-width:1px}"),
+        ("border-solid", ".border-solid{border-style:solid}"),
+        ("border-dashed", ".border-dashed{border-style:dashed}"),
+        ("border-none", ".border-none{border-style:none}"),
+        ("border-transparent", ".border-transparent{border-color:transparent}"),
+        ("border-white", ".border-white{border-color:#fff}"),
+        ("border-gray-100", ".border-gray-100{border-color:#f3f4f6}"),
+        ("border-gray-200", ".border-gray-200{border-color:#e5e7eb}"),
+        ("border-gray-300", ".border-gray-300{border-color:#d1d5db}"),
+        ("border-slate-200", ".border-slate-200{border-color:#e2e8f0}"),
+        ("border-slate-700", ".border-slate-700{border-color:#334155}"),
+        ("border-indigo-500", ".border-indigo-500{border-color:#6366f1}"),
+        // Rounded
+        ("rounded", ".rounded{border-radius:0.25rem}"),
+        ("rounded-sm", ".rounded-sm{border-radius:0.125rem}"),
+        ("rounded-md", ".rounded-md{border-radius:0.375rem}"),
+        ("rounded-lg", ".rounded-lg{border-radius:0.5rem}"),
+        ("rounded-xl", ".rounded-xl{border-radius:0.75rem}"),
+        ("rounded-2xl", ".rounded-2xl{border-radius:1rem}"),
+        ("rounded-3xl", ".rounded-3xl{border-radius:1.5rem}"),
+        ("rounded-full", ".rounded-full{border-radius:9999px}"),
+        ("rounded-none", ".rounded-none{border-radius:0}"),
+        ("rounded-t", ".rounded-t{border-top-left-radius:0.25rem;border-top-right-radius:0.25rem}"),
+        ("rounded-t-lg", ".rounded-t-lg{border-top-left-radius:0.5rem;border-top-right-radius:0.5rem}"),
+        ("rounded-b", ".rounded-b{border-bottom-left-radius:0.25rem;border-bottom-right-radius:0.25rem}"),
+        ("rounded-b-lg", ".rounded-b-lg{border-bottom-left-radius:0.5rem;border-bottom-right-radius:0.5rem}"),
+        // Shadow
+        ("shadow", ".shadow{box-shadow:0 1px 3px 0 rgba(0,0,0,.1),0 1px 2px -1px rgba(0,0,0,.1)}"),
+        ("shadow-sm", ".shadow-sm{box-shadow:0 1px 2px 0 rgba(0,0,0,.05)}"),
+        ("shadow-md", ".shadow-md{box-shadow:0 4px 6px -1px rgba(0,0,0,.1),0 2px 4px -2px rgba(0,0,0,.1)}"),
+        ("shadow-lg", ".shadow-lg{box-shadow:0 10px 15px -3px rgba(0,0,0,.1),0 4px 6px -4px rgba(0,0,0,.1)}"),
+        ("shadow-xl", ".shadow-xl{box-shadow:0 20px 25px -5px rgba(0,0,0,.1),0 8px 10px -6px rgba(0,0,0,.1)}"),
+        ("shadow-2xl", ".shadow-2xl{box-shadow:0 25px 50px -12px rgba(0,0,0,.25)}"),
+        ("shadow-none", ".shadow-none{box-shadow:none}"),
+        // Opacity
+        ("opacity-0", ".opacity-0{opacity:0}"),
+        ("opacity-25", ".opacity-25{opacity:0.25}"),
+        ("opacity-50", ".opacity-50{opacity:0.5}"),
+        ("opacity-75", ".opacity-75{opacity:0.75}"),
+        ("opacity-100", ".opacity-100{opacity:1}"),
+        // Position
+        ("relative", ".relative{position:relative}"),
+        ("absolute", ".absolute{position:absolute}"),
+        ("fixed", ".fixed{position:fixed}"),
+        ("sticky", ".sticky{position:sticky}"),
+        ("static", ".static{position:static}"),
+        ("inset-0", ".inset-0{inset:0}"),
+        ("top-0", ".top-0{top:0}"),
+        ("right-0", ".right-0{right:0}"),
+        ("bottom-0", ".bottom-0{bottom:0}"),
+        ("left-0", ".left-0{left:0}"),
+        ("top-1/2", ".top-1\\/2{top:50%}"),
+        ("left-1/2", ".left-1\\/2{left:50%}"),
+        // Z-index
+        ("z-0", ".z-0{z-index:0}"),
+        ("z-10", ".z-10{z-index:10}"),
+        ("z-20", ".z-20{z-index:20}"),
+        ("z-30", ".z-30{z-index:30}"),
+        ("z-40", ".z-40{z-index:40}"),
+        ("z-50", ".z-50{z-index:50}"),
+        // Overflow
+        ("overflow-auto", ".overflow-auto{overflow:auto}"),
+        ("overflow-hidden", ".overflow-hidden{overflow:hidden}"),
+        ("overflow-scroll", ".overflow-scroll{overflow:scroll}"),
+        ("overflow-visible", ".overflow-visible{overflow:visible}"),
+        ("overflow-x-auto", ".overflow-x-auto{overflow-x:auto}"),
+        ("overflow-y-auto", ".overflow-y-auto{overflow-y:auto}"),
+        // Cursor
+        ("cursor-pointer", ".cursor-pointer{cursor:pointer}"),
+        ("cursor-default", ".cursor-default{cursor:default}"),
+        ("cursor-not-allowed", ".cursor-not-allowed{cursor:not-allowed}"),
+        // Pointer events
+        ("pointer-events-none", ".pointer-events-none{pointer-events:none}"),
+        ("pointer-events-auto", ".pointer-events-auto{pointer-events:auto}"),
+        // User select
+        ("select-none", ".select-none{user-select:none}"),
+        ("select-text", ".select-text{user-select:text}"),
+        ("select-all", ".select-all{user-select:all}"),
+        // Transform
+        ("transform", ".transform{transform:translateX(var(--tw-translate-x,0)) translateY(var(--tw-translate-y,0)) rotate(var(--tw-rotate,0)) skewX(var(--tw-skew-x,0)) skewY(var(--tw-skew-y,0)) scaleX(var(--tw-scale-x,1)) scaleY(var(--tw-scale-y,1))}"),
+        ("-translate-x-1/2", ".-translate-x-1\\/2{--tw-translate-x:-50%}"),
+        ("-translate-y-1/2", ".-translate-y-1\\/2{--tw-translate-y:-50%}"),
+        ("translate-x-0", ".translate-x-0{--tw-translate-x:0}"),
+        ("translate-y-0", ".translate-y-0{--tw-translate-y:0}"),
+        ("scale-100", ".scale-100{--tw-scale-x:1;--tw-scale-y:1}"),
+        ("scale-105", ".scale-105{--tw-scale-x:1.05;--tw-scale-y:1.05}"),
+        ("scale-110", ".scale-110{--tw-scale-x:1.1;--tw-scale-y:1.1}"),
+        ("rotate-0", ".rotate-0{--tw-rotate:0deg}"),
+        ("rotate-45", ".rotate-45{--tw-rotate:45deg}"),
+        ("rotate-90", ".rotate-90{--tw-rotate:90deg}"),
+        ("rotate-180", ".rotate-180{--tw-rotate:180deg}"),
+        // Transition
+        ("transition", ".transition{transition-property:color,background-color,border-color,text-decoration-color,fill,stroke,opacity,box-shadow,transform,filter,backdrop-filter;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}"),
+        ("transition-all", ".transition-all{transition-property:all;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}"),
+        ("transition-colors", ".transition-colors{transition-property:color,background-color,border-color,text-decoration-color,fill,stroke;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}"),
+        ("transition-opacity", ".transition-opacity{transition-property:opacity;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}"),
+        ("transition-transform", ".transition-transform{transition-property:transform;transition-timing-function:cubic-bezier(.4,0,.2,1);transition-duration:.15s}"),
+        ("duration-150", ".duration-150{transition-duration:.15s}"),
+        ("duration-200", ".duration-200{transition-duration:.2s}"),
+        ("duration-300", ".duration-300{transition-duration:.3s}"),
+        ("duration-500", ".duration-500{transition-duration:.5s}"),
+        ("ease-in", ".ease-in{transition-timing-function:cubic-bezier(.4,0,1,1)}"),
+        ("ease-out", ".ease-out{transition-timing-function:cubic-bezier(0,0,.2,1)}"),
+        ("ease-in-out", ".ease-in-out{transition-timing-function:cubic-bezier(.4,0,.2,1)}"),
+        // Animation
+        ("animate-spin", "@keyframes spin{to{transform:rotate(360deg)}}.animate-spin{animation:spin 1s linear infinite}"),
+        ("animate-pulse", "@keyframes pulse{50%{opacity:.5}}.animate-pulse{animation:pulse 2s cubic-bezier(.4,0,.6,1) infinite}"),
+        ("animate-bounce", "@keyframes bounce{0%,100%{transform:translateY(-25%);animation-timing-function:cubic-bezier(.8,0,1,1)}50%{transform:none;animation-timing-function:cubic-bezier(0,0,.2,1)}}.animate-bounce{animation:bounce 1s infinite}"),
+        // Object
+        ("object-cover", ".object-cover{object-fit:cover}"),
+        ("object-contain", ".object-contain{object-fit:contain}"),
+        ("object-fill", ".object-fill{object-fit:fill}"),
+        ("object-center", ".object-center{object-position:center}"),
+        // Aspect ratio
+        ("aspect-video", ".aspect-video{aspect-ratio:16/9}"),
+        ("aspect-square", ".aspect-square{aspect-ratio:1/1}"),
+        // Ring
+        ("ring-1", ".ring-1{box-shadow:0 0 0 1px var(--tw-ring-color,rgba(59,130,246,.5))}"),
+        ("ring-2", ".ring-2{box-shadow:0 0 0 2px var(--tw-ring-color,rgba(59,130,246,.5))}"),
+        ("ring-indigo-500", ".ring-indigo-500{--tw-ring-color:#6366f1}"),
+        ("ring-offset-2", ".ring-offset-2{--tw-ring-offset-width:2px}"),
+        // Focus
+        ("focus:outline-none", ".focus\\:outline-none:focus{outline:2px solid transparent;outline-offset:2px}"),
+        ("focus:ring-2", ".focus\\:ring-2:focus{box-shadow:0 0 0 2px var(--tw-ring-color,rgba(59,130,246,.5))}"),
+        ("outline-none", ".outline-none{outline:2px solid transparent;outline-offset:2px}"),
+        // Hover states (approximation - needs JS for full support in SSG)
+        ("hover:bg-gray-100", ".hover\\:bg-gray-100:hover{background-color:#f3f4f6}"),
+        ("hover:bg-gray-50", ".hover\\:bg-gray-50:hover{background-color:#f9fafb}"),
+        ("hover:bg-indigo-700", ".hover\\:bg-indigo-700:hover{background-color:#4338ca}"),
+        ("hover:bg-indigo-600", ".hover\\:bg-indigo-600:hover{background-color:#4f46e5}"),
+        ("hover:text-gray-900", ".hover\\:text-gray-900:hover{color:#111827}"),
+        ("hover:text-indigo-600", ".hover\\:text-indigo-600:hover{color:#4f46e5}"),
+        ("hover:underline", ".hover\\:underline:hover{text-decoration-line:underline}"),
+        ("hover:opacity-80", ".hover\\:opacity-80:hover{opacity:.8}"),
+        ("hover:scale-105", ".hover\\:scale-105:hover{--tw-scale-x:1.05;--tw-scale-y:1.05;transform:scale(1.05)}"),
+        ("hover:shadow-lg", ".hover\\:shadow-lg:hover{box-shadow:0 10px 15px -3px rgba(0,0,0,.1),0 4px 6px -4px rgba(0,0,0,.1)}"),
+        ("hover:shadow-xl", ".hover\\:shadow-xl:hover{box-shadow:0 20px 25px -5px rgba(0,0,0,.1),0 8px 10px -6px rgba(0,0,0,.1)}"),
+        // Space
+        ("space-x-1", ".space-x-1>:not([hidden])~:not([hidden]){margin-left:0.25rem}"),
+        ("space-x-2", ".space-x-2>:not([hidden])~:not([hidden]){margin-left:0.5rem}"),
+        ("space-x-3", ".space-x-3>:not([hidden])~:not([hidden]){margin-left:0.75rem}"),
+        ("space-x-4", ".space-x-4>:not([hidden])~:not([hidden]){margin-left:1rem}"),
+        ("space-x-6", ".space-x-6>:not([hidden])~:not([hidden]){margin-left:1.5rem}"),
+        ("space-x-8", ".space-x-8>:not([hidden])~:not([hidden]){margin-left:2rem}"),
+        ("space-y-1", ".space-y-1>:not([hidden])~:not([hidden]){margin-top:0.25rem}"),
+        ("space-y-2", ".space-y-2>:not([hidden])~:not([hidden]){margin-top:0.5rem}"),
+        ("space-y-3", ".space-y-3>:not([hidden])~:not([hidden]){margin-top:0.75rem}"),
+        ("space-y-4", ".space-y-4>:not([hidden])~:not([hidden]){margin-top:1rem}"),
+        ("space-y-6", ".space-y-6>:not([hidden])~:not([hidden]){margin-top:1.5rem}"),
+        ("space-y-8", ".space-y-8>:not([hidden])~:not([hidden]){margin-top:2rem}"),
+        // Grid
+        ("grid-cols-1", ".grid-cols-1{grid-template-columns:repeat(1,minmax(0,1fr))}"),
+        ("grid-cols-2", ".grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}"),
+        ("grid-cols-3", ".grid-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}"),
+        ("grid-cols-4", ".grid-cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}"),
+        ("grid-cols-5", ".grid-cols-5{grid-template-columns:repeat(5,minmax(0,1fr))}"),
+        ("grid-cols-6", ".grid-cols-6{grid-template-columns:repeat(6,minmax(0,1fr))}"),
+        ("grid-cols-12", ".grid-cols-12{grid-template-columns:repeat(12,minmax(0,1fr))}"),
+        ("col-span-1", ".col-span-1{grid-column:span 1/span 1}"),
+        ("col-span-2", ".col-span-2{grid-column:span 2/span 2}"),
+        ("col-span-3", ".col-span-3{grid-column:span 3/span 3}"),
+        ("col-span-4", ".col-span-4{grid-column:span 4/span 4}"),
+        ("col-span-6", ".col-span-6{grid-column:span 6/span 6}"),
+        ("col-span-full", ".col-span-full{grid-column:1/-1}"),
+        // Backdrop
+        ("backdrop-blur", ".backdrop-blur{backdrop-filter:blur(8px)}"),
+        ("backdrop-blur-sm", ".backdrop-blur-sm{backdrop-filter:blur(4px)}"),
+        ("backdrop-blur-md", ".backdrop-blur-md{backdrop-filter:blur(12px)}"),
+        ("backdrop-blur-lg", ".backdrop-blur-lg{backdrop-filter:blur(16px)}"),
+        // List
+        ("list-none", ".list-none{list-style-type:none}"),
+        ("list-disc", ".list-disc{list-style-type:disc}"),
+        ("list-decimal", ".list-decimal{list-style-type:decimal}"),
+        // SVG
+        ("fill-current", ".fill-current{fill:currentColor}"),
+        ("stroke-current", ".stroke-current{stroke:currentColor}"),
+        // sr-only
+        ("sr-only", ".sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border-width:0}"),
+    ];
+
+    // Responsive prefixes
+    let breakpoints = [
+        ("sm:", "@media(min-width:640px){", "}"),
+        ("md:", "@media(min-width:768px){", "}"),
+        ("lg:", "@media(min-width:1024px){", "}"),
+        ("xl:", "@media(min-width:1280px){", "}"),
+        ("2xl:", "@media(min-width:1536px){", "}"),
+    ];
+
+    // Add utilities for matching classes
+    for (name, style) in &utilities {
+        if classes.contains(name) {
+            css.push_str(style);
+        }
+    }
+
+    // Add responsive variants
+    for (prefix, media_start, media_end) in &breakpoints {
+        let mut responsive_css = String::new();
+        for (name, style) in &utilities {
+            let responsive_class = format!("{}{}", prefix, name);
+            if classes.contains(responsive_class.as_str()) {
+                // Convert .class to .prefix\\:class
+                let responsive_style = style.replace(
+                    &format!(".{}", name),
+                    &format!(".{}\\:{}", prefix.trim_end_matches(':'), name)
+                );
+                responsive_css.push_str(&responsive_style);
+            }
+        }
+        if !responsive_css.is_empty() {
+            css.push_str(media_start);
+            css.push_str(&responsive_css);
+            css.push_str(media_end);
+        }
+    }
+
+    css
+}
+
+/// Generate HTML for SSG (production) - relative paths, inlined CSS, no dev features
+fn generate_html_ssg(config: &Config, js: &str) -> String {
+    let title = config
+        .project
+        .as_ref()
+        .map(|p| p.name.clone())
+        .unwrap_or_else(|| "topo App".to_string());
+
+    // Extract and generate minimal Tailwind CSS
+    let tailwind_css = extract_tailwind_css(js);
+
+    format!(
+        r#"<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{}</title>
+    <style>{}</style>
+</head>
+<body>
+    <div id="app"></div>
+    <script type="module" src="./app.js"></script>
+</body>
+</html>
+"#,
+        title, tailwind_css
     )
 }
 
