@@ -91,6 +91,10 @@ pub struct BuildConfig {
 
     #[serde(default = "default_target")]
     pub target: String,
+
+    /// Base path for deployment (e.g., "/topo" for GitHub Pages subdirectory)
+    #[serde(rename = "basePath", skip_serializing_if = "Option::is_none")]
+    pub base_path: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -296,6 +300,7 @@ impl Default for BuildConfig {
             minify: true,
             sourcemap: true,
             target: "es2022".to_string(),
+            base_path: None,
         }
     }
 }

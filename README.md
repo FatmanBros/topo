@@ -1,6 +1,6 @@
 # Topo
 
-[日本語](./README.ja.md)
+[日本語](./README.ja.md) | [Live Demo](https://fatmanbros.github.io/topo/)
 
 A UI framework that eliminates nesting hell.
 
