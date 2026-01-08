@@ -1,0 +1,16 @@
+// Config Preview - Label/description list for configuration docs
+import { Text } from "@/components/atoms/text.tp"
+
+ConfigPreview(props) -> {
+    align: vertical
+    style: "space-y-3"
+    children: props.items.for(item => { ConfigItem(item) })
+}
+
+ConfigItem(props) -> {
+    style: "flex items-center gap-2"
+    children: [
+        Text({ text: props.label, style: "font-mono text-xs px-2 py-0.5 bg-violet-100 text-violet-700 rounded" }),
+        Text({ text: props.desc, style: "text-gray-600 text-sm" })
+    ]
+}

@@ -3,6 +3,8 @@ import { DocsTemplate } from "../template.tp"
 import { DocsSection, DocsDescription } from "@/components/molecules/docs-section.tp"
 import { DocsCodeSection } from "@/components/organisms/docs-code-section.tp"
 import { ApiPreview } from "@/components/molecules/api-preview.tp"
+import { ConfigPreview } from "@/components/molecules/config-preview.tp"
+import { FeatureList } from "@/components/molecules/feature-list.tp"
 import { Text } from "@/components/atoms/text.tp"
 
 Page -> DocsTemplate({ children: [APIContent] })
@@ -138,20 +140,6 @@ InterceptorsSection -> DocsCodeSection({
     })]
 })
 
-ConfigPreview(props) -> {
-    align: vertical
-    style: "space-y-3"
-    children: props.items.for(item => { ConfigItem(item) })
-}
-
-ConfigItem(props) -> {
-    style: "flex items-center gap-2"
-    children: [
-        Text({ text: props.label, style: "font-mono text-xs px-2 py-0.5 bg-violet-100 text-violet-700 rounded" }),
-        Text({ text: props.desc, style: "text-gray-600 text-sm" })
-    ]
-}
-
 InterceptorsList -> DocsDescription({
     text: "Interceptors are perfect for auth tokens, logging, error handling, and response transformation."
 })
@@ -190,20 +178,3 @@ DeleteButton(id) -> {
         ]
     })]
 })
-
-FeatureList(props) -> {
-    align: vertical
-    style: "space-y-2 text-sm"
-    children: [
-        Text({ text: props.title, style: "font-medium text-gray-700" }),
-        ...props.items.for(item => { FeatureItem(item) })
-    ]
-}
-
-FeatureItem(props) -> {
-    style: "flex items-center gap-2"
-    children: [
-        Text({ text: props.icon, style: "text-green-500" }),
-        Text({ text: props.text, style: "text-gray-600" })
-    ]
-}
