@@ -104,6 +104,17 @@ enum Commands {
 
     /// Show current configuration
     Config,
+
+    /// Show project info (pages and APIs)
+    Info {
+        /// Show only pages
+        #[arg(long)]
+        pages: bool,
+
+        /// Show only APIs
+        #[arg(long)]
+        apis: bool,
+    },
 }
 
 fn main() -> Result<()> {
@@ -170,6 +181,9 @@ fn main() -> Result<()> {
         }
         Commands::Config => {
             show_config()?;
+        }
+        Commands::Info { pages, apis } => {
+            show_info(pages, apis)?;
         }
     }
 
@@ -1712,6 +1726,146 @@ fn show_config() -> Result<()> {
             println!("{}", serde_json::to_string_pretty(&Config::default())?);
         }
     }
+    Ok(())
+}
+
+fn show_info(pages_only: bool, apis_only: bool) -> Result<()> {
+    let config = Config::load_or_default();
+    let paths_config = config.paths_config();
+    let pages_dir = PathBuf::from(&paths_config.pages);
+
+    // Try config services path first, then fallback to "services" in current dir
+    let services_dir = {
+        let config_path = PathBuf::from(&paths_config.services);
+        if config_path.exists() {
+            config_path
+        } else {
+            PathBuf::from("services")
+        }
+    };
+
+    let components_dir = {
+        let config_path = PathBuf::from(&paths_config.components);
+        if config_path.exists() {
+            config_path
+        } else {
+            PathBuf::from("components")
+        }
+    };
+
+    // Find all .tp files in pages directory
+    let page_files = find_tp_files(&pages_dir)?;
+
+    // Find all .tp files for API search (pages + services + components)
+    let mut all_files = page_files.clone();
+    if services_dir.exists() {
+        all_files.extend(find_tp_files(&services_dir)?);
+    }
+    if components_dir.exists() {
+        all_files.extend(find_tp_files(&components_dir)?);
+    }
+
+    let show_all = !pages_only && !apis_only;
+
+    // Show pages
+    if show_all || pages_only {
+        println!("\n\x1b[1;36m📄 Pages\x1b[0m");
+        println!("\x1b[90m{}\x1b[0m", "─".repeat(50));
+
+        let routes = generate_routes(&page_files, &pages_dir)?;
+        if routes.is_empty() {
+            println!("  \x1b[90m(no pages found)\x1b[0m");
+        } else {
+            for (route, component) in &routes {
+                let route_display = if route.contains('[') {
+                    format!("\x1b[33m{}\x1b[0m", route) // Yellow for dynamic routes
+                } else {
+                    format!("\x1b[32m{}\x1b[0m", route) // Green for static routes
+                };
+                println!("  {} \x1b[90m→\x1b[0m {}", route_display, component);
+            }
+        }
+        println!();
+    }
+
+    // Show APIs
+    if show_all || apis_only {
+        println!("\x1b[1;36m🔌 API Services\x1b[0m");
+        println!("\x1b[90m{}\x1b[0m", "─".repeat(50));
+
+        let mut api_services = Vec::new();
+
+        // Parse all files and collect API services
+        for file in &all_files {
+            if let Ok(source) = fs::read_to_string(file) {
+                let mut lexer = Lexer::new(&source);
+                if let Ok(tokens) = lexer.tokenize() {
+                    let mut parser = TopoParser::new(tokens);
+                    if let Ok(program) = parser.parse() {
+                        for decl in program.declarations {
+                            if let Declaration::ApiService(api) = decl {
+                                // Try to get relative path from various base directories
+                                let rel_path = file.strip_prefix(&services_dir)
+                                    .or_else(|_| file.strip_prefix(&pages_dir))
+                                    .or_else(|_| file.strip_prefix(&components_dir))
+                                    .unwrap_or(file)
+                                    .to_string_lossy()
+                                    .to_string();
+                                api_services.push((api, rel_path));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if api_services.is_empty() {
+            println!("  \x1b[90m(no API services found)\x1b[0m");
+        } else {
+            for (api, file_path) in &api_services {
+                // Add "Api" suffix only if not already present
+                let display_name = if api.name.ends_with("Api") {
+                    api.name.clone()
+                } else {
+                    format!("{}Api", api.name)
+                };
+                println!("  \x1b[1;35m{}\x1b[0m \x1b[90m({})\x1b[0m", display_name, file_path);
+
+                // Show REST base URL if present
+                if let Some(rest) = &api.rest {
+                    println!("    \x1b[90mrest:\x1b[0m {}", rest);
+                }
+
+                // Show WebSocket/SSE subscription if present
+                if let Some(subscribe) = &api.subscribe {
+                    println!("    \x1b[90msubscribe:\x1b[0m {}", subscribe);
+                }
+
+                // Show endpoints
+                if !api.endpoints.is_empty() {
+                    println!("    \x1b[90mendpoints:\x1b[0m");
+                    for endpoint in &api.endpoints {
+                        let method_color = match endpoint.method {
+                            topo::ast::HttpMethod::Get => "\x1b[32m",    // Green
+                            topo::ast::HttpMethod::Post => "\x1b[33m",   // Yellow
+                            topo::ast::HttpMethod::Put => "\x1b[34m",    // Blue
+                            topo::ast::HttpMethod::Patch => "\x1b[35m",  // Magenta
+                            topo::ast::HttpMethod::Delete => "\x1b[31m", // Red
+                        };
+                        println!(
+                            "      {}{:6}\x1b[0m {} \x1b[90m→\x1b[0m {}()",
+                            method_color,
+                            format!("{:?}", endpoint.method).to_uppercase(),
+                            endpoint.path,
+                            endpoint.name
+                        );
+                    }
+                }
+                println!();
+            }
+        }
+    }
+
     Ok(())
 }
 
