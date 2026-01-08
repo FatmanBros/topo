@@ -1,4 +1,5 @@
 // LP Features section - 4 feature cards with pastel colors
+import { Text } from "@/components/atoms/text.tp"
 import { FeatureCard } from "@/components/molecules/feature-card.tp"
 
 LPFeatures -> {
@@ -19,17 +20,15 @@ FeaturesHeader -> {
     children: [FeaturesTitle, FeaturesSubtitle]
 }
 
-FeaturesTitle -> {
-    type: text
-    content: "Why topo?"
+FeaturesTitle -> Text({
+    text: "Why topo?",
     style: "text-4xl font-bold text-gray-900 mb-4"
-}
+})
 
-FeaturesSubtitle -> {
-    type: text
-    content: "Four powerful concepts that make UI development a breeze"
+FeaturesSubtitle -> Text({
+    text: "Four powerful concepts that make UI development a breeze",
     style: "text-xl text-gray-600"
-}
+})
 
 FeaturesGrid -> {
     style: "grid grid-cols-1 md:grid-cols-2 gap-8"

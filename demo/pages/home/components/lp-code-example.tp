@@ -1,4 +1,6 @@
 // LP Code Example section - showing topo syntax
+import { Text } from "@/components/atoms/text.tp"
+import { CheckIcon } from "@/components/atoms/icon.tp"
 import { CodeBlock } from "@/components/molecules/code-block.tp"
 
 LPCodeExample -> {
@@ -23,17 +25,15 @@ CodeExampleText -> {
     children: [CodeExampleTitle, CodeExampleDesc, CodeExamplePoints]
 }
 
-CodeExampleTitle -> {
-    type: text
-    content: "Simple Counter Example"
+CodeExampleTitle -> Text({
+    text: "Simple Counter Example",
     style: "text-4xl font-bold text-gray-900"
-}
+})
 
-CodeExampleDesc -> {
-    type: text
-    content: "See how clean and readable topo code looks. State management, UI, and interactions - all in one place."
+CodeExampleDesc -> Text({
+    text: "See how clean and readable topo code looks. State management, UI, and interactions - all in one place.",
     style: "text-lg text-gray-600 leading-relaxed"
-}
+})
 
 CodeExamplePoints -> {
     style: "space-y-3"
@@ -46,22 +46,43 @@ CodeExamplePoints -> {
 
 CodeExamplePoint(text) -> {
     style: "flex items-center gap-3"
-    children: [CodeExampleCheckmark, CodeExamplePointText({ text: text })]
+    children: [
+        CodeExampleCheckmark,
+        Text({ text: text, style: "text-gray-700" })
+    ]
 }
 
 CodeExampleCheckmark -> {
-    type: text
-    content: "✓"
     style: "w-6 h-6 bg-pink-500 text-white rounded-full flex items-center justify-center text-sm font-bold"
-}
-
-CodeExamplePointText(props) -> {
-    type: text
-    content: props.text
-    style: "text-gray-700"
+    children: [CheckIcon]
 }
 
 CodeExampleBlock -> CodeBlock({
     filename: "counter.tp",
-    code: "Counter | {\n    State { count: 0 }\n    Actions { Increment, Decrement }\n    Reducers {\n        on Increment { count: count + 1 }\n        on Decrement { count: count - 1 }\n    }\n}\n\nDisplay -> {\n    type: text\n    value: $Counter.count\n    style: \"text-4xl font-bold\"\n}\n\nPlusBtn -> {\n    type: button\n    content: \"+\"\n    click: Counter.Increment\n}\n\nMinusBtn -> {\n    type: button\n    content: \"-\"\n    click: Counter.Decrement\n}"
+    code: `Counter | {
+    State { count: 0 }
+    Actions { Increment, Decrement }
+    Reducers {
+        on Increment { count: count + 1 }
+        on Decrement { count: count - 1 }
+    }
+}
+
+Display -> {
+    type: text
+    value: $Counter.count
+    style: "text-4xl font-bold"
+}
+
+PlusBtn -> {
+    type: button
+    content: "+"
+    click: Counter.Increment
+}
+
+MinusBtn -> {
+    type: button
+    content: "-"
+    click: Counter.Decrement
+}`
 })

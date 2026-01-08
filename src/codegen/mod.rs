@@ -632,7 +632,7 @@ impl JsCodegen {
         self.emit_line("  const dataFieldAttr = dataField ? ` data-field=\"${dataField}\"` : '';");
         self.emit_line("  ");
         self.emit_line("  if (type === 'text') {");
-        self.emit_line("    return `<span${styleAttr}${dataErrorAttr}${dataBindAttr}>${escapeHtml(resolvedContent || value || '')}</span>`;");
+        self.emit_line("    return `<span${styleAttr}${dataErrorAttr}${dataBindAttr}>${escapeHtml(resolvedContent != null ? resolvedContent : (value != null ? value : ''))}</span>`;");
         self.emit_line("  }");
         self.emit_line("  if (type === 'button') {");
         self.emit_line("    return `<button${styleAttr} data-click=\"true\">${escapeHtml(resolvedContent || '')}</button>`;");
@@ -644,7 +644,9 @@ impl JsCodegen {
         self.emit_line("    const rawHref = vdom.href || '#';");
         self.emit_line("    // Sanitize href - block dangerous URL schemes");
         self.emit_line("    const href = /^(javascript|data|vbscript):/i.test(rawHref) ? '#' : escapeHtml(rawHref);");
-        self.emit_line("    return `<a href=\"${href}\"${styleAttr} data-link=\"true\">${escapeHtml(resolvedContent || '')}</a>`;");
+        self.emit_line("    // Support both content and children for links");
+        self.emit_line("    const innerContent = resolvedContent || (children ? renderChildren(children) : '');");
+        self.emit_line("    return `<a href=\"${href}\"${styleAttr} data-link=\"true\">${innerContent}</a>`;");
         self.emit_line("  }");
         self.emit_line("  if (type === 'input') {");
         self.emit_line("    const inputTypeAttr = inputType || 'text';");
@@ -687,7 +689,7 @@ impl JsCodegen {
         self.emit_line("    const inner = childArr.map(c => typeof c === 'function' ? renderVdom(c()) : renderVdom(c)).join('');");
         self.emit_line("    return `<div${idAttr} class=\"${(style || '') + flexClass}\">${inner}</div>`;");
         self.emit_line("  }");
-        self.emit_line("  return `<div${idAttr}${styleAttr}>${escapeHtml(resolvedContent || value || '')}</div>`;");
+        self.emit_line("  return `<div${idAttr}${styleAttr}>${escapeHtml(resolvedContent != null ? resolvedContent : (value != null ? value : ''))}</div>`;");
         self.emit_line("}");
         self.emit_line("");
         self.emit_line("function bindEvents(el, vdom) {");
