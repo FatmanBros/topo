@@ -128,7 +128,7 @@ enum InfoCommands {
     /// Visualize page navigation graph in browser
     Web {
         /// Port number for the visualization server
-        #[arg(short, long, default_value = "4000")]
+        #[arg(short, long, default_value = "7091")]
         port: u16,
 
         /// Don't open browser automatically
@@ -212,7 +212,7 @@ fn main() -> Result<()> {
                 }
                 None => {
                     // Default: show web visualization
-                    start_info_server(4000, false)?;
+                    start_info_server(7091, false)?;
                 }
             }
         }
