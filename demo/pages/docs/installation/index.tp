@@ -1,8 +1,9 @@
 // Installation docs page
 import { DocsTemplate } from "../template.tp"
-import { DocsSection, DocsText, DocsDescription } from "@/components/molecules/docs-section.tp"
-import { CodeBlock } from "@/components/molecules/code-block.tp"
-import { SectionTitle } from "@/components/molecules/section-title.tp"
+import { DocsSection, DocsDescription } from "@/components/molecules/docs-section.tp"
+import { DocsCodeSection } from "@/components/organisms/docs-code-section.tp"
+import { ConfigPreview } from "@/components/molecules/config-preview.tp"
+import { FeatureList } from "@/components/molecules/feature-list.tp"
 
 Page -> DocsTemplate({ children: [InstallationContent] })
 
@@ -28,52 +29,50 @@ HeaderDesc -> DocsDescription({
 })
 
 // Prerequisites
-PrerequisitesSection -> {
-    align: vertical
-    style: "space-y-4"
-    children: [
-        SectionTitle({ text: "Prerequisites" }),
-        PrereqList
-    ]
-}
-
-PrereqList -> {
-    align: vertical
-    style: "space-y-2"
-    children: [
-        PrereqItem({ text: "Rust 1.70+ (install from rustup.rs)" }),
-        PrereqItem({ text: "Git" }),
-        PrereqItem({ text: "Node.js 18+ (for Tailwind CSS)" })
-    ]
-}
-
-PrereqItem(props) -> DocsText({
-    text: "• " + props.text,
-    style: "text-gray-600"
+PrerequisitesSection -> DocsCodeSection({
+    title: "Prerequisites",
+    description: "Make sure you have the following installed:",
+    filename: "requirements",
+    code: "# Required\nRust 1.70+      rustup.rs\nGit             git-scm.com\nNode.js 18+     nodejs.org",
+    preview: [ConfigPreview({
+        items: [
+            { label: "Rust", desc: "1.70+ (install from rustup.rs)" },
+            { label: "Git", desc: "For cloning the repository" },
+            { label: "Node.js", desc: "18+ (for Tailwind CSS)" }
+        ]
+    })]
 })
 
 // Install from source
-InstallFromSourceSection -> {
-    align: vertical
-    style: "space-y-4"
-    children: [
-        SectionTitle({ text: "Install from Source" }),
-        DocsText({ text: "Clone the repository and build:" }),
-        CodeBlock({ filename: "terminal", code: "git clone https://github.com/user/topo.git\ncd topo\ncargo build --release" }),
-        DocsText({ text: "Add to your PATH:" }),
-        CodeBlock({ filename: "~/.bashrc or ~/.zshrc", code: "export PATH=\"$PATH:/path/to/topo/target/release\"" }),
-        DocsText({ text: "Or create a symlink:", style: "mt-4" }),
-        CodeBlock({ filename: "terminal", code: "sudo ln -s $(pwd)/target/release/topo /usr/local/bin/topo" })
-    ]
-}
+InstallFromSourceSection -> DocsCodeSection({
+    title: "Install from Source",
+    description: "Clone the repository and build:",
+    filename: "terminal",
+    code: "# Clone and build\ngit clone https://github.com/user/topo.git\ncd topo\ncargo build --release\n\n# Option 1: Add to PATH\nexport PATH=\"$PATH:/path/to/topo/target/release\"\n\n# Option 2: Create symlink\nsudo ln -s $(pwd)/target/release/topo /usr/local/bin/topo",
+    preview: [FeatureList({
+        title: "After installation:",
+        items: [
+            { icon: "v", text: "topo CLI available globally" },
+            { icon: "v", text: "Dev server with hot reload" },
+            { icon: "v", text: "Production build command" },
+            { icon: "v", text: "Project scaffolding" }
+        ]
+    })]
+})
 
 // Verify installation
-VerifySection -> {
-    align: vertical
-    style: "space-y-4"
-    children: [
-        SectionTitle({ text: "Verify Installation" }),
-        DocsText({ text: "Check that topo is installed correctly:" }),
-        CodeBlock({ filename: "terminal", code: "topo --version\n# topo 0.1.0" })
-    ]
-}
+VerifySection -> DocsCodeSection({
+    title: "Verify Installation",
+    description: "Check that topo is installed correctly:",
+    filename: "terminal",
+    code: "topo --version\n# topo 0.1.0\n\ntopo --help\n# Shows available commands",
+    preview: [FeatureList({
+        title: "Available commands:",
+        items: [
+            { icon: "v", text: "topo new <name> - Create project" },
+            { icon: "v", text: "topo dev - Start dev server" },
+            { icon: "v", text: "topo build - Production build" },
+            { icon: "v", text: "topo --help - Show help" }
+        ]
+    })]
+})

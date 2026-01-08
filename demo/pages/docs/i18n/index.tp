@@ -1,10 +1,9 @@
 // i18n docs page
 import { DocsTemplate } from "../template.tp"
-import { DocsSection, DocsText, DocsDescription } from "@/components/molecules/docs-section.tp"
-import { CodeBlock } from "@/components/molecules/code-block.tp"
-import { CodePreview } from "@/components/molecules/code-preview.tp"
+import { DocsSection, DocsDescription } from "@/components/molecules/docs-section.tp"
+import { DocsCodeSection } from "@/components/organisms/docs-code-section.tp"
+import { ConfigPreview } from "@/components/molecules/config-preview.tp"
 import { Text } from "@/components/atoms/text.tp"
-import { SectionTitle } from "@/components/molecules/section-title.tp"
 
 Page -> DocsTemplate({ children: [I18nContent] })
 
@@ -31,56 +30,63 @@ HeaderDesc -> DocsDescription({
 })
 
 // Setup
-SetupSection -> {
-    align: vertical
-    style: "space-y-4"
-    children: [
-        SectionTitle({ text: "Setup" }),
-        DocsText({ text: "Configure i18n in your project:" }),
-        SetupExample
-    ]
-}
-
-SetupExample -> CodePreview({
+SetupSection -> DocsCodeSection({
+    title: "Setup",
+    description: "Configure i18n in your project:",
     filename: "topo.config.json",
-    code: "{\n    \"i18n\": {\n        \"defaultLocale\": \"en\",\n        \"locales\": [\"en\", \"ja\", \"ko\", \"zh\"],\n        \"directory\": \"./locales\"\n    }\n}",
-    preview: [SetupPreview]
+    code: `
+    {
+        "i18n": {
+            "defaultLocale": "en",
+            "locales": ["en", "ja", "ko", "zh"],
+            "directory": "./locales"
+        }
+    }`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "en", desc: "English" },
+            { label: "ja", desc: "Japanese" },
+            { label: "ko", desc: "Korean" },
+            { label: "zh", desc: "Chinese" }
+        ]
+    })]
 })
 
-SetupPreview -> {
-    align: vertical
-    style: "space-y-2"
-    children: [
-        LocaleItem({ code: "en", name: "English", flag: "🇺🇸" }),
-        LocaleItem({ code: "ja", name: "Japanese", flag: "🇯🇵" }),
-        LocaleItem({ code: "ko", name: "Korean", flag: "🇰🇷" }),
-        LocaleItem({ code: "zh", name: "Chinese", flag: "🇨🇳" })
-    ]
-}
-
-LocaleItem(props) -> {
-    style: "flex items-center gap-2"
-    children: [
-        Text({ text: props.flag, style: "text-lg" }),
-        Text({ text: props.code, style: "font-mono text-sm text-pink-600" }),
-        Text({ text: props.name, style: "text-gray-600 text-sm" })
-    ]
-}
-
 // Translations
-TranslationsSection -> {
-    align: vertical
-    style: "space-y-4"
-    children: [
-        SectionTitle({ text: "Translation Files" }),
-        DocsText({ text: "Create JSON files for each locale:" }),
-        TranslationsExample
-    ]
-}
-
-TranslationsExample -> CodePreview({
+TranslationsSection -> DocsCodeSection({
+    title: "Translation Files",
+    description: "Create JSON files for each locale:",
     filename: "locales/en.json",
-    code: "// locales/en.json\n{\n    \"common\": {\n        \"welcome\": \"Welcome\",\n        \"login\": \"Log in\",\n        \"logout\": \"Log out\"\n    },\n    \"home\": {\n        \"title\": \"Build UIs faster\",\n        \"subtitle\": \"The flat UI framework\"\n    },\n    \"errors\": {\n        \"required\": \"{field} is required\",\n        \"minLength\": \"Must be at least {min} characters\"\n    }\n}\n\n// locales/ja.json\n{\n    \"common\": {\n        \"welcome\": \"ようこそ\",\n        \"login\": \"ログイン\",\n        \"logout\": \"ログアウト\"\n    },\n    \"home\": {\n        \"title\": \"UIをより速く構築\",\n        \"subtitle\": \"フラットなUIフレームワーク\"\n    }\n}",
+    code: `
+    // locales/en.json
+    {
+        "common": {
+            "welcome": "Welcome",
+            "login": "Log in",
+            "logout": "Log out"
+        },
+        "home": {
+            "title": "Build UIs faster",
+            "subtitle": "The flat UI framework"
+        },
+        "errors": {
+            "required": "{field} is required",
+            "minLength": "Must be at least {min} chars"
+        }
+    }
+
+    // locales/ja.json
+    {
+        "common": {
+            "welcome": "ようこそ",
+            "login": "ログイン",
+            "logout": "ログアウト"
+        },
+        "home": {
+            "title": "UIをより速く構築",
+            "subtitle": "フラットなUIフレームワーク"
+        }
+    }`,
     preview: [TranslationsPreview]
 })
 
@@ -88,7 +94,7 @@ TranslationsPreview -> {
     style: "grid grid-cols-2 gap-4"
     children: [
         TranslationCard({ lang: "English", welcome: "Welcome", login: "Log in" }),
-        TranslationCard({ lang: "日本語", welcome: "ようこそ", login: "ログイン" })
+        TranslationCard({ lang: "Japanese", welcome: "ようこそ", login: "ログイン" })
     ]
 }
 
@@ -103,19 +109,40 @@ TranslationCard(props) -> {
 }
 
 // Usage
-UsageSection -> {
-    align: vertical
-    style: "space-y-4"
-    children: [
-        SectionTitle({ text: "Using Translations" }),
-        DocsText({ text: "Access translations with the t() function:" }),
-        UsageExample
-    ]
-}
-
-UsageExample -> CodePreview({
+UsageSection -> DocsCodeSection({
+    title: "Using Translations",
+    description: "Access translations with the t() function:",
     filename: "home.tp",
-    code: "// Simple key\nTitle -> {\n    type: text\n    content: t(\"home.title\")\n    style: \"text-3xl font-bold\"\n}\n\n// With interpolation\nErrorMessage(props) -> {\n    type: text\n    content: t(\"errors.required\", { field: props.field })\n    style: \"text-red-500 text-sm\"\n}\n\n// Nested keys\nNavItems -> {\n    children: [\n        NavLink({ text: t(\"common.login\"), href: \"/login\" }),\n        NavLink({ text: t(\"common.logout\"), href: \"/logout\" })\n    ]\n}",
+    code: `
+    // Simple key
+    Title -> {
+        type: text
+        content: t("home.title")
+        style: "text-3xl font-bold"
+    }
+
+    // With interpolation
+    ErrorMessage(props) -> {
+        type: text
+        content: t("errors.required", {
+            field: props.field
+        })
+        style: "text-red-500 text-sm"
+    }
+
+    // Nested keys
+    NavItems -> {
+        children: [
+            NavLink({
+                text: t("common.login"),
+                href: "/login"
+            }),
+            NavLink({
+                text: t("common.logout"),
+                href: "/logout"
+            })
+        ]
+    }`,
     preview: [UsagePreview]
 })
 
@@ -138,19 +165,29 @@ UsageNav -> {
 }
 
 // Switching
-SwitchingSection -> {
-    align: vertical
-    style: "space-y-4"
-    children: [
-        SectionTitle({ text: "Language Switching" }),
-        DocsText({ text: "Change locale at runtime:" }),
-        SwitchingExample
-    ]
-}
-
-SwitchingExample -> CodePreview({
+SwitchingSection -> DocsCodeSection({
+    title: "Language Switching",
+    description: "Change locale at runtime:",
     filename: "locale-switcher.tp",
-    code: "LocaleSwitcher -> {\n    style: \"flex gap-2\"\n    children: locales.for(locale => {\n        LocaleButton({\n            code: locale,\n            active: i18n.locale == locale\n        })\n    })\n}\n\nLocaleButton(props) -> {\n    type: button\n    content: props.code.toUpperCase()\n    onClick: () => i18n.setLocale(props.code)\n    style: props.active\n        ? \"px-3 py-1 bg-pink-500 text-white rounded\"\n        : \"px-3 py-1 bg-gray-200 rounded hover:bg-gray-300\"\n}",
+    code: `
+    LocaleSwitcher -> {
+        style: "flex gap-2"
+        children: locales.for(locale => {
+            LocaleButton({
+                code: locale,
+                active: i18n.locale == locale
+            })
+        })
+    }
+
+    LocaleButton(props) -> {
+        type: button
+        content: props.code.toUpperCase()
+        onClick: () => i18n.setLocale(props.code)
+        style: props.active
+            ? "px-3 py-1 bg-pink-500 text-white rounded"
+            : "px-3 py-1 bg-gray-200 rounded"
+    }`,
     preview: [SwitchingPreview]
 })
 
