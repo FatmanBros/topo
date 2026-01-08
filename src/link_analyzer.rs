@@ -1106,6 +1106,7 @@ mod tests {
     #[test]
     fn test_normalize_route() {
         let analyzer = LinkAnalyzer {
+            root_dir: PathBuf::from("."),
             pages_dir: PathBuf::from("pages"),
             components_dir: PathBuf::from("components"),
         };
@@ -1119,6 +1120,7 @@ mod tests {
     #[test]
     fn test_to_pascal_case() {
         let analyzer = LinkAnalyzer {
+            root_dir: PathBuf::from("."),
             pages_dir: PathBuf::from("pages"),
             components_dir: PathBuf::from("components"),
         };

@@ -101,6 +101,12 @@ pub enum TokenKind {
     Close,
     FatArrow,   // =>
 
+    // Keywords - Guards
+    GuardSetup, // GuardSetup { }
+    Global,     // global: [guards]
+    Routes,     // routes: { }
+    None,       // none (disable guards for a route)
+
     // Keywords - Testing
     Test,
     XTest,      // xTest (skipped test)
@@ -204,6 +210,10 @@ impl std::fmt::Display for TokenKind {
             TokenKind::Open => write!(f, "open"),
             TokenKind::Close => write!(f, "close"),
             TokenKind::FatArrow => write!(f, "=>"),
+            TokenKind::GuardSetup => write!(f, "GuardSetup"),
+            TokenKind::Global => write!(f, "global"),
+            TokenKind::Routes => write!(f, "routes"),
+            TokenKind::None => write!(f, "none"),
             TokenKind::Test => write!(f, "Test"),
             TokenKind::XTest => write!(f, "xTest"),
             TokenKind::BeforeEach => write!(f, "BeforeEach"),
