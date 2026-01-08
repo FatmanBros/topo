@@ -135,6 +135,69 @@ impl JsCodegen {
         self.theme_colors.contains(name)
     }
 
+    /// Generate responsive style value
+    /// Handles both string styles and responsive style objects:
+    /// - String: `"flex items-center"` -> `'flex items-center'`
+    /// - Object: `{ common: "flex", desktop: "gap-8", tablet: "gap-4", mobile: "gap-2" }`
+    ///   -> `'flex lg:gap-8 md:gap-4 gap-2'`
+    ///
+    /// Responsive prefixes (mobile-first approach):
+    /// - common/mobile: no prefix (base styles)
+    /// - tablet: md: prefix (≥768px)
+    /// - desktop: lg: prefix (≥1024px)
+    fn generate_responsive_style(&mut self, expr: &Expression) -> std::string::String {
+        match expr {
+            Expression::Object { properties } => {
+                // Check if this is a responsive style object
+                let responsive_keys = ["common", "base", "mobile", "tablet", "desktop"];
+                let has_responsive_keys = properties.iter()
+                    .any(|p| responsive_keys.contains(&p.key.as_str()));
+
+                if has_responsive_keys {
+                    // Collect classes for each breakpoint
+                    let mut classes: Vec<std::string::String> = Vec::new();
+
+                    for prop in properties {
+                        let class_value = match &prop.value {
+                            Expression::String { value } => value.clone(),
+                            _ => self.generate_expression(&prop.value)
+                                .trim_matches('\'')
+                                .trim_matches('"')
+                                .to_string(),
+                        };
+
+                        if class_value.is_empty() {
+                            continue;
+                        }
+
+                        let prefix = match prop.key.as_str() {
+                            "common" | "base" | "mobile" => "", // No prefix for base/mobile
+                            "tablet" => "md:",
+                            "desktop" => "lg:",
+                            _ => continue, // Skip unknown keys
+                        };
+
+                        // Add prefix to each class
+                        for class in class_value.split_whitespace() {
+                            if prefix.is_empty() {
+                                classes.push(class.to_string());
+                            } else {
+                                classes.push(format!("{}{}", prefix, class));
+                            }
+                        }
+                    }
+
+                    format!("'{}'", classes.join(" "))
+                } else {
+                    // Not a responsive object, generate as normal
+                    self.generate_expression(expr)
+                }
+            }
+            // For non-object expressions, use normal generation
+            _ => self.generate_expression(expr),
+        }
+    }
+
     /// Get the JavaScript variable name for a store
     /// Returns `_StoreNameStore` if the store has a same-name component, otherwise `store_name`
     fn store_var_name(&self, store_name: &str) -> String {
@@ -1027,7 +1090,14 @@ impl JsCodegen {
             let comma = if prop_index < total_props { "," } else { "" };
             // Track current property key for event handler detection
             self.current_property_key = Some(prop.key.clone());
-            let value = self.generate_expression(&prop.value);
+
+            // Handle responsive style objects: style: { common: '', desktop: '', tablet: '', mobile: '' }
+            let value = if prop.key == "style" {
+                self.generate_responsive_style(&prop.value)
+            } else {
+                self.generate_expression(&prop.value)
+            };
+
             self.current_property_key = None;
             self.emit_line(&format!("{}: {}{}", prop.key, value, comma));
         }
