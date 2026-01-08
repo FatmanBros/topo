@@ -876,30 +876,35 @@ fn start_server(port: u16, output_dir: &PathBuf, open_browser: bool) -> Result<(
     // Serve files
     for request in server.incoming_requests() {
         let url_path = request.url().trim_start_matches('/');
+
+        // Safely resolve the file path to prevent path traversal attacks
         let file_path = if url_path.is_empty() || url_path == "/" {
-            output_dir.join("index.html")
+            Some(output_dir.join("index.html"))
         } else {
-            output_dir.join(url_path)
+            safe_resolve_path(output_dir, url_path)
         };
 
-        let response = if file_path.exists() && file_path.is_file() {
-            match fs::read(&file_path) {
-                Ok(content) => {
-                    let content_type = get_content_type(&file_path);
-                    Response::from_data(content).with_header(
-                        tiny_http::Header::from_bytes(&b"Content-Type"[..], content_type.as_bytes()).unwrap()
-                    )
+        let response = match file_path {
+            Some(path) if path.exists() && path.is_file() => {
+                match fs::read(&path) {
+                    Ok(content) => {
+                        let content_type = get_content_type(&path);
+                        Response::from_data(content).with_header(
+                            tiny_http::Header::from_bytes(&b"Content-Type"[..], content_type.as_bytes()).unwrap()
+                        )
+                    }
+                    Err(_) => Response::from_string("500 Internal Server Error")
+                        .with_status_code(500),
                 }
-                Err(_) => Response::from_string("500 Internal Server Error")
-                    .with_status_code(500),
             }
-        } else {
-            // For SPA, serve index.html for non-existent paths
-            match fs::read(output_dir.join("index.html")) {
-                Ok(content) => Response::from_data(content).with_header(
-                    tiny_http::Header::from_bytes(&b"Content-Type"[..], b"text/html").unwrap()
-                ),
-                Err(_) => Response::from_string("404 Not Found").with_status_code(404),
+            _ => {
+                // For SPA, serve index.html for non-existent paths
+                match fs::read(output_dir.join("index.html")) {
+                    Ok(content) => Response::from_data(content).with_header(
+                        tiny_http::Header::from_bytes(&b"Content-Type"[..], b"text/html").unwrap()
+                    ),
+                    Err(_) => Response::from_string("404 Not Found").with_status_code(404),
+                }
             }
         };
 
@@ -907,6 +912,48 @@ fn start_server(port: u16, output_dir: &PathBuf, open_browser: bool) -> Result<(
     }
 
     Ok(())
+}
+
+/// Safely resolve a file path within a base directory, preventing path traversal attacks.
+/// Returns None if the resolved path would escape the base directory.
+fn safe_resolve_path(base: &PathBuf, url_path: &str) -> Option<PathBuf> {
+    // Normalize the base directory
+    let base_canonical = match base.canonicalize() {
+        Ok(p) => p,
+        Err(_) => return None,
+    };
+
+    // Block paths containing path traversal sequences
+    if url_path.contains("..") || url_path.contains('\0') {
+        return None;
+    }
+
+    let file_path = base.join(url_path);
+
+    // For non-existent files, verify the parent is within base
+    if !file_path.exists() {
+        // Check that the path doesn't try to escape
+        let normalized = file_path.components()
+            .fold(PathBuf::new(), |mut path, comp| {
+                match comp {
+                    std::path::Component::ParentDir => { path.pop(); }
+                    std::path::Component::Normal(s) => { path.push(s); }
+                    std::path::Component::RootDir => { path.push("/"); }
+                    _ => {}
+                }
+                path
+            });
+        if !normalized.starts_with(&base_canonical) && !base.join(&normalized).starts_with(base) {
+            return None;
+        }
+        return Some(file_path);
+    }
+
+    // For existing files, canonicalize and verify
+    match file_path.canonicalize() {
+        Ok(resolved) if resolved.starts_with(&base_canonical) => Some(resolved),
+        _ => None,
+    }
 }
 
 fn get_content_type(path: &PathBuf) -> String {
@@ -1111,30 +1158,34 @@ fn start_dev_server(port: u16, config: &Config) -> Result<()> {
         let response = if url_path.starts_with("api/") {
             serve_mock_api(url_path, &mocks_dir)
         } else {
+            // Safely resolve the file path to prevent path traversal attacks
             let file_path = if url_path.is_empty() || url_path == "/" {
-                output.join("index.html")
+                Some(output.join("index.html"))
             } else {
-                output.join(url_path)
+                safe_resolve_path(&output, url_path)
             };
 
-            if file_path.exists() && file_path.is_file() {
-                match fs::read(&file_path) {
-                    Ok(content) => {
-                        let content_type = get_content_type(&file_path);
-                        Response::from_data(content).with_header(
-                            tiny_http::Header::from_bytes(&b"Content-Type"[..], content_type.as_bytes()).unwrap()
-                        )
+            match file_path {
+                Some(path) if path.exists() && path.is_file() => {
+                    match fs::read(&path) {
+                        Ok(content) => {
+                            let content_type = get_content_type(&path);
+                            Response::from_data(content).with_header(
+                                tiny_http::Header::from_bytes(&b"Content-Type"[..], content_type.as_bytes()).unwrap()
+                            )
+                        }
+                        Err(_) => Response::from_string("500 Internal Server Error")
+                            .with_status_code(500),
                     }
-                    Err(_) => Response::from_string("500 Internal Server Error")
-                        .with_status_code(500),
                 }
-            } else {
-                // For SPA, serve index.html for non-existent paths
-                match fs::read(output.join("index.html")) {
-                    Ok(content) => Response::from_data(content).with_header(
-                        tiny_http::Header::from_bytes(&b"Content-Type"[..], b"text/html").unwrap()
-                    ),
-                    Err(_) => Response::from_string("404 Not Found").with_status_code(404),
+                _ => {
+                    // For SPA, serve index.html for non-existent paths
+                    match fs::read(output.join("index.html")) {
+                        Ok(content) => Response::from_data(content).with_header(
+                            tiny_http::Header::from_bytes(&b"Content-Type"[..], b"text/html").unwrap()
+                        ),
+                        Err(_) => Response::from_string("404 Not Found").with_status_code(404),
+                    }
                 }
             }
         };
@@ -1150,7 +1201,26 @@ fn start_dev_server(port: u16, config: &Config) -> Result<()> {
 fn serve_mock_api(url_path: &str, mocks_dir: &PathBuf) -> Response<std::io::Cursor<Vec<u8>>> {
     // Parse: api/dashboard/stats -> mocks/dashboard/stats.json
     let api_path = url_path.strip_prefix("api/").unwrap_or(url_path);
-    let mock_file = mocks_dir.join(format!("{}.json", api_path));
+
+    // Block path traversal attempts
+    if api_path.contains("..") || api_path.contains('\0') {
+        return Response::from_string(r#"{"error": "Invalid path"}"#)
+            .with_status_code(400)
+            .with_header(
+                tiny_http::Header::from_bytes(&b"Content-Type"[..], b"application/json").unwrap()
+            );
+    }
+
+    let mock_file = match safe_resolve_path(mocks_dir, &format!("{}.json", api_path)) {
+        Some(path) => path,
+        None => {
+            return Response::from_string(r#"{"error": "Invalid path"}"#)
+                .with_status_code(400)
+                .with_header(
+                    tiny_http::Header::from_bytes(&b"Content-Type"[..], b"application/json").unwrap()
+                );
+        }
+    };
 
     if mock_file.exists() {
         match fs::read(&mock_file) {
