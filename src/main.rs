@@ -681,7 +681,7 @@ fn generate_html(config: &Config) -> String {
 {}</head>
 <body>
     <div id="app"></div>
-    <script type="module" src="./app.js"></script>
+    <script type="module" src="/app.js"></script>
     <script>
     // Error Overlay for development
     (function() {{
@@ -771,7 +771,7 @@ fn generate_html_dev(config: &Config, ws_port: u16) -> String {
 {}</head>
 <body>
     <div id="app"></div>
-    <script type="module" src="./app.js"></script>
+    <script type="module" src="/app.js"></script>
     <script>
     // Hot Reload WebSocket
     (function() {{
