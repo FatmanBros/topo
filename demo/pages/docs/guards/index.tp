@@ -1,0 +1,220 @@
+// Guards docs page
+import { DocsTemplate } from "../template.tp"
+import { DocsSection, DocsDescription } from "@/components/molecules/docs-section.tp"
+import { DocsCodeSection } from "@/components/organisms/docs-code-section.tp"
+import { ConfigPreview } from "@/components/molecules/config-preview.tp"
+import { Text } from "@/components/atoms/text.tp"
+
+Page -> DocsTemplate({ children: [GuardsContent] })
+
+GuardsContent -> {
+    align: vertical
+    style: "space-y-8"
+    children: [
+        PageHeader,
+        BasicGuardSection,
+        GuardSetupSection,
+        RouteSpecificSection,
+        EvaluationOrderSection,
+        ExampleSection
+    ]
+}
+
+PageHeader -> DocsSection({
+    id: "guards",
+    title: "Route Guards",
+    children: [HeaderDesc]
+})
+
+HeaderDesc -> DocsDescription({
+    text: "Guards allow you to protect routes with authentication and authorization checks. When a guard returns false, navigation is blocked and the user is redirected."
+})
+
+// Basic guard definition
+BasicGuardSection -> DocsCodeSection({
+    title: "Defining Guards",
+    description: "Use the ? operator to define a guard with a check condition and redirect path:",
+    filename: "guards/auth.guard.tp",
+    code: `
+// Guard definition: Name ? { check, redirect }
+AuthGuard ? {
+    check: AuthStore.isLoggedIn
+    redirect: "/login"
+}
+
+AdminGuard ? {
+    check: AuthStore.isAdmin
+    redirect: "/"
+}`,
+    preview: [GuardPreview]
+})
+
+GuardPreview -> {
+    align: vertical
+    style: "space-y-2 p-4 bg-gray-50 rounded-lg"
+    children: [
+        Text({ text: "check: condition expression", style: "font-mono text-sm text-gray-600" }),
+        Text({ text: "true -> allow navigation", style: "font-mono text-sm text-green-600" }),
+        Text({ text: "false -> redirect to path", style: "font-mono text-sm text-red-600" })
+    ]
+}
+
+// Guard setup
+GuardSetupSection -> DocsCodeSection({
+    title: "GuardSetup",
+    description: "Configure which guards apply to which routes:",
+    filename: "guards/setup.tp",
+    code: `
+GuardSetup {
+    // Guards applied to all routes
+    global: [AuthGuard]
+
+    // Route-specific configuration
+    routes: {
+        "/admin/*": AdminGuard
+        "/public/*": none
+        "/login": none
+    }
+}`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "global", desc: "Guards for all routes" },
+            { label: "/path: Guard", desc: "Additional guard for path" },
+            { label: "/path: none", desc: "Disable guards for path" }
+        ]
+    })]
+})
+
+// Route-specific guards
+RouteSpecificSection -> DocsCodeSection({
+    title: "Route Patterns",
+    description: "Use wildcard patterns to match multiple routes:",
+    filename: "patterns",
+    code: `
+routes: {
+    // Exact match
+    "/login": none
+
+    // Wildcard - matches /admin, /admin/users, etc
+    "/admin/*": AdminGuard
+
+    // Multiple wildcards work too
+    "/api/*": none
+    "/public/*": none
+}`,
+    preview: [PatternPreview]
+})
+
+PatternPreview -> {
+    align: vertical
+    style: "space-y-1 p-4 bg-gray-50 rounded-lg"
+    children: [
+        Text({ text: "/admin/* matches:", style: "font-mono text-sm text-gray-500" }),
+        Text({ text: "  /admin", style: "font-mono text-sm text-pink-600" }),
+        Text({ text: "  /admin/users", style: "font-mono text-sm text-pink-600" }),
+        Text({ text: "  /admin/settings/profile", style: "font-mono text-sm text-pink-600" })
+    ]
+}
+
+// Evaluation order
+EvaluationOrderSection -> DocsCodeSection({
+    title: "Evaluation Order",
+    description: "Guards are evaluated in a specific order:",
+    filename: "order",
+    code: `
+// 1. Check route-specific config first
+// 2. If "none" -> skip all guards, allow
+// 3. If route guard exists -> check only that guard
+// 4. Otherwise -> check global guards
+// 5. If any guard returns false -> redirect
+
+GuardSetup {
+    global: [AuthGuard]
+    routes: {
+        "/login": none      // Skips AuthGuard
+        "/admin/*": AdminGuard  // Checks AdminGuard only
+        // Other routes check AuthGuard
+    }
+}`,
+    preview: [OrderPreview]
+})
+
+OrderPreview -> {
+    align: vertical
+    style: "space-y-2 p-4 bg-gray-50 rounded-lg text-sm"
+    children: [
+        Text({ text: "1. Route-specific match?", style: "font-mono text-gray-600" }),
+        Text({ text: "2. Is 'none'? -> Allow", style: "font-mono text-green-600" }),
+        Text({ text: "3. Has guard? -> Check it", style: "font-mono text-blue-600" }),
+        Text({ text: "4. No match? -> Global guards", style: "font-mono text-purple-600" }),
+        Text({ text: "5. Guard false? -> Redirect", style: "font-mono text-red-600" })
+    ]
+}
+
+// Full example
+ExampleSection -> DocsCodeSection({
+    title: "Complete Example",
+    description: "A typical authentication setup:",
+    filename: "guards/auth.guard.tp",
+    code: `
+// Store with auth state
+AuthStore | {
+    State {
+        isLoggedIn: false
+        isAdmin: false
+        user: null
+    }
+
+    Actions {
+        Login(user)
+        Logout
+    }
+
+    Reducers {
+        on Login(user) {
+            isLoggedIn: true
+            isAdmin: user.role == "admin"
+            user: user
+        }
+        on Logout {
+            isLoggedIn: false
+            isAdmin: false
+            user: null
+        }
+    }
+}
+
+// Guards
+AuthGuard ? {
+    check: AuthStore.isLoggedIn
+    redirect: "/login"
+}
+
+AdminGuard ? {
+    check: AuthStore.isAdmin
+    redirect: "/dashboard"
+}
+
+// Setup
+GuardSetup {
+    global: [AuthGuard]
+    routes: {
+        "/admin/*": AdminGuard
+        "/login": none
+        "/register": none
+        "/public/*": none
+    }
+}`,
+    preview: [ExamplePreview]
+})
+
+ExamplePreview -> {
+    align: vertical
+    style: "space-y-1 p-4 bg-gray-50 rounded-lg text-xs"
+    children: [
+        Text({ text: "/dashboard -> AuthGuard", style: "font-mono text-gray-600" }),
+        Text({ text: "/admin/users -> AdminGuard", style: "font-mono text-gray-600" }),
+        Text({ text: "/login -> No guard", style: "font-mono text-green-600" }),
+        Text({ text: "/public/about -> No guard", style: "font-mono text-green-600" })
+    ]
+}
