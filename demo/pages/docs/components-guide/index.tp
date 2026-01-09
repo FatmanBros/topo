@@ -15,7 +15,8 @@ ComponentsContent -> {
         BasicSyntaxSection,
         PropsSection,
         ChildrenSection,
-        CompositionSection
+        CompositionSection,
+        GuardedComponentSection
     ]
 }
 
@@ -157,3 +158,43 @@ CompositionSection -> DocsCodeSection({
         ]
     }]
 })
+
+// Guarded Components
+GuardedComponentSection -> DocsCodeSection({
+    title: "Guarded Components",
+    description: "Conditionally render components based on guard checks:",
+    filename: "admin-button.tp",
+    code: `
+    // Component renders null if guard fails
+    DeleteButton -> isAdmin {
+        type: button
+        content: "Delete"
+        style: "bg-red-500 text-white px-4 py-2"
+        onClick: handleDelete
+    }
+
+    // Multiple guards (all must pass)
+    SuperAdminPanel -> isAuth, isAdmin {
+        style: "p-4 border-2 border-yellow-400"
+        children: [AdminControls]
+    }
+
+    // Usage - component auto-hides
+    Dashboard -> {
+        children: [
+            WelcomeMessage,
+            DeleteButton    // Only visible to admins
+        ]
+    }`,
+    preview: [GuardedPreview]
+})
+
+GuardedPreview -> {
+    align: vertical
+    style: "space-y-2 p-4 bg-gray-50 rounded-lg"
+    children: [
+        Text({ text: "Comp -> Guard { }", style: "font-mono text-sm text-gray-600" }),
+        Text({ text: "Guard passes -> render", style: "font-mono text-sm text-green-600" }),
+        Text({ text: "Guard fails -> null", style: "font-mono text-sm text-red-600" })
+    ]
+}

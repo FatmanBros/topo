@@ -216,7 +216,7 @@ SubmitSection -> DocsCodeSection({
                         password: password
                     })
                     dispatch: SetSuccess
-                    router.push("/dashboard")
+                    navigate: .dashboard  // Type-safe with guards
                 } catch(e) {
                     dispatch: SetError(e.message)
                 }
@@ -229,7 +229,7 @@ SubmitSection -> DocsCodeSection({
             { icon: "v", text: "Auto validation before submit" },
             { icon: "v", text: "Loading state management" },
             { icon: "v", text: "Error handling built-in" },
-            { icon: "v", text: "Redirect on success" }
+            { icon: "v", text: "Type-safe navigation with guards" }
         ]
     })]
 })

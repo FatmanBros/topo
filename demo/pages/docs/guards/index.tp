@@ -6,7 +6,7 @@ import { ConfigPreview } from "@/components/molecules/config-preview.tp"
 import { Text } from "@/components/atoms/text.tp"
 
 Page -> {
-    title: "Route Guards"
+    title: "Guards"
     children: DocsTemplate({ children: [GuardsContent] })
 }
 
@@ -16,21 +16,20 @@ GuardsContent -> {
     children: [
         PageHeader,
         BasicGuardSection,
-        GuardSetupSection,
-        RouteSpecificSection,
-        EvaluationOrderSection,
+        RouterGuardSection,
+        ComponentGuardSection,
         ExampleSection
     ]
 }
 
 PageHeader -> DocsSection({
     id: "guards",
-    title: "Route Guards",
+    title: "Guards",
     children: [HeaderDesc]
 })
 
 HeaderDesc -> DocsDescription({
-    text: "Guards allow you to protect routes with authentication and authorization checks. When a guard returns false, navigation is blocked and the user is redirected."
+    text: "Guards protect routes and components with authentication and authorization checks. Define guards once and use them in router definitions or component declarations."
 })
 
 // Basic guard definition
@@ -62,95 +61,95 @@ GuardPreview -> {
     ]
 }
 
-// Guard setup
-GuardSetupSection -> DocsCodeSection({
-    title: "GuardSetup",
-    description: "Configure which guards apply to which routes:",
-    filename: "guards/setup.tp",
+// Router guards
+RouterGuardSection -> DocsCodeSection({
+    title: "Router Guards",
+    description: "Embed guards directly in router definitions:",
+    filename: "routes.tp",
     code: `
-GuardSetup {
-    // Guards applied to all routes
-    global: [AuthGuard]
+// Sub-router with guards on all routes
+router AdminRouter {
+    users: "/users", [isAdmin]
+    settings: "/settings", [isAdmin]
+    logs: "/logs", [isAdmin, isSuperAdmin]
+}
 
-    // Route-specific configuration
-    routes: {
-        "/admin/*": AdminGuard
-        "/public/*": none
-        "/login": none
+// Main router
+router {
+    home: "/", []
+    login: "/login", []
+    dashboard: "/dashboard", [isAuth]
+    admin: "/admin", [] -> AdminRouter
+}
+
+// Navigation with guards (in Effects)
+LoginForm | {
+    Effects {
+        on LoginSuccess {
+            navigate: .dashboard  // Checks isAuth guard
+        }
+        on GoToAdmin {
+            navigate: .admin.users  // Checks isAdmin guard
+        }
     }
 }`,
-    preview: [ConfigPreview({
-        items: [
-            { label: "global", desc: "Guards for all routes" },
-            { label: "/path: Guard", desc: "Additional guard for path" },
-            { label: "/path: none", desc: "Disable guards for path" }
-        ]
-    })]
+    preview: [RouterGuardPreview]
 })
 
-// Route-specific guards
-RouteSpecificSection -> DocsCodeSection({
-    title: "Route Patterns",
-    description: "Use wildcard patterns to match multiple routes:",
-    filename: "patterns",
-    code: `
-routes: {
-    // Exact match
-    "/login": none
-
-    // Wildcard - matches /admin, /admin/users, etc
-    "/admin/*": AdminGuard
-
-    // Multiple wildcards work too
-    "/api/*": none
-    "/public/*": none
-}`,
-    preview: [PatternPreview]
-})
-
-PatternPreview -> {
+RouterGuardPreview -> {
     align: vertical
-    style: "space-y-1 p-4 bg-gray-50 rounded-lg"
+    style: "space-y-2 p-4 bg-gray-50 rounded-lg"
     children: [
-        Text({ text: "/admin/* matches:", style: "font-mono text-sm text-gray-500" }),
-        Text({ text: "  /admin", style: "font-mono text-sm text-pink-600" }),
-        Text({ text: "  /admin/users", style: "font-mono text-sm text-pink-600" }),
-        Text({ text: "  /admin/settings/profile", style: "font-mono text-sm text-pink-600" })
+        Text({ text: "route: \"/path\", [guards]", style: "font-mono text-sm text-gray-600" }),
+        Text({ text: "navigate: .route -> checks guards first", style: "font-mono text-sm text-blue-600" }),
+        Text({ text: "All guards pass -> navigate", style: "font-mono text-sm text-green-600" }),
+        Text({ text: "Any guard fails -> redirect", style: "font-mono text-sm text-red-600" })
     ]
 }
 
-// Evaluation order
-EvaluationOrderSection -> DocsCodeSection({
-    title: "Evaluation Order",
-    description: "Guards are evaluated in a specific order:",
-    filename: "order",
+// Component-level guards
+ComponentGuardSection -> DocsCodeSection({
+    title: "Component Guards",
+    description: "Conditionally render components based on guard checks:",
+    filename: "admin-panel.tp",
     code: `
-// 1. Check route-specific config first
-// 2. If "none" -> skip all guards, allow
-// 3. If route guard exists -> check only that guard
-// 4. Otherwise -> check global guards
-// 5. If any guard returns false -> redirect
+// Guard applied to component definition
+// Component renders null if guard check fails
 
-GuardSetup {
-    global: [AuthGuard]
-    routes: {
-        "/login": none      // Skips AuthGuard
-        "/admin/*": AdminGuard  // Checks AdminGuard only
-        // Other routes check AuthGuard
-    }
+DeleteButton -> isAdmin {
+    type: button
+    content: "Delete"
+    style: "bg-red-500 text-white px-4 py-2 rounded"
+    onClick: handleDelete
+}
+
+// Multiple guards (all must pass)
+SuperAdminPanel -> isAuth, isAdmin {
+    style: "p-6 bg-yellow-50 border-2 border-yellow-400"
+    children: [
+        Text({ text: "Super Admin Controls" }),
+        DangerousActions
+    ]
+}
+
+// Usage - component auto-hides if guard fails
+AdminDashboard -> {
+    children: [
+        WelcomeMessage,
+        DeleteButton,      // Only visible to admins
+        SuperAdminPanel    // Only visible to super admins
+    ]
 }`,
-    preview: [OrderPreview]
+    preview: [ComponentGuardPreview]
 })
 
-OrderPreview -> {
+ComponentGuardPreview -> {
     align: vertical
-    style: "space-y-2 p-4 bg-gray-50 rounded-lg text-sm"
+    style: "space-y-2 p-4 bg-gray-50 rounded-lg"
     children: [
-        Text({ text: "1. Route-specific match?", style: "font-mono text-gray-600" }),
-        Text({ text: "2. Is 'none'? -> Allow", style: "font-mono text-green-600" }),
-        Text({ text: "3. Has guard? -> Check it", style: "font-mono text-blue-600" }),
-        Text({ text: "4. No match? -> Global guards", style: "font-mono text-purple-600" }),
-        Text({ text: "5. Guard false? -> Redirect", style: "font-mono text-red-600" })
+        Text({ text: "Comp -> Guard { }", style: "font-mono text-sm text-gray-600" }),
+        Text({ text: "Guard.check() == true -> render component", style: "font-mono text-sm text-green-600" }),
+        Text({ text: "Guard.check() == false -> render null", style: "font-mono text-sm text-red-600" })
     ]
 }
 
@@ -158,7 +157,7 @@ OrderPreview -> {
 ExampleSection -> DocsCodeSection({
     title: "Complete Example",
     description: "A typical authentication setup:",
-    filename: "guards/auth.guard.tp",
+    filename: "app.tp",
     code: `
 // Store with auth state
 AuthStore | {
@@ -188,25 +187,35 @@ AuthStore | {
 }
 
 // Guards
-AuthGuard ? {
+isAuth ? {
     check: AuthStore.isLoggedIn
     redirect: "/login"
 }
 
-AdminGuard ? {
+isAdmin ? {
     check: AuthStore.isAdmin
     redirect: "/dashboard"
 }
 
-// Setup
-GuardSetup {
-    global: [AuthGuard]
-    routes: {
-        "/admin/*": AdminGuard
-        "/login": none
-        "/register": none
-        "/public/*": none
-    }
+// Router with guards
+router AdminRouter {
+    users: "/users", [isAdmin]
+    settings: "/settings", [isAdmin]
+}
+
+router {
+    home: "/", []
+    login: "/login", []
+    register: "/register", []
+    dashboard: "/dashboard", [isAuth]
+    admin: "/admin", [isAuth] -> AdminRouter
+}
+
+// Guarded component
+DeleteUserButton -> isAdmin {
+    type: button
+    content: "Delete User"
+    style: "bg-red-500 text-white"
 }`,
     preview: [ExamplePreview]
 })
@@ -215,9 +224,9 @@ ExamplePreview -> {
     align: vertical
     style: "space-y-1 p-4 bg-gray-50 rounded-lg text-xs"
     children: [
-        Text({ text: "/dashboard -> AuthGuard", style: "font-mono text-gray-600" }),
-        Text({ text: "/admin/users -> AdminGuard", style: "font-mono text-gray-600" }),
-        Text({ text: "/login -> No guard", style: "font-mono text-green-600" }),
-        Text({ text: "/public/about -> No guard", style: "font-mono text-green-600" })
+        Text({ text: "/home, /login, /register -> No guard", style: "font-mono text-green-600" }),
+        Text({ text: "/dashboard -> isAuth", style: "font-mono text-blue-600" }),
+        Text({ text: "/admin/* -> isAuth + isAdmin", style: "font-mono text-purple-600" }),
+        Text({ text: "DeleteUserButton -> isAdmin (component)", style: "font-mono text-pink-600" })
     ]
 }

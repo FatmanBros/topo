@@ -3,6 +3,7 @@ import { DocsTemplate } from "../template.tp"
 import { DocsSection, DocsDescription } from "@/components/molecules/docs-section.tp"
 import { DocsCodeSection } from "@/components/organisms/docs-code-section.tp"
 import { ConfigPreview } from "@/components/molecules/config-preview.tp"
+import { FeatureList } from "@/components/molecules/feature-list.tp"
 import { Text } from "@/components/atoms/text.tp"
 
 Page -> DocsTemplate({ children: [RoutingContent] })
@@ -13,6 +14,8 @@ RoutingContent -> {
     children: [
         PageHeader,
         FileBasedSection,
+        RouterSection,
+        RoutesSection,
         DynamicRoutesSection,
         NavigationSection,
         LayoutsSection
@@ -26,7 +29,7 @@ PageHeader -> DocsSection({
 })
 
 HeaderDesc -> DocsDescription({
-    text: "topo uses file-based routing. Create files in the pages directory and routes are automatically generated."
+    text: "topo uses file-based routing with optional router definition for navigation guards."
 })
 
 // File-based routing
@@ -58,6 +61,75 @@ FileBasedSection -> DocsCodeSection({
             { label: "/blog/:slug", desc: "pages/blog/[slug]/index.tp" },
             { label: "/users/:id", desc: "pages/users/[id]/index.tp" },
             { label: "/docs/*", desc: "pages/docs/[...path]/index.tp" }
+        ]
+    })]
+})
+
+// Router definition
+RouterSection -> DocsCodeSection({
+    title: "Router Definition",
+    description: "Define routes with guards in routes.tp:",
+    filename: "routes.tp",
+    code: `
+    // Sub-router for nested routes
+    router DocsRouter {
+        index: "/", []
+        installation: "/installation", []
+        quickStart: "/quick-start", []
+    }
+
+    // Main router with guards
+    router {
+        home: "/", []
+        login: "/login", []
+        dashboard: "/dashboard", [isAuth]
+        admin: "/admin", [isAuth, isAdmin]
+        docs: "/docs", [] -> DocsRouter
+    }`,
+    preview: [FeatureList({
+        title: "Router features:",
+        items: [
+            { icon: "v", text: "Route-level guard arrays" },
+            { icon: "v", text: "Sub-router references with ->" },
+            { icon: "v", text: "Guards execute before navigation" },
+            { icon: "v", text: "Type-safe .routeName navigation" }
+        ]
+    })]
+})
+
+// Routes definition (type-safe paths)
+RoutesSection -> DocsCodeSection({
+    title: "Routes Definition",
+    description: "Type-safe path generation with Routes:",
+    filename: "routes.tp",
+    code: `
+    // Named sub-routes
+    Routes DocsRoutes {
+        index: "/"
+        installation: "/installation"
+    }
+
+    // Main routes with parameters
+    Routes {
+        home: "/"
+        login: "/login"
+        docs: "/docs" -> DocsRoutes
+        userDetail(id): "/users/{id}"
+        projectTask(projectId, taskId): "/projects/{projectId}/tasks/{taskId}"
+
+        Guards {
+            global: [isAuthenticated]
+            skip: [home, login]
+        }
+    }
+
+    // Usage: Routes.userDetail("123") -> "/users/123"
+    // Usage: Routes.docs.installation() -> "/docs/installation"`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "Routes.home()", desc: "Returns \"/\"" },
+            { label: "Routes.userDetail(\"123\")", desc: "Returns \"/users/123\"" },
+            { label: "Routes.docs.installation()", desc: "Returns \"/docs/installation\"" }
         ]
     })]
 })
@@ -100,7 +172,7 @@ DynamicPreview -> {
 // Navigation
 NavigationSection -> DocsCodeSection({
     title: "Navigation",
-    description: "Navigate using links or programmatically:",
+    description: "Navigate using links, route references, or programmatically:",
     filename: "nav.tp",
     code: `
     // Declarative link
@@ -110,21 +182,26 @@ NavigationSection -> DocsCodeSection({
         content: "About Us"
     }
 
-    // With dynamic params
+    // Using Routes for type-safe paths
     UserLink(id) -> {
         type: link
-        href: "/users/" + id
+        href: Routes.userDetail(id)
         content: "View Profile"
     }
 
-    // Programmatic navigation
-    LoginButton -> {
-        type: button
-        content: "Login"
-        onClick: () => router.push("/login")
+    // Effect-based navigation with guards
+    LoginForm | {
+        Effects {
+            on LoginSuccess {
+                navigate: .dashboard    // Uses router with guards
+            }
+            on GoToDocs {
+                navigate: .docs.installation
+            }
+        }
     }
 
-    // Go back
+    // Programmatic navigation
     BackButton -> {
         type: button
         content: "Back"

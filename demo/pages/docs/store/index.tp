@@ -136,6 +136,10 @@ EffectsSection -> DocsCodeSection({
                     dispatch: SetError(e.message)
                 }
             }
+
+            on LoginSuccess {
+                navigate: .dashboard    // Route with guards
+            }
         }
     }`,
     preview: [FeatureList({
@@ -144,7 +148,7 @@ EffectsSection -> DocsCodeSection({
             { icon: "v", text: "Async/await syntax" },
             { icon: "v", text: "Automatic loading states" },
             { icon: "v", text: "Built-in error handling" },
-            { icon: "v", text: "API integration" }
+            { icon: "v", text: "Navigation with guards" }
         ]
     })]
 })
