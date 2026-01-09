@@ -11,7 +11,7 @@ use tungstenite::{accept, Message};
 
 use std::collections::HashMap;
 
-use topo::ast::{Declaration, Program};
+use topo::ast::{Declaration, Program, TypeAnnotation};
 use topo::codegen::JsCodegen;
 use topo::config::{Config, BuildMode, I18nConfig};
 use topo::info_server::start_info_server;
@@ -2665,6 +2665,31 @@ fn show_config() -> Result<()> {
     Ok(())
 }
 
+/// Format a TypeAnnotation for display
+fn format_type_annotation(type_ann: &TypeAnnotation) -> String {
+    match type_ann {
+        TypeAnnotation::Primitive { name } => name.clone(),
+        TypeAnnotation::Array { element_type } => {
+            format!("{}[]", format_type_annotation(element_type))
+        }
+        TypeAnnotation::Optional { inner_type } => {
+            format!("{}?", format_type_annotation(inner_type))
+        }
+        TypeAnnotation::Object { fields } => {
+            let field_strs: Vec<String> = fields
+                .iter()
+                .map(|f| format!("{}: {}", f.name, format_type_annotation(&f.type_annotation)))
+                .collect();
+            format!("{{ {} }}", field_strs.join(", "))
+        }
+        TypeAnnotation::Union { types } => {
+            let type_strs: Vec<String> = types.iter().map(format_type_annotation).collect();
+            type_strs.join(" | ")
+        }
+        TypeAnnotation::Reference { name } => name.clone(),
+    }
+}
+
 fn show_info_list(pages_only: bool, apis_only: bool) -> Result<()> {
     let config = Config::load_or_default();
     let paths_config = config.paths_config();
@@ -2816,12 +2841,38 @@ fn show_info_list(pages_only: bool, apis_only: bool) -> Result<()> {
                             topo::ast::HttpMethod::Patch => "\x1b[35m",  // Magenta
                             topo::ast::HttpMethod::Delete => "\x1b[31m", // Red
                         };
+
+                        // Build type signature
+                        let mut type_parts = Vec::new();
+                        if let Some(ref req_type) = endpoint.request_type {
+                            type_parts.push(format!("\x1b[36m{}\x1b[0m", format_type_annotation(req_type)));
+                        }
+                        let response_str = if let Some(ref res_type) = endpoint.response_type {
+                            format!(" \x1b[90m->\x1b[0m \x1b[32m{}\x1b[0m", format_type_annotation(res_type))
+                        } else {
+                            String::new()
+                        };
+                        let error_str = if let Some(ref err_type) = endpoint.error_type {
+                            format!(" \x1b[90m|\x1b[0m \x1b[31m{}\x1b[0m", format_type_annotation(err_type))
+                        } else {
+                            String::new()
+                        };
+
+                        let request_param = if type_parts.is_empty() {
+                            String::new()
+                        } else {
+                            type_parts.join(", ")
+                        };
+
                         println!(
-                            "      {}{:6}\x1b[0m {} \x1b[90m→\x1b[0m {}()",
+                            "      {}{:6}\x1b[0m {} \x1b[90m→\x1b[0m {}({}){}{}",
                             method_color,
                             format!("{:?}", endpoint.method).to_uppercase(),
                             endpoint.path,
-                            endpoint.name
+                            endpoint.name,
+                            request_param,
+                            response_str,
+                            error_str
                         );
                     }
                 }

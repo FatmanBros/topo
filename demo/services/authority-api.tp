@@ -2,8 +2,24 @@
 AuthorityApi :: {
     rest: "/api/authority"
 
-    login: post("/login")
-    signUp: post("/sign-up")
-    logout: post("/logout")
-    refreshToken: post("/refresh-token")
+    // Simple response type syntax
+    login: post("/login") -> AuthToken
+
+    // Full block syntax with request, response, and error types
+    signUp: post("/sign-up") {
+        request: SignUpRequest
+        response: AuthToken
+        error: AuthError
+    }
+
+    logout: post("/logout") -> { success: boolean }
+
+    refreshToken: post("/refresh-token") {
+        request: { refreshToken: string }
+        response: AuthToken
+        error: AuthError
+    }
+
+    // GET endpoint with response type
+    me: get("/me") -> User
 }

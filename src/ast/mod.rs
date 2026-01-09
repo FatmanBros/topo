@@ -230,6 +230,14 @@ pub struct Endpoint {
     pub name: String,
     pub method: HttpMethod,
     pub path: String,
+    /// Request body type (for POST, PUT, PATCH)
+    pub request_type: Option<TypeAnnotation>,
+    /// Response type
+    pub response_type: Option<TypeAnnotation>,
+    /// Error response type
+    pub error_type: Option<TypeAnnotation>,
+    /// URL parameters type (e.g., { id: number } for /users/:id)
+    pub params_type: Option<TypeAnnotation>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

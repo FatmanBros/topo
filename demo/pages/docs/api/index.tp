@@ -16,10 +16,13 @@ APIContent -> {
         PageHeader,
         BasicAPISection,
         AutoGenNote,
+        TypeDefinitionsSection,
+        TypeSyntaxSection,
         CustomEndpointsSection,
         InterceptorsSection,
         InterceptorsList,
-        UsageSection
+        UsageSection,
+        TopoInfoSection
     ]
 }
 
@@ -182,3 +185,110 @@ UsageSection -> DocsCodeSection({
         ]
     })]
 })
+
+// Type Definitions Section
+TypeDefinitionsSection -> DocsCodeSection({
+    title: "Type Definitions",
+    description: "Add request/response types for better tooling and documentation:",
+    filename: "auth-api.tp",
+    code: `
+    AuthApi :: {
+        rest: "/api/auth"
+
+        // Simple response type with arrow syntax
+        login: post("/login") -> AuthToken
+
+        // Full type definition with block syntax
+        signUp: post("/sign-up") {
+            request: SignUpRequest
+            response: AuthToken
+            error: AuthError
+        }
+
+        // Inline object types
+        logout: post("/logout") -> { success: boolean }
+
+        me: get("/me") -> User
+    }`,
+    preview: [TypeBenefitsList]
+})
+
+TypeBenefitsList -> FeatureList({
+    title: "Type annotations provide:",
+    items: [
+        { icon: "v", text: "JSDoc comments in generated code" },
+        { icon: "v", text: "IDE autocomplete support" },
+        { icon: "v", text: "API documentation via topo info" },
+        { icon: "v", text: "Error type tracking" }
+    ]
+})
+
+// Type Syntax Section
+TypeSyntaxSection -> DocsCodeSection({
+    title: "Type Syntax",
+    description: "Use various type annotation formats:",
+    filename: "types.tp",
+    code: `
+    // Reference types
+    getUser: get("/users/:id") -> User
+
+    // Inline object types
+    updateProfile: put("/profile") {
+        request: { name: string, bio: string? }
+        response: User
+    }
+
+    // Array types
+    listUsers: get("/users") -> User[]
+
+    // Union types (for error handling)
+    authenticate: post("/auth") {
+        response: AuthToken
+        error: AuthError | NetworkError
+    }`,
+    preview: [TypeSyntaxPreview]
+})
+
+TypeSyntaxPreview -> {
+    align: vertical
+    style: "space-y-2"
+    children: [
+        Text({ text: "Supported type formats:", style: "text-gray-500 text-xs mb-2" }),
+        ApiPreview({
+            endpoints: [
+                { method: "->", path: "Type", desc: "Reference type" },
+                { method: "->", path: "Type[]", desc: "Array type" },
+                { method: "->", path: "Type?", desc: "Optional type" },
+                { method: "->", path: "A | B", desc: "Union type" },
+                { method: "{}", path: "{ ... }", desc: "Object type" }
+            ]
+        })
+    ]
+}
+
+// Topo Info Section
+TopoInfoSection -> DocsCodeSection({
+    title: "API Documentation",
+    description: "View all API endpoints and their types with topo info:",
+    filename: "terminal",
+    code: `
+    $ topo info list --apis
+
+    API Services
+    ──────────────────────────────────────────────────
+      AuthApi (auth-api.tp)
+        rest: /api/auth
+        endpoints:
+          POST   /login → login() -> AuthToken
+          POST   /sign-up → signUp(SignUpRequest) -> AuthToken | AuthError
+          POST   /logout → logout() -> { success: boolean }
+          GET    /me → me() -> User`,
+    preview: [TopoInfoNote]
+})
+
+TopoInfoNote -> {
+    style: "p-4 bg-blue-50 rounded-lg border border-blue-200"
+    children: [
+        Text({ text: "Run topo info list --apis to see all your API services with their type signatures.", style: "text-blue-700 text-sm" })
+    ]
+}

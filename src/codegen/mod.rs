@@ -2268,14 +2268,71 @@ impl JsCodegen {
         let base = api.rest.as_deref().unwrap_or("");
         let full_path = format!("{}{}", base, endpoint.path);
 
-        self.emit_line(&format!("async {}(params) {{", endpoint.name));
+        // Generate JSDoc comment with type information
+        let has_request = endpoint.request_type.is_some();
+        let has_response = endpoint.response_type.is_some();
+        let has_error = endpoint.error_type.is_some();
+
+        if has_request || has_response || has_error {
+            self.emit_line("/**");
+            if let Some(ref req_type) = endpoint.request_type {
+                self.emit_line(&format!(" * @param {{{}}} data - Request body", self.format_type_annotation_for_jsdoc(req_type)));
+            }
+            if let Some(ref res_type) = endpoint.response_type {
+                self.emit_line(&format!(" * @returns {{Promise<{}>}}", self.format_type_annotation_for_jsdoc(res_type)));
+            }
+            if let Some(ref err_type) = endpoint.error_type {
+                self.emit_line(&format!(" * @throws {{{}}} API error", self.format_type_annotation_for_jsdoc(err_type)));
+            }
+            self.emit_line(" */");
+        }
+
+        // Generate function with appropriate parameters
+        let param_name = if has_request { "data" } else { "" };
+        self.emit_line(&format!("async {}({}) {{", endpoint.name, param_name));
         self.indent += 1;
-        self.emit_line(&format!(
-            "return fetch('{}', {{ method: '{}' }}).then(r => r.json());",
-            full_path, method
-        ));
+
+        // Generate fetch call
+        let needs_body = matches!(endpoint.method, HttpMethod::Post | HttpMethod::Put | HttpMethod::Patch) && has_request;
+
+        if needs_body {
+            self.emit_line(&format!(
+                "return fetch('{}', {{ method: '{}', headers: {{ 'Content-Type': 'application/json' }}, body: JSON.stringify(data) }}).then(r => r.json());",
+                full_path, method
+            ));
+        } else {
+            self.emit_line(&format!(
+                "return fetch('{}', {{ method: '{}' }}).then(r => r.json());",
+                full_path, method
+            ));
+        }
         self.indent -= 1;
         self.emit_line("},");
+    }
+
+    /// Format TypeAnnotation for JSDoc
+    fn format_type_annotation_for_jsdoc(&self, type_ann: &TypeAnnotation) -> String {
+        match type_ann {
+            TypeAnnotation::Primitive { name } => name.clone(),
+            TypeAnnotation::Array { element_type } => {
+                format!("{}[]", self.format_type_annotation_for_jsdoc(element_type))
+            }
+            TypeAnnotation::Optional { inner_type } => {
+                format!("{}|null", self.format_type_annotation_for_jsdoc(inner_type))
+            }
+            TypeAnnotation::Object { fields } => {
+                let field_strs: Vec<String> = fields
+                    .iter()
+                    .map(|f| format!("{}: {}", f.name, self.format_type_annotation_for_jsdoc(&f.type_annotation)))
+                    .collect();
+                format!("{{ {} }}", field_strs.join(", "))
+            }
+            TypeAnnotation::Union { types } => {
+                let type_strs: Vec<String> = types.iter().map(|t| self.format_type_annotation_for_jsdoc(t)).collect();
+                format!("({})", type_strs.join("|"))
+            }
+            TypeAnnotation::Reference { name } => name.clone(),
+        }
     }
 
     fn generate_method(&mut self, method: &MethodDef) {

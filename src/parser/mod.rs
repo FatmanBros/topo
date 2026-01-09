@@ -806,7 +806,57 @@ impl Parser {
         };
         self.expect(TokenKind::RParen)?;
 
-        Ok(Endpoint { name, method, path })
+        let mut request_type = None;
+        let mut response_type = None;
+        let mut error_type = None;
+        let mut params_type = None;
+
+        // Check for type annotations
+        // Syntax 1: `-> ResponseType` (simple response type)
+        // Syntax 2: `{ request: Type, response: Type, error: Type, params: Type }` (full block)
+        if self.check(TokenKind::Arrow) {
+            // Simple response type: `-> User`
+            self.advance();
+            response_type = Some(self.parse_type_annotation()?);
+        } else if self.check(TokenKind::LBrace) {
+            // Full block syntax: `{ request: X, response: Y, error: Z, params: P }`
+            self.advance();
+            while !self.check(TokenKind::RBrace) && !self.is_at_end() {
+                // Handle field names - `error` is a keyword so we need special handling
+                let field_name = if self.check(TokenKind::Error) {
+                    self.advance();
+                    "error".to_string()
+                } else {
+                    self.expect_identifier()?
+                };
+                self.expect(TokenKind::Colon)?;
+                let type_ann = self.parse_type_annotation()?;
+
+                match field_name.as_str() {
+                    "request" => request_type = Some(type_ann),
+                    "response" => response_type = Some(type_ann),
+                    "error" => error_type = Some(type_ann),
+                    "params" => params_type = Some(type_ann),
+                    _ => {
+                        // Unknown field, ignore for forward compatibility
+                    }
+                }
+
+                // Optional comma
+                let _ = self.match_token(TokenKind::Comma);
+            }
+            self.expect(TokenKind::RBrace)?;
+        }
+
+        Ok(Endpoint {
+            name,
+            method,
+            path,
+            request_type,
+            response_type,
+            error_type,
+            params_type,
+        })
     }
 
     // ========================================================================
