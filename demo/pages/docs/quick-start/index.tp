@@ -68,6 +68,7 @@ ProjectStructureSection -> DocsCodeSection({
     │   └── organisms/      # Complex components
     ├── stores/             # Global state
     ├── services/           # API services
+    ├── routes.tp           # Router & Routes definitions
     └── topo.config.json    # Configuration`,
     preview: [FeatureList({
         title: "Key directories:",
@@ -75,7 +76,7 @@ ProjectStructureSection -> DocsCodeSection({
             { icon: "v", text: "pages/ - File-based routing" },
             { icon: "v", text: "components/ - Reusable UI" },
             { icon: "v", text: "stores/ - State management" },
-            { icon: "v", text: "services/ - API definitions" }
+            { icon: "v", text: "routes.tp - Router with guards" }
         ]
     })]
 })

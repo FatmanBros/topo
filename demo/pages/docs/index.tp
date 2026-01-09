@@ -86,7 +86,7 @@ FeaturesGrid -> {
         FeatureCard({ icon: "v", title: "Components", desc: "Build UIs with simple, composable components using the -> operator" }),
         FeatureCard({ icon: "v", title: "Store", desc: "Built-in state management with Actions, Reducers, and Effects" }),
         FeatureCard({ icon: "v", title: "API Services", desc: "Auto-generated CRUD methods from REST endpoint definitions" }),
-        FeatureCard({ icon: "v", title: "File-based Routing", desc: "Automatic route generation from your file structure" }),
+        FeatureCard({ icon: "v", title: "Router & Guards", desc: "Type-safe routing with navigation guards and component protection" }),
         FeatureCard({ icon: "v", title: "Tailwind CSS", desc: "First-class Tailwind support for styling" }),
         FeatureCard({ icon: "v", title: "Easy Testing", desc: "Test stores and components in isolation" }),
         FeatureCard({ icon: "v", title: "Forms", desc: "Declarative form handling with validation annotations" }),
