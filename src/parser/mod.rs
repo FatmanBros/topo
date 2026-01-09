@@ -830,6 +830,14 @@ impl Parser {
             return Ok(Statement::Dispatch { action, args });
         }
 
+        // Navigate: navigate: "/path" or navigate: expression
+        if self.check(TokenKind::Navigate) {
+            self.advance();
+            self.expect(TokenKind::Colon)?;
+            let path = self.expression()?;
+            return Ok(Statement::Navigate { path });
+        }
+
         // Assignment: name: value
         if self.check(TokenKind::Identifier) {
             let name = self.expect_identifier()?;

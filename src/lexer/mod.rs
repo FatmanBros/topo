@@ -369,6 +369,7 @@ impl<'a> Lexer<'a> {
             "await" => TokenKind::Await,
             "async" => TokenKind::Async,
             "dispatch" => TokenKind::Dispatch,
+            "navigate" => TokenKind::Navigate,
             "return" => TokenKind::Return,
             "extends" => TokenKind::Extends,
             "import" => TokenKind::Import,

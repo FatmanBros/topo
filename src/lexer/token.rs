@@ -65,6 +65,7 @@ pub enum TokenKind {
     Await,
     Async,
     Dispatch,
+    Navigate,
     Return,
 
     // Keywords - Structure
@@ -183,6 +184,7 @@ impl std::fmt::Display for TokenKind {
             TokenKind::Await => write!(f, "await"),
             TokenKind::Async => write!(f, "async"),
             TokenKind::Dispatch => write!(f, "dispatch"),
+            TokenKind::Navigate => write!(f, "navigate"),
             TokenKind::Return => write!(f, "return"),
             TokenKind::Extends => write!(f, "extends"),
             TokenKind::Import => write!(f, "import"),

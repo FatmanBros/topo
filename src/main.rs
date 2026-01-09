@@ -1691,7 +1691,12 @@ fn generate_html_dev(config: &Config, ws_port: u16) -> String {
     <script>
     // Hot Reload WebSocket
     (function() {{
+      let connected = false;
       const ws = new WebSocket('ws://localhost:{}');
+      ws.onopen = () => {{
+        connected = true;
+        console.log('[topo] Hot reload connected');
+      }};
       ws.onmessage = (e) => {{
         if (e.data === 'reload') {{
           console.log('[topo] Reloading...');
@@ -1699,8 +1704,10 @@ fn generate_html_dev(config: &Config, ws_port: u16) -> String {
         }}
       }};
       ws.onclose = () => {{
-        console.log('[topo] Connection lost, attempting reconnect...');
-        setTimeout(() => location.reload(), 1000);
+        if (connected) {{
+          console.log('[topo] Connection lost, attempting reconnect...');
+          setTimeout(() => location.reload(), 1000);
+        }}
       }};
       ws.onerror = () => {{}};
     }})();

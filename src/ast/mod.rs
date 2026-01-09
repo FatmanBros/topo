@@ -378,6 +378,11 @@ pub enum Statement {
         args: Vec<Expression>,
     },
 
+    /// Navigate to path: `navigate: "/path"`
+    Navigate {
+        path: Expression,
+    },
+
     /// Try-catch block
     TryCatch {
         try_block: Vec<Statement>,

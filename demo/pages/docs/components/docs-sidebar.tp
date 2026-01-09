@@ -35,6 +35,7 @@ DocsSidebarNav -> {
             items: [
                 DocsSidebarItem({ label: "Styling", href: "/docs/styling", active: false }),
                 DocsSidebarItem({ label: "Forms", href: "/docs/forms", active: false }),
+                DocsSidebarItem({ label: "Testing", href: "/docs/testing", active: false }),
                 DocsSidebarItem({ label: "i18n", href: "/docs/i18n", active: false })
             ]
         })

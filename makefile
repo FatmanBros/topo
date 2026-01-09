@@ -13,3 +13,8 @@ e2e:
 
 claude:
 	claude --dangerously-skip-permissions
+
+# VSCode extension (build + package + install)
+vsc:
+	cd vscode-topo && npm install && npm run compile && npm run package
+	code --install-extension vscode-topo/topo-lang-*.vsix
