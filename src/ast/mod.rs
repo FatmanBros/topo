@@ -52,11 +52,14 @@ pub enum Declaration {
     /// AfterOnce hook (runs once after all tests): `AfterOnce { ... }`
     AfterOnce(TestHookDef),
 
-    /// Guard definition: `Name ? { ... }`
+    /// Guard definition: `Name ? { ... }` or `Name | activate { }` / `Name | deactivate { }`
     Guard(GuardDef),
 
     /// Guard setup: `GuardSetup { ... }`
     GuardSetup(GuardSetupDef),
+
+    /// Routes definition: `Routes { ... }` or `RouteName { ... }` for subroutes
+    Routes(RoutesDef),
 }
 
 // ============================================================================
@@ -92,6 +95,9 @@ pub struct ComponentDef {
     /// Component alias: `Alias(args) -> Base(args, defaultValue)`
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub alias: Option<ComponentAlias>,
+    /// Guards applied to this component: `Name -> Guard1, Guard2 { }`
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub guards: Vec<String>,
 }
 
 /// Component alias definition
@@ -149,10 +155,14 @@ pub struct ThemeDef {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct GuardDef {
     pub name: String,
-    /// Expression that returns boolean - true allows navigation, false blocks it
-    pub check: Expression,
-    /// Path to redirect to when guard blocks navigation
-    pub redirect: String,
+    /// Guard type: activate (entering route) or deactivate (leaving route)
+    pub guard_type: GuardType,
+    /// Body statements (for new style guards with Effects-like syntax)
+    pub body: Vec<Statement>,
+    /// Expression that returns boolean - true allows navigation, false blocks it (legacy)
+    pub check: Option<Expression>,
+    /// Path to redirect to when guard blocks navigation (legacy)
+    pub redirect: Option<String>,
 }
 
 /// Guard setup: configures which guards apply to which routes
@@ -357,6 +367,66 @@ pub struct SelectorsBlock {
 pub struct SelectorDef {
     pub name: String,
     pub body: Expression,
+}
+
+// ============================================================================
+// Routes Definition
+// ============================================================================
+
+/// Routes definition: `Routes { ... }` or named subroute `DocsRoute { ... }`
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RoutesDef {
+    /// Name of the routes block (e.g., "Routes", "DocsRoute")
+    pub name: String,
+    /// Route entries
+    pub routes: Vec<RouteEntry>,
+    /// Guards configuration
+    pub guards: Option<RoutesGuardsConfig>,
+}
+
+/// A single route entry
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RouteEntry {
+    /// Route name (e.g., "home", "userDetail")
+    pub name: String,
+    /// Route parameters (e.g., ["id"] for userDetail(id))
+    pub params: Vec<String>,
+    /// Route configuration
+    pub config: RouteConfig,
+}
+
+/// Route configuration - path only, path with guards, or subroute reference
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "type")]
+pub enum RouteConfig {
+    /// Simple path: `"/dashboard"`
+    Path { path: String },
+    /// Path with guards: `{"/dashboard", [guard1, guard2]}`
+    PathWithGuards { path: String, guards: Vec<String> },
+    /// Subroute reference: `"/docs" -> DocsRoute`
+    SubRoute { path: String, route_ref: String },
+}
+
+/// Guards configuration for a Routes block
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RoutesGuardsConfig {
+    /// Global guards applied to all routes in this block
+    pub global: Vec<String>,
+    /// Routes that skip global guards
+    pub skip: Vec<String>,
+}
+
+// ============================================================================
+// Guard Definition (with activate/deactivate)
+// ============================================================================
+
+/// Guard type: when the guard is executed
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum GuardType {
+    /// Execute when entering a route (default)
+    Activate,
+    /// Execute when leaving a route
+    Deactivate,
 }
 
 // ============================================================================

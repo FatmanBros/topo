@@ -1238,24 +1238,162 @@ impl JsCodegen {
             Declaration::AfterOnce(_) => {}  // Handled separately for Playwright test generation
             Declaration::Guard(guard) => self.generate_guard(guard),
             Declaration::GuardSetup(setup) => self.generate_guard_setup(setup),
+            Declaration::Routes(routes) => self.generate_routes(routes),
         }
     }
 
     fn generate_guard(&mut self, guard: &GuardDef) {
         // Generate guard function
-        let check_expr = self.generate_expression(&guard.check);
         let guard_name = guard.name.clone();
-        let redirect = guard.redirect.clone();
 
-        self.emit_line(&format!("function {}Guard() {{", guard_name));
-        self.emit_line(&format!("  const allowed = {};", check_expr));
-        self.emit_line("  if (!allowed) {");
-        self.emit_line(&format!("    window.location.hash = '{}';", redirect));
-        self.emit_line("    return false;");
-        self.emit_line("  }");
-        self.emit_line("  return true;");
-        self.emit_line("}");
+        // Determine guard type string for runtime
+        let guard_type_str = match guard.guard_type {
+            GuardType::Activate => "activate",
+            GuardType::Deactivate => "deactivate",
+        };
+
+        // Handle guards with check/redirect
+        if let Some(ref check) = guard.check {
+            let check_expr = self.generate_expression(check);
+            let redirect = guard.redirect.as_deref().unwrap_or("/");
+
+            self.emit_line(&format!("const {}Guard = {{", guard_name));
+            self.emit_line(&format!("  type: '{}',", guard_type_str));
+            self.emit_line(&format!("  check: () => {},", check_expr));
+            self.emit_line(&format!("  redirect: '{}',", redirect));
+            self.emit_line("  execute() {");
+            self.emit_line("    const allowed = this.check();");
+            self.emit_line("    if (!allowed) {");
+            self.emit_line("      window.location.hash = this.redirect;");
+            self.emit_line("      return false;");
+            self.emit_line("    }");
+            self.emit_line("    return true;");
+            self.emit_line("  }");
+            self.emit_line("};");
+            self.emit_line("");
+        }
+        // TODO: Handle new style guards with body statements
+    }
+
+    fn generate_routes(&mut self, routes: &RoutesDef) {
+        self.emit_line(&format!("// Routes: {}", routes.name));
+        self.emit_line(&format!("const {} = {{", routes.name));
+        self.indent += 1;
+
+        for entry in &routes.routes {
+            match &entry.config {
+                RouteConfig::Path { path } => {
+                    if entry.params.is_empty() {
+                        // Simple route: home: () => "/"
+                        self.emit_line(&format!("{}: () => '{}',", entry.name, path));
+                    } else {
+                        // Parameterized route: userDetail: (id) => `/users/${id}`
+                        let params = entry.params.join(", ");
+                        let template_path = self.convert_path_to_template(path, &entry.params);
+                        self.emit_line(&format!("{}: ({}) => `{}`,", entry.name, params, template_path));
+                    }
+                }
+                RouteConfig::PathWithGuards { path, guards: _ } => {
+                    // Route with guards - same generation, guards are handled elsewhere
+                    if entry.params.is_empty() {
+                        self.emit_line(&format!("{}: () => '{}',", entry.name, path));
+                    } else {
+                        let params = entry.params.join(", ");
+                        let template_path = self.convert_path_to_template(path, &entry.params);
+                        self.emit_line(&format!("{}: ({}) => `{}`,", entry.name, params, template_path));
+                    }
+                }
+                RouteConfig::SubRoute { path, route_ref } => {
+                    // Route with sub-routes: Object.assign wraps sub-routes to prepend base path
+                    // This allows Routes.docs() -> "/docs" and Routes.docs.installation() -> "/docs/installation"
+                    if entry.params.is_empty() {
+                        // Generate wrapper that prepends base path to all sub-route functions
+                        self.emit_line(&format!(
+                            "{}: Object.assign(() => '{}', Object.fromEntries(Object.entries({}).map(([k, v]) => [k, (...args) => '{}' + v(...args)]))),",
+                            entry.name, path, route_ref, path
+                        ));
+                    } else {
+                        let params = entry.params.join(", ");
+                        let template_path = self.convert_path_to_template(path, &entry.params);
+                        self.emit_line(&format!(
+                            "{}: Object.assign(({}) => `{}`, Object.fromEntries(Object.entries({}).map(([k, v]) => [k, (...args) => `{}` + v(...args)]))),",
+                            entry.name, params, template_path, route_ref, template_path
+                        ));
+                    }
+                }
+            }
+        }
+
+        self.indent -= 1;
+        self.emit_line("};");
         self.emit_line("");
+
+        // Generate guards configuration if present
+        self.generate_routes_guards(routes);
+    }
+
+    fn generate_routes_guards(&mut self, routes: &RoutesDef) {
+        // Collect route-specific guards from PathWithGuards configs
+        let mut route_guards: Vec<(String, Vec<String>)> = Vec::new();
+        for entry in &routes.routes {
+            if let RouteConfig::PathWithGuards { path, guards } = &entry.config {
+                route_guards.push((path.clone(), guards.clone()));
+            }
+        }
+
+        // Only generate if there are guards or guard config
+        if routes.guards.is_none() && route_guards.is_empty() {
+            return;
+        }
+
+        self.emit_line(&format!("const {}Guards = {{", routes.name));
+        self.indent += 1;
+
+        // Global guards
+        if let Some(guards_config) = &routes.guards {
+            if !guards_config.global.is_empty() {
+                let guards = guards_config.global.join(", ");
+                self.emit_line(&format!("global: [{}],", guards));
+            } else {
+                self.emit_line("global: [],");
+            }
+
+            // Skip routes
+            if !guards_config.skip.is_empty() {
+                let skips = guards_config.skip.iter()
+                    .map(|s| format!("'{}'", s))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                self.emit_line(&format!("skip: [{}],", skips));
+            }
+        } else {
+            self.emit_line("global: [],");
+        }
+
+        // Route-specific guards
+        if !route_guards.is_empty() {
+            self.emit_line("routes: {");
+            self.indent += 1;
+            for (path, guards) in &route_guards {
+                let guards_str = guards.join(", ");
+                self.emit_line(&format!("'{}': [{}],", path, guards_str));
+            }
+            self.indent -= 1;
+            self.emit_line("},");
+        }
+
+        self.indent -= 1;
+        self.emit_line("};");
+        self.emit_line("");
+    }
+
+    /// Convert path like "/users/{id}" to template literal "/users/${id}"
+    fn convert_path_to_template(&self, path: &str, params: &[String]) -> String {
+        let mut result = path.to_string();
+        for param in params {
+            result = result.replace(&format!("{{{}}}", param), &format!("${{{}}}", param));
+        }
+        result
     }
 
     fn generate_guard_setup(&mut self, setup: &GuardSetupDef) {
@@ -1339,6 +1477,15 @@ impl JsCodegen {
 
         self.emit_line(&format!("function {}({}) {{", component_name, params_str));
         self.indent += 1;
+
+        // Add guard check if component has guards
+        if !comp.guards.is_empty() {
+            let guard_checks = comp.guards.iter()
+                .map(|g| format!("!{}Guard.check()", g))
+                .collect::<Vec<_>>()
+                .join(" || ");
+            self.emit_line(&format!("if ({}) return null;", guard_checks));
+        }
 
         self.emit_line("return {");
         self.indent += 1;
@@ -2607,6 +2754,7 @@ impl TsCodegen {
             Declaration::AfterOnce(_) => {}  // Tests don't need type exports
             Declaration::Guard(_) => {}      // Guards don't need type exports
             Declaration::GuardSetup(_) => {} // GuardSetup doesn't need type exports
+            Declaration::Routes(_) => {}     // Routes types are handled separately
         }
     }
 

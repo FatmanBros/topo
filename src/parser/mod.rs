@@ -81,6 +81,25 @@ impl Parser {
             return self.guard_setup_definition();
         }
 
+        // Check for Routes definition: Routes { ... }
+        if self.check(TokenKind::Routes) {
+            return self.routes_definition();
+        }
+
+        // Check for activate/deactivate guard: activate AuthGuard ? { } or deactivate UnsavedChanges ? { }
+        if self.check(TokenKind::Activate) || self.check(TokenKind::Deactivate) {
+            let guard_type = if self.check(TokenKind::Activate) {
+                self.advance();
+                GuardType::Activate
+            } else {
+                self.advance();
+                GuardType::Deactivate
+            };
+            let name = self.expect_identifier()?;
+            self.expect(TokenKind::Question)?;
+            return Ok(Declaration::Guard(self.guard_def_with_type(name, guard_type)?));
+        }
+
         // Check for anonymous store: | { ... }
         if self.check(TokenKind::Pipe) {
             self.advance();
@@ -201,26 +220,64 @@ impl Parser {
     // ========================================================================
 
     fn component_def(&mut self, name: String, params: Vec<TypedParam>) -> Result<ComponentDef, ParseError> {
-        // Check if this is an alias: Alias(args) -> Base(args, defaultValue)
+        // Check if this is an alias or guarded component
+        // Alias: Name -> Base(args)
+        // Guarded: Name -> Guard1, Guard2 { ... }
         if self.check(TokenKind::Identifier) {
-            let base = self.expect_identifier()?;
-            self.expect(TokenKind::LParen)?;
-            let mut args = Vec::new();
-            while !self.check(TokenKind::RParen) && !self.is_at_end() {
-                args.push(self.expression()?);
-                if !self.check(TokenKind::RParen) {
-                    let _ = self.match_token(TokenKind::Comma);
+            let first_ident = self.expect_identifier()?;
+
+            // Check what follows the identifier
+            if self.check(TokenKind::LParen) {
+                // This is an alias: Name -> Base(args)
+                self.advance(); // consume LParen
+                let mut args = Vec::new();
+                while !self.check(TokenKind::RParen) && !self.is_at_end() {
+                    args.push(self.expression()?);
+                    if !self.check(TokenKind::RParen) {
+                        let _ = self.match_token(TokenKind::Comma);
+                    }
                 }
+                self.expect(TokenKind::RParen)?;
+                return Ok(ComponentDef {
+                    name,
+                    params,
+                    properties: Vec::new(),
+                    init: None,
+                    destroy: None,
+                    alias: Some(ComponentAlias { base: first_ident, args }),
+                    guards: Vec::new(),
+                });
+            } else {
+                // This is a guarded component: Name -> Guard1, Guard2 { ... }
+                let mut guards = vec![first_ident];
+
+                // Parse additional guards separated by comma
+                while self.check(TokenKind::Comma) {
+                    self.advance(); // consume comma
+                    guards.push(self.expect_identifier()?);
+                }
+
+                // Now parse the component body
+                self.expect(TokenKind::LBrace)?;
+
+                let mut properties = Vec::new();
+                let mut init = None;
+                let mut destroy = None;
+
+                while !self.check(TokenKind::RBrace) && !self.is_at_end() {
+                    let prop = self.property()?;
+
+                    match prop.key.as_str() {
+                        "init" => init = Some(prop.value),
+                        "destroy" => destroy = Some(prop.value),
+                        _ => properties.push(prop),
+                    }
+                }
+
+                self.expect(TokenKind::RBrace)?;
+
+                return Ok(ComponentDef { name, params, properties, init, destroy, alias: None, guards });
             }
-            self.expect(TokenKind::RParen)?;
-            return Ok(ComponentDef {
-                name,
-                params,
-                properties: Vec::new(),
-                init: None,
-                destroy: None,
-                alias: Some(ComponentAlias { base, args }),
-            });
         }
 
         // Regular component definition: Name(params) -> { ... }
@@ -243,7 +300,7 @@ impl Parser {
 
         self.expect(TokenKind::RBrace)?;
 
-        Ok(ComponentDef { name, params, properties, init, destroy, alias: None })
+        Ok(ComponentDef { name, params, properties, init, destroy, alias: None, guards: Vec::new() })
     }
 
     // ========================================================================
@@ -268,6 +325,10 @@ impl Parser {
     // ========================================================================
 
     fn guard_def(&mut self, name: String) -> Result<GuardDef, ParseError> {
+        self.guard_def_with_type(name, GuardType::Activate)
+    }
+
+    fn guard_def_with_type(&mut self, name: String, guard_type: GuardType) -> Result<GuardDef, ParseError> {
         self.expect(TokenKind::LBrace)?;
 
         let mut check = None;
@@ -295,14 +356,15 @@ impl Parser {
 
         self.expect(TokenKind::RBrace)?;
 
-        let check = check.ok_or_else(|| ParseError::UnexpectedToken {
+        // Legacy guard style requires both check and redirect
+        let check_expr = check.ok_or_else(|| ParseError::UnexpectedToken {
             expected: "check property".to_string(),
             found: "missing".to_string(),
             line: self.peek().line,
             column: self.peek().column,
         })?;
 
-        let redirect = redirect.ok_or_else(|| ParseError::UnexpectedToken {
+        let redirect_path = redirect.ok_or_else(|| ParseError::UnexpectedToken {
             expected: "redirect property".to_string(),
             found: "missing".to_string(),
             line: self.peek().line,
@@ -311,8 +373,10 @@ impl Parser {
 
         Ok(GuardDef {
             name,
-            check,
-            redirect,
+            guard_type,
+            body: Vec::new(),
+            check: Some(check_expr),
+            redirect: Some(redirect_path),
         })
     }
 
@@ -367,6 +431,152 @@ impl Parser {
         self.expect(TokenKind::RBrace)?;
 
         Ok(Declaration::GuardSetup(GuardSetupDef { global, routes }))
+    }
+
+    // ========================================================================
+    // Routes Definition
+    // ========================================================================
+
+    fn routes_definition(&mut self) -> Result<Declaration, ParseError> {
+        // Expect Routes keyword
+        self.expect(TokenKind::Routes)?;
+
+        // Check for optional name: Routes DocsRoutes { } or Routes { }
+        let name = if self.check(TokenKind::Identifier) {
+            self.expect_identifier()?
+        } else {
+            "Routes".to_string()
+        };
+
+        self.routes_def_with_name(name)
+    }
+
+    fn routes_def_with_name(&mut self, name: String) -> Result<Declaration, ParseError> {
+        self.expect(TokenKind::LBrace)?;
+
+        let mut routes = Vec::new();
+        let mut guards_config = None;
+
+        while !self.check(TokenKind::RBrace) && !self.is_at_end() {
+            // Check for Guards block
+            if self.check(TokenKind::Guards) {
+                self.advance();
+                self.expect(TokenKind::LBrace)?;
+                guards_config = Some(self.parse_routes_guards_config()?);
+                self.expect(TokenKind::RBrace)?;
+                continue;
+            }
+
+            // Parse route entry: name: "/path" or name(params): "/path"
+            let route_name = self.expect_identifier()?;
+
+            // Parse optional parameters: name(id) or name(projectId, taskId)
+            let params = if self.check(TokenKind::LParen) {
+                self.advance();
+                let mut params = Vec::new();
+                while !self.check(TokenKind::RParen) && !self.is_at_end() {
+                    params.push(self.expect_identifier()?);
+                    if !self.check(TokenKind::RParen) {
+                        let _ = self.match_token(TokenKind::Comma);
+                    }
+                }
+                self.expect(TokenKind::RParen)?;
+                params
+            } else {
+                Vec::new()
+            };
+
+            self.expect(TokenKind::Colon)?;
+
+            // Parse route config: "/path", {"/path", [guards]}, or "/path" -> SubRoute
+            let config = self.parse_route_config()?;
+
+            routes.push(RouteEntry {
+                name: route_name,
+                params,
+                config,
+            });
+        }
+
+        self.expect(TokenKind::RBrace)?;
+
+        Ok(Declaration::Routes(RoutesDef {
+            name,
+            routes,
+            guards: guards_config,
+        }))
+    }
+
+    fn parse_route_config(&mut self) -> Result<RouteConfig, ParseError> {
+        // Check for {"/path", [guards]} syntax
+        if self.check(TokenKind::LBrace) {
+            self.advance();
+            let path = self.expect_string()?;
+            self.expect(TokenKind::Comma)?;
+            self.expect(TokenKind::LBracket)?;
+
+            let mut guards = Vec::new();
+            while !self.check(TokenKind::RBracket) && !self.is_at_end() {
+                guards.push(self.expect_identifier()?);
+                if !self.check(TokenKind::RBracket) {
+                    let _ = self.match_token(TokenKind::Comma);
+                }
+            }
+            self.expect(TokenKind::RBracket)?;
+            self.expect(TokenKind::RBrace)?;
+
+            return Ok(RouteConfig::PathWithGuards { path, guards });
+        }
+
+        // Simple path: "/path" or "/path" -> SubRoute
+        let path = self.expect_string()?;
+
+        // Check for subroute: -> SubRoute
+        if self.check(TokenKind::Arrow) {
+            self.advance();
+            let route_ref = self.expect_identifier()?;
+            return Ok(RouteConfig::SubRoute { path, route_ref });
+        }
+
+        Ok(RouteConfig::Path { path })
+    }
+
+    fn parse_routes_guards_config(&mut self) -> Result<RoutesGuardsConfig, ParseError> {
+        let mut global = Vec::new();
+        let mut skip = Vec::new();
+
+        while !self.check(TokenKind::RBrace) && !self.is_at_end() {
+            if self.check(TokenKind::Global) {
+                self.advance();
+                self.expect(TokenKind::Colon)?;
+                self.expect(TokenKind::LBracket)?;
+
+                while !self.check(TokenKind::RBracket) && !self.is_at_end() {
+                    global.push(self.expect_identifier()?);
+                    if !self.check(TokenKind::RBracket) {
+                        let _ = self.match_token(TokenKind::Comma);
+                    }
+                }
+                self.expect(TokenKind::RBracket)?;
+            } else if self.check(TokenKind::Skip) {
+                self.advance();
+                self.expect(TokenKind::Colon)?;
+                self.expect(TokenKind::LBracket)?;
+
+                while !self.check(TokenKind::RBracket) && !self.is_at_end() {
+                    skip.push(self.expect_identifier()?);
+                    if !self.check(TokenKind::RBracket) {
+                        let _ = self.match_token(TokenKind::Comma);
+                    }
+                }
+                self.expect(TokenKind::RBracket)?;
+            } else {
+                // Unknown token, skip it
+                self.advance();
+            }
+        }
+
+        Ok(RoutesGuardsConfig { global, skip })
     }
 
     // ========================================================================

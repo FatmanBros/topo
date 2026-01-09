@@ -411,6 +411,33 @@ fn build_project(input: &PathBuf, output: &PathBuf, mode: &str) -> Result<()> {
         all_output.push_str("\n");
     }
 
+    // Load routes.tp if exists (for type-safe route definitions)
+    let routes_def_path = project_root.join("routes.tp");
+    if routes_def_path.exists() {
+        println!("  Loading routes.tp...");
+        let routes_source = fs::read_to_string(&routes_def_path)?;
+        let mut lexer = Lexer::new(&routes_source);
+        match lexer.tokenize() {
+            Ok(tokens) => {
+                let mut parser = TopoParser::new(tokens);
+                match parser.parse() {
+                    Ok(program) => {
+                        all_output.push_str("\n// Routes Definition\n");
+                        let routes_js = codegen.generate(&program);
+                        all_output.push_str(&routes_js);
+                        all_output.push_str("\n");
+                    }
+                    Err(e) => {
+                        eprintln!("Error parsing routes.tp: {}", e);
+                    }
+                }
+            }
+            Err(e) => {
+                eprintln!("Error tokenizing routes.tp: {}", e);
+            }
+        }
+    }
+
     // Generate file-based routes (registration happens after component definitions)
     let routes = generate_routes(&entry_files, input)?;
 

@@ -399,11 +399,16 @@ impl<'a> Lexer<'a> {
             "error" => TokenKind::Error,
             "open" => TokenKind::Open,
             "close" => TokenKind::Close,
-            // Guards
+            // Guards & Routes
             "GuardSetup" => TokenKind::GuardSetup,
             "global" => TokenKind::Global,
             "routes" => TokenKind::Routes,
+            "Routes" => TokenKind::Routes,
+            "Guards" => TokenKind::Guards,
             "none" => TokenKind::None,
+            "skip" => TokenKind::Skip,
+            "activate" => TokenKind::Activate,
+            "deactivate" => TokenKind::Deactivate,
             // Testing keywords
             "Test" => TokenKind::Test,
             "xTest" => TokenKind::XTest,

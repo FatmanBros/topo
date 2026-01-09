@@ -1,0 +1,25 @@
+// Routes definition
+
+// Named sub-routes for docs section
+Routes DocsRoutes {
+    index: "/"
+    installation: "/installation"
+    quickStart: "/quick-start"
+    components: "/components-guide"
+    store: "/store"
+}
+
+// Main routes
+Routes {
+    home: "/"
+    login: "/login"
+    dashboard: "/dashboard"
+    docs: "/docs" -> DocsRoutes
+    userDetail(id): "/users/{id}"
+    projectTask(projectId, taskId): "/projects/{projectId}/tasks/{taskId}"
+
+    Guards {
+        global: [isAuthenticated]
+        skip: [home, login, docs]
+    }
+}
