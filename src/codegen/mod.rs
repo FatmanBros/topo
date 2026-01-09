@@ -581,6 +581,15 @@ impl JsCodegen {
         self.emit_line("    const vdom = typeof page === 'function' ? page() : page;");
         self.emit_line("    el.innerHTML = renderVdom(vdom);");
         self.emit_line("    bindEvents(el, vdom);");
+        self.emit_line("    // Update document title on page change");
+        self.emit_line("    if (pageChanged && vdom) {");
+        self.emit_line("      if (vdom.title) {");
+        self.emit_line("        const titleText = resolveText(vdom.title);");
+        self.emit_line("        document.title = __defaultTitle ? `${titleText} | ${__defaultTitle}` : titleText;");
+        self.emit_line("      } else if (__defaultTitle) {");
+        self.emit_line("        document.title = __defaultTitle;");
+        self.emit_line("      }");
+        self.emit_line("    }");
         self.emit_line("    // Call lifecycle init on page change");
         self.emit_line("    if (pageChanged && vdom && vdom.lifecycle && vdom.lifecycle.init) {");
         self.emit_line("      vdom.lifecycle.init();");
@@ -789,6 +798,7 @@ impl JsCodegen {
     fn emit_router_runtime(&mut self) {
         self.emit_line("// Router");
         self.emit_line("const __basePath = window.__TOPO_BASE_PATH || '';");
+        self.emit_line("const __defaultTitle = window.__TOPO_DEFAULT_TITLE || '';");
         self.emit_line("const routeState = { path: '/', params: {}, query: {} };");
         self.emit_line("const routes = [];");
         self.emit_line("let currentPage = null;");
