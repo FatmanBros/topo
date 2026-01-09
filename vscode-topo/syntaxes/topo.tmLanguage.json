@@ -12,6 +12,7 @@
     { "include": "#component-definition" },
     { "include": "#numbers" },
     { "include": "#annotations" },
+    { "include": "#effect-keywords" },
     { "include": "#keywords" },
     { "include": "#operators" },
     { "include": "#store-access" },
@@ -217,10 +218,40 @@
     "property": {
       "patterns": [
         {
-          "match": "^\\s*([a-zA-Z][a-zA-Z0-9]*)\\s*(:)",
+          "comment": "Property name: value (excluding effect keywords)",
+          "match": "^\\s*(?!dispatch|navigate)([a-zA-Z][a-zA-Z0-9]*)\\s*(:)(?!\\s*await\\b)",
           "captures": {
             "1": { "name": "support.type.property-name.topo" },
             "2": { "name": "punctuation.separator.key-value.topo" }
+          }
+        }
+      ]
+    },
+    "effect-keywords": {
+      "patterns": [
+        {
+          "comment": "dispatch: Action - Effect action dispatch (yellow)",
+          "match": "^\\s*(dispatch)\\s*(:)",
+          "captures": {
+            "1": { "name": "keyword.control.dispatch.topo" },
+            "2": { "name": "punctuation.separator.key-value.topo" }
+          }
+        },
+        {
+          "comment": "navigate: path - Effect navigation (green)",
+          "match": "^\\s*(navigate)\\s*(:)",
+          "captures": {
+            "1": { "name": "keyword.control.navigate.topo" },
+            "2": { "name": "punctuation.separator.key-value.topo" }
+          }
+        },
+        {
+          "comment": "variable: await expr - Async result binding (pink like return)",
+          "match": "^\\s*([a-z][a-zA-Z0-9]*)\\s*(:)\\s*(await)\\b",
+          "captures": {
+            "1": { "name": "variable.other.assignment.topo" },
+            "2": { "name": "punctuation.separator.key-value.topo" },
+            "3": { "name": "keyword.control.async.topo" }
           }
         }
       ]
@@ -234,10 +265,6 @@
         {
           "name": "keyword.control.async.topo",
           "match": "\\b(async|await)\\b"
-        },
-        {
-          "name": "keyword.other.dispatch.topo",
-          "match": "\\b(dispatch)\\b"
         },
         {
           "name": "constant.language.topo",

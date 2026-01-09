@@ -1483,11 +1483,24 @@ impl JsCodegen {
                 self.emit_line("");
             }
 
+            // Collect user-defined reducer action names to avoid overwriting
+            let user_defined_actions: std::collections::HashSet<String> = store.reducers
+                .as_ref()
+                .map(|r| r.handlers.iter().map(|h| h.action.clone()).collect())
+                .unwrap_or_default();
+
             // Auto-generate Set actions with validation for annotated fields
+            // Skip if user has explicitly defined the reducer
             for field in &state.fields {
                 if !field.annotations.is_empty() && !field.annotations.iter().all(|a| a.name == "key" || a.name == "hidden") {
                     let field_name = &field.key;
                     let capitalized = capitalize_first(field_name);
+                    let action_name = format!("Set{}", capitalized);
+
+                    // Skip if user defined this reducer explicitly
+                    if user_defined_actions.contains(&action_name) {
+                        continue;
+                    }
 
                     // Generate auto-validating setter
                     self.emit_line(&format!("{}.on('Set{}', (state, value) => {{", var_name, capitalized));
@@ -1508,12 +1521,13 @@ impl JsCodegen {
             }
 
             // Auto-generate Submit action handler that validates all fields
+            // Skip if user has explicitly defined the Submit reducer
             let validated_fields: Vec<&str> = state.fields.iter()
                 .filter(|f| !f.annotations.is_empty() && !f.annotations.iter().all(|a| a.name == "key" || a.name == "hidden"))
                 .map(|f| f.key.as_str())
                 .collect();
 
-            if !validated_fields.is_empty() {
+            if !validated_fields.is_empty() && !user_defined_actions.contains("Submit") {
                 self.emit_line(&format!("{}.on('Submit', (state) => {{", var_name));
                 self.indent += 1;
                 self.emit_line(&format!("const result = validate{}(state);", var_name));
@@ -1712,6 +1726,10 @@ impl JsCodegen {
                     if args_str.is_empty() { "" } else { ", " },
                     args_str
                 ));
+            }
+            Statement::Navigate { path } => {
+                let path_expr = self.generate_expression(path);
+                self.emit_line(&format!("navigate({});", path_expr));
             }
             Statement::TryCatch {
                 try_block,

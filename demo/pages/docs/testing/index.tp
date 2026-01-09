@@ -1,0 +1,267 @@
+// Testing docs page
+import { DocsTemplate } from "../template.tp"
+import { DocsSection, DocsDescription } from "@/components/molecules/docs-section.tp"
+import { DocsCodeSection } from "@/components/organisms/docs-code-section.tp"
+import { FeatureList } from "@/components/molecules/feature-list.tp"
+import { ConfigPreview } from "@/components/molecules/config-preview.tp"
+
+Page -> DocsTemplate({ children: [TestingContent] })
+
+TestingContent -> {
+    align: vertical
+    style: "space-y-8"
+    children: [
+        PageHeader,
+        BasicTestSection,
+        StoreTestSection,
+        ComponentTestSection,
+        MockingSection,
+        AsyncTestSection,
+        TestRunnerSection
+    ]
+}
+
+PageHeader -> DocsSection({
+    id: "testing",
+    title: "Testing",
+    children: [HeaderDesc]
+})
+
+HeaderDesc -> DocsDescription({
+    text: "Topo provides a built-in testing framework with a clean, expressive syntax. Write unit tests, component tests, and integration tests with ease."
+})
+
+// Basic Test
+BasicTestSection -> DocsCodeSection({
+    title: "Basic Tests",
+    description: "Write tests using the test keyword with descriptive names:",
+    filename: "example.test.tp",
+    code: `
+    test "adds two numbers correctly" {
+        result: add(2, 3)
+
+        expect(result).toBe(5)
+    }
+
+    test "handles edge cases" {
+        expect(add(0, 0)).toBe(0)
+        expect(add(-1, 1)).toBe(0)
+        expect(add(100, -50)).toBe(50)
+    }
+
+    test "throws on invalid input" {
+        expect(() => add("a", 1)).toThrow()
+    }`,
+    preview: [FeatureList({
+        title: "Test syntax features:",
+        items: [
+            { icon: "v", text: "Descriptive test names in quotes" },
+            { icon: "v", text: "Clean expect/matcher API" },
+            { icon: "v", text: "Built-in assertion matchers" },
+            { icon: "v", text: "Exception testing support" }
+        ]
+    })]
+})
+
+// Store Tests
+StoreTestSection -> DocsCodeSection({
+    title: "Store Tests",
+    description: "Test stores in isolation with direct state initialization:",
+    filename: "counter.test.tp",
+    code: `
+    import { Counter } from "./counter.tp"
+
+    test "increments count" {
+        store: Counter.init()
+
+        store.dispatch(Increment)
+
+        expect(store.state.count).toBe(1)
+    }
+
+    test "decrements from initial value" {
+        store: Counter.init({ count: 10 })
+
+        store.dispatch(Decrement)
+
+        expect(store.state.count).toBe(9)
+    }
+
+    test "sets count to specific value" {
+        store: Counter.init()
+
+        store.dispatch(SetCount(42))
+
+        expect(store.state.count).toBe(42)
+    }`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "Store.init()", desc: "Create isolated store instance" },
+            { label: "Store.init({ ... })", desc: "Initialize with custom state" },
+            { label: "store.dispatch()", desc: "Dispatch actions to store" },
+            { label: "store.state", desc: "Access current state" }
+        ]
+    })]
+})
+
+// Component Tests
+ComponentTestSection -> DocsCodeSection({
+    title: "Component Tests",
+    description: "Test components with render and query utilities:",
+    filename: "button.test.tp",
+    code: `
+    import { Button } from "@/components/atoms/button.tp"
+
+    test "renders button with text" {
+        render: Button({ text: "Click me" })
+
+        button: screen.getByRole("button")
+
+        expect(button).toBeVisible()
+        expect(button).toHaveText("Click me")
+    }
+
+    test "calls onClick handler when clicked" {
+        handler: mock.fn()
+        render: Button({ text: "Click", onClick: handler })
+
+        screen.getByRole("button").click()
+
+        expect(handler).toHaveBeenCalled()
+    }
+
+    test "applies custom styles" {
+        render: Button({ text: "Styled", style: "bg-red-500" })
+
+        expect(screen.getByRole("button")).toHaveClass("bg-red-500")
+    }`,
+    preview: [FeatureList({
+        title: "Component testing utilities:",
+        items: [
+            { icon: "v", text: "render() for mounting components" },
+            { icon: "v", text: "screen queries (getByRole, getByText)" },
+            { icon: "v", text: "User interaction simulation" },
+            { icon: "v", text: "Style and attribute assertions" }
+        ]
+    })]
+})
+
+// Mocking
+MockingSection -> DocsCodeSection({
+    title: "Mocking",
+    description: "Mock functions and modules for isolated testing:",
+    filename: "api.test.tp",
+    code: `
+    import { UserStore } from "./user-store.tp"
+    import { UserApi } from "@/services/user-api.tp"
+
+    test "fetches users from API" {
+        // Mock the API response
+        mock(UserApi.getAll).returns([
+            { id: 1, name: "Alice" },
+            { id: 2, name: "Bob" }
+        ])
+
+        store: UserStore.init()
+        await store.dispatch(FetchUsers)
+
+        expect(store.state.users).toHaveLength(2)
+        expect(store.state.users[0].name).toBe("Alice")
+    }
+
+    test "handles API errors" {
+        mock(UserApi.getAll).throws(Error("Network error"))
+
+        store: UserStore.init()
+        await store.dispatch(FetchUsers)
+
+        expect(store.state.error).toBe("Network error")
+        expect(store.state.users).toEqual([])
+    }
+
+    test "tracks function calls" {
+        handler: mock.fn()
+
+        handler("arg1", "arg2")
+
+        expect(handler).toHaveBeenCalledWith("arg1", "arg2")
+        expect(handler).toHaveBeenCalledTimes(1)
+    }`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "mock(fn).returns()", desc: "Mock return value" },
+            { label: "mock(fn).throws()", desc: "Mock throwing error" },
+            { label: "mock.fn()", desc: "Create mock function" },
+            { label: "toHaveBeenCalled()", desc: "Assert function was called" }
+        ]
+    })]
+})
+
+// Async Tests
+AsyncTestSection -> DocsCodeSection({
+    title: "Async Tests",
+    description: "Handle asynchronous operations with async/await:",
+    filename: "async.test.tp",
+    code: `
+    test "waits for async operation" {
+        result: await fetchData()
+
+        expect(result).toBeDefined()
+    }
+
+    test "waits for component update" {
+        render: AsyncComponent()
+
+        // Wait for loading to complete
+        await waitFor(() => {
+            expect(screen.getByText("Loaded")).toBeVisible()
+        })
+    }
+
+    test "handles timeout" {
+        await expect(slowOperation()).resolves.toBe("done")
+    }
+
+    test "handles rejection" {
+        await expect(failingOperation()).rejects.toThrow("Failed")
+    }`,
+    preview: [FeatureList({
+        title: "Async testing support:",
+        items: [
+            { icon: "v", text: "async/await syntax" },
+            { icon: "v", text: "waitFor() for DOM updates" },
+            { icon: "v", text: "Promise resolution assertions" },
+            { icon: "v", text: "Promise rejection assertions" }
+        ]
+    })]
+})
+
+// Test Runner
+TestRunnerSection -> DocsCodeSection({
+    title: "Running Tests",
+    description: "Execute tests using the Topo CLI:",
+    filename: "terminal",
+    code: `
+    # Run all tests
+    topo test
+
+    # Run specific test file
+    topo test counter.test.tp
+
+    # Run tests matching pattern
+    topo test --filter "user"
+
+    # Watch mode for development
+    topo test --watch
+
+    # Generate coverage report
+    topo test --coverage`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "topo test", desc: "Run all test files" },
+            { label: "--filter", desc: "Filter tests by name" },
+            { label: "--watch", desc: "Re-run on file changes" },
+            { label: "--coverage", desc: "Generate coverage report" }
+        ]
+    })]
+})

@@ -38,12 +38,7 @@ LoginFormCard | {
     }
 
     Reducers {
-        on SetEmail(value) {
-            email: value
-        }
-        on SetPassword(value) {
-            password: value
-        }
+        // SetEmail and SetPassword are auto-generated with validation
         on SetSubmitting(value) {
             isSubmitting: value
         }

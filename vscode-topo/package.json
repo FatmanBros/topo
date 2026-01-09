@@ -62,6 +62,32 @@
           "description": "Enable Tailwind CSS class suggestions"
         }
       }
+    },
+    "configurationDefaults": {
+      "editor.tokenColorCustomizations": {
+        "textMateRules": [
+          {
+            "scope": "keyword.control.dispatch.topo",
+            "settings": {
+              "foreground": "#DCDCAA",
+              "fontStyle": "bold"
+            }
+          },
+          {
+            "scope": "keyword.control.navigate.topo",
+            "settings": {
+              "foreground": "#4EC9B0",
+              "fontStyle": "bold"
+            }
+          },
+          {
+            "scope": "variable.other.assignment.topo",
+            "settings": {
+              "foreground": "#9CDCFE"
+            }
+          }
+        ]
+      }
     }
   },
   "scripts": {
