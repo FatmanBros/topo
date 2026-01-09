@@ -459,6 +459,8 @@ impl JsCodegen {
         self.emit_line("");
         self.emit_runtime_validators();
         self.emit_line("");
+        self.emit_runtime_pipes();
+        self.emit_line("");
         self.emit_line("function createStore(name, initialState) {");
         self.emit_line("  const state = { ...initialState };");
         self.emit_line("  const listeners = [];");
@@ -1043,6 +1045,165 @@ impl JsCodegen {
         self.emit_line("  }");
         self.emit_line("  return { valid: Object.keys(errors).length === 0, errors };");
         self.emit_line("}");
+    }
+
+    fn emit_runtime_pipes(&mut self) {
+        self.emit_line("// Built-in Pipes");
+        self.emit_line("const __pipes = {");
+        self.indent += 1;
+
+        // uppercase - Convert string to uppercase
+        self.emit_line("uppercase(value) {");
+        self.emit_line("  return value != null ? String(value).toUpperCase() : '';");
+        self.emit_line("},");
+
+        // lowercase - Convert string to lowercase
+        self.emit_line("lowercase(value) {");
+        self.emit_line("  return value != null ? String(value).toLowerCase() : '';");
+        self.emit_line("},");
+
+        // capitalize - Capitalize first letter
+        self.emit_line("capitalize(value) {");
+        self.emit_line("  if (value == null) return '';");
+        self.emit_line("  const s = String(value);");
+        self.emit_line("  return s.charAt(0).toUpperCase() + s.slice(1);");
+        self.emit_line("},");
+
+        // titlecase - Capitalize first letter of each word
+        self.emit_line("titlecase(value) {");
+        self.emit_line("  if (value == null) return '';");
+        self.emit_line("  return String(value).replace(/\\b\\w/g, c => c.toUpperCase());");
+        self.emit_line("},");
+
+        // trim - Remove whitespace from both ends
+        self.emit_line("trim(value) {");
+        self.emit_line("  return value != null ? String(value).trim() : '';");
+        self.emit_line("},");
+
+        // number - Format number with locale
+        self.emit_line("number(value, locale = 'en-US') {");
+        self.emit_line("  if (value == null) return '';");
+        self.emit_line("  const num = Number(value);");
+        self.emit_line("  return isNaN(num) ? '' : num.toLocaleString(locale);");
+        self.emit_line("},");
+
+        // currency - Format as currency
+        self.emit_line("currency(value, currency = 'USD', locale = 'en-US') {");
+        self.emit_line("  if (value == null) return '';");
+        self.emit_line("  const num = Number(value);");
+        self.emit_line("  if (isNaN(num)) return '';");
+        self.emit_line("  return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(num);");
+        self.emit_line("},");
+
+        // percent - Format as percentage
+        self.emit_line("percent(value, decimals = 0, locale = 'en-US') {");
+        self.emit_line("  if (value == null) return '';");
+        self.emit_line("  const num = Number(value);");
+        self.emit_line("  if (isNaN(num)) return '';");
+        self.emit_line("  return new Intl.NumberFormat(locale, { style: 'percent', minimumFractionDigits: decimals, maximumFractionDigits: decimals }).format(num);");
+        self.emit_line("},");
+
+        // date - Format date
+        self.emit_line("date(value, format = 'short', locale = 'en-US') {");
+        self.emit_line("  if (value == null) return '';");
+        self.emit_line("  const d = value instanceof Date ? value : new Date(value);");
+        self.emit_line("  if (isNaN(d.getTime())) return '';");
+        self.emit_line("  const options = format === 'short' ? { dateStyle: 'short' } :");
+        self.emit_line("                  format === 'medium' ? { dateStyle: 'medium' } :");
+        self.emit_line("                  format === 'long' ? { dateStyle: 'long' } :");
+        self.emit_line("                  format === 'full' ? { dateStyle: 'full' } : { dateStyle: 'short' };");
+        self.emit_line("  return new Intl.DateTimeFormat(locale, options).format(d);");
+        self.emit_line("},");
+
+        // time - Format time
+        self.emit_line("time(value, format = 'short', locale = 'en-US') {");
+        self.emit_line("  if (value == null) return '';");
+        self.emit_line("  const d = value instanceof Date ? value : new Date(value);");
+        self.emit_line("  if (isNaN(d.getTime())) return '';");
+        self.emit_line("  const options = format === 'short' ? { timeStyle: 'short' } :");
+        self.emit_line("                  format === 'medium' ? { timeStyle: 'medium' } :");
+        self.emit_line("                  format === 'long' ? { timeStyle: 'long' } : { timeStyle: 'short' };");
+        self.emit_line("  return new Intl.DateTimeFormat(locale, options).format(d);");
+        self.emit_line("},");
+
+        // datetime - Format date and time
+        self.emit_line("datetime(value, dateFormat = 'short', timeFormat = 'short', locale = 'en-US') {");
+        self.emit_line("  if (value == null) return '';");
+        self.emit_line("  const d = value instanceof Date ? value : new Date(value);");
+        self.emit_line("  if (isNaN(d.getTime())) return '';");
+        self.emit_line("  return new Intl.DateTimeFormat(locale, { dateStyle: dateFormat, timeStyle: timeFormat }).format(d);");
+        self.emit_line("},");
+
+        // relative - Relative time (e.g., "2 days ago")
+        self.emit_line("relative(value, locale = 'en-US') {");
+        self.emit_line("  if (value == null) return '';");
+        self.emit_line("  const d = value instanceof Date ? value : new Date(value);");
+        self.emit_line("  if (isNaN(d.getTime())) return '';");
+        self.emit_line("  const diff = (d - new Date()) / 1000;");
+        self.emit_line("  const units = [");
+        self.emit_line("    ['year', 31536000], ['month', 2592000], ['week', 604800],");
+        self.emit_line("    ['day', 86400], ['hour', 3600], ['minute', 60], ['second', 1]");
+        self.emit_line("  ];");
+        self.emit_line("  for (const [unit, secs] of units) {");
+        self.emit_line("    if (Math.abs(diff) >= secs) {");
+        self.emit_line("      return new Intl.RelativeTimeFormat(locale).format(Math.round(diff / secs), unit);");
+        self.emit_line("    }");
+        self.emit_line("  }");
+        self.emit_line("  return 'just now';");
+        self.emit_line("},");
+
+        // slice - Slice string or array
+        self.emit_line("slice(value, start, end) {");
+        self.emit_line("  if (value == null) return '';");
+        self.emit_line("  return (Array.isArray(value) ? value : String(value)).slice(start, end);");
+        self.emit_line("},");
+
+        // truncate - Truncate with ellipsis
+        self.emit_line("truncate(value, maxLength = 50, suffix = '...') {");
+        self.emit_line("  if (value == null) return '';");
+        self.emit_line("  const s = String(value);");
+        self.emit_line("  return s.length > maxLength ? s.slice(0, maxLength - suffix.length) + suffix : s;");
+        self.emit_line("},");
+
+        // replace - Replace text
+        self.emit_line("replace(value, search, replacement = '') {");
+        self.emit_line("  if (value == null) return '';");
+        self.emit_line("  return String(value).replace(new RegExp(search, 'g'), replacement);");
+        self.emit_line("},");
+
+        // json - Convert to JSON string
+        self.emit_line("json(value, indent = 0) {");
+        self.emit_line("  try { return JSON.stringify(value, null, indent); } catch { return ''; }");
+        self.emit_line("},");
+
+        // default - Provide default value if null/undefined
+        self.emit_line("default(value, defaultValue = '') {");
+        self.emit_line("  return value != null ? value : defaultValue;");
+        self.emit_line("},");
+
+        // join - Join array elements
+        self.emit_line("join(value, separator = ', ') {");
+        self.emit_line("  return Array.isArray(value) ? value.join(separator) : String(value);");
+        self.emit_line("},");
+
+        // reverse - Reverse string or array
+        self.emit_line("reverse(value) {");
+        self.emit_line("  if (Array.isArray(value)) return [...value].reverse();");
+        self.emit_line("  return value != null ? String(value).split('').reverse().join('') : '';");
+        self.emit_line("},");
+
+        // padStart - Pad string at start
+        self.emit_line("padStart(value, length, char = ' ') {");
+        self.emit_line("  return value != null ? String(value).padStart(length, char) : '';");
+        self.emit_line("},");
+
+        // padEnd - Pad string at end
+        self.emit_line("padEnd(value, length, char = ' ') {");
+        self.emit_line("  return value != null ? String(value).padEnd(length, char) : '';");
+        self.emit_line("},");
+
+        self.indent -= 1;
+        self.emit_line("};");
     }
 
     fn generate_declaration(&mut self, decl: &Declaration) {
@@ -2215,6 +2376,15 @@ impl JsCodegen {
             Expression::Await { expr } => {
                 let e = self.generate_expression(expr);
                 format!("await {}", e)
+            }
+            Expression::Pipe { value, pipe_name, args } => {
+                let value_str = self.generate_expression(value);
+                let args_str: Vec<String> = args.iter().map(|a| self.generate_expression(a)).collect();
+                if args_str.is_empty() {
+                    format!("__pipes.{}({})", pipe_name, value_str)
+                } else {
+                    format!("__pipes.{}({}, {})", pipe_name, value_str, args_str.join(", "))
+                }
             }
         }
     }

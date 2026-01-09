@@ -1,0 +1,303 @@
+// Pipes docs page
+import { DocsTemplate } from "../template.tp"
+import { DocsSection, DocsDescription } from "@/components/molecules/docs-section.tp"
+import { DocsCodeSection } from "@/components/organisms/docs-code-section.tp"
+import { ConfigPreview } from "@/components/molecules/config-preview.tp"
+import { Text } from "@/components/atoms/text.tp"
+
+Page -> DocsTemplate({ children: [PipesContent] })
+
+PipesContent -> {
+    align: vertical
+    style: "space-y-8"
+    children: [
+        PageHeader,
+        BasicUsageSection,
+        StringPipesSection,
+        NumberPipesSection,
+        DatePipesSection,
+        ArrayPipesSection,
+        ChainingSection,
+        LiveDemoSection
+    ]
+}
+
+PageHeader -> DocsSection({
+    id: "pipes",
+    title: "Pipes",
+    children: [HeaderDesc]
+})
+
+HeaderDesc -> DocsDescription({
+    text: "Pipes transform data in templates using a simple syntax: value | pipeName. Chain multiple pipes together for complex transformations."
+})
+
+// Basic usage
+BasicUsageSection -> DocsCodeSection({
+    title: "Basic Syntax",
+    description: "Use the | operator to apply a pipe to a value:",
+    filename: "pipes/basic.tp",
+    code: `
+// Simple pipe
+name | uppercase      // "JOHN"
+name | lowercase      // "john"
+name | capitalize     // "John"
+
+// Pipe with arguments
+price | currency("USD")           // "$99.99"
+date | date("long")               // "January 9, 2026"
+text | truncate(20, "...")        // "Hello world..."
+
+// Chaining pipes
+text | trim | uppercase | truncate(50)`,
+    preview: [BasicPreview]
+})
+
+BasicPreview -> {
+    align: vertical
+    style: "space-y-2 p-4 bg-gray-50 rounded-lg"
+    children: [
+        Text({ text: "value | pipeName", style: "font-mono text-sm text-blue-600" }),
+        Text({ text: "value | pipeName(arg1, arg2)", style: "font-mono text-sm text-blue-600" }),
+        Text({ text: "value | pipe1 | pipe2 | pipe3", style: "font-mono text-sm text-purple-600" })
+    ]
+}
+
+// String pipes
+StringPipesSection -> DocsCodeSection({
+    title: "String Pipes",
+    description: "Transform text with built-in string pipes:",
+    filename: "pipes/string.tp",
+    code: `
+// Case transformation
+"hello world" | uppercase    // "HELLO WORLD"
+"HELLO WORLD" | lowercase    // "hello world"
+"hello" | capitalize         // "Hello"
+"hello world" | titlecase    // "Hello World"
+
+// Whitespace
+"  hello  " | trim           // "hello"
+
+// Truncation
+"Long text here" | truncate(10)        // "Long te..."
+"Long text" | truncate(10, " [more]")  // "Long [more]"
+
+// Replace
+"hello world" | replace("world", "topo")  // "hello topo"
+
+// Padding
+"42" | padStart(5, "0")      // "00042"
+"hi" | padEnd(5, ".")        // "hi..."
+
+// Slice
+"hello" | slice(0, 3)        // "hel"
+
+// Reverse
+"hello" | reverse            // "olleh"`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "uppercase", desc: "CONVERTS TO UPPERCASE" },
+            { label: "lowercase", desc: "converts to lowercase" },
+            { label: "capitalize", desc: "First letter uppercase" },
+            { label: "titlecase", desc: "First Letter Of Each Word" },
+            { label: "truncate(n)", desc: "Limit length with ellipsis" }
+        ]
+    })]
+})
+
+// Number pipes
+NumberPipesSection -> DocsCodeSection({
+    title: "Number Pipes",
+    description: "Format numbers for display:",
+    filename: "pipes/number.tp",
+    code: `
+// Locale-aware number formatting
+1234567 | number                   // "1,234,567"
+1234567 | number("de-DE")          // "1.234.567"
+1234567 | number("ja-JP")          // "1,234,567"
+
+// Currency formatting
+99.99 | currency                   // "$99.99" (USD default)
+99.99 | currency("EUR")            // "€99.99"
+99.99 | currency("JPY", "ja-JP")   // "￥100"
+1234.56 | currency("USD", "en-US") // "$1,234.56"
+
+// Percentage
+0.75 | percent                     // "75%"
+0.756 | percent(1)                 // "75.6%"
+0.7567 | percent(2)                // "75.67%"`,
+    preview: [NumberPreview]
+})
+
+NumberPreview -> {
+    align: vertical
+    style: "space-y-2 p-4 bg-gray-50 rounded-lg"
+    children: [
+        Text({ text: "1234567.89 | number → 1,234,567.89", style: "font-mono text-sm text-gray-600" }),
+        Text({ text: "99.99 | currency(\"USD\") → $99.99", style: "font-mono text-sm text-green-600" }),
+        Text({ text: "0.75 | percent → 75%", style: "font-mono text-sm text-blue-600" })
+    ]
+}
+
+// Date pipes
+DatePipesSection -> DocsCodeSection({
+    title: "Date Pipes",
+    description: "Format dates and times with locale support:",
+    filename: "pipes/date.tp",
+    code: `
+// Date formatting
+now | date                         // "1/9/26"
+now | date("short")                // "1/9/26"
+now | date("medium")               // "Jan 9, 2026"
+now | date("long")                 // "January 9, 2026"
+now | date("full")                 // "Friday, January 9, 2026"
+now | date("long", "ja-JP")        // "2026年1月9日"
+
+// Time formatting
+now | time                         // "10:30 AM"
+now | time("short")                // "10:30 AM"
+now | time("medium")               // "10:30:45 AM"
+now | time("long")                 // "10:30:45 AM PST"
+
+// Date and time together
+now | datetime                     // "1/9/26, 10:30 AM"
+now | datetime("medium", "short")  // "Jan 9, 2026, 10:30 AM"
+
+// Relative time
+pastDate | relative                // "2 days ago"
+futureDate | relative              // "in 3 hours"`,
+    preview: [DatePreview]
+})
+
+DatePreview -> {
+    align: vertical
+    style: "space-y-2 p-4 bg-gray-50 rounded-lg"
+    children: [
+        Text({ text: "Formats: short, medium, long, full", style: "font-mono text-sm text-gray-500" }),
+        Text({ text: "date(\"long\") → January 9, 2026", style: "font-mono text-sm text-blue-600" }),
+        Text({ text: "relative → 2 days ago", style: "font-mono text-sm text-purple-600" })
+    ]
+}
+
+// Array pipes
+ArrayPipesSection -> DocsCodeSection({
+    title: "Array & Utility Pipes",
+    description: "Work with arrays and handle edge cases:",
+    filename: "pipes/array.tp",
+    code: `
+// Join array elements
+["a", "b", "c"] | join             // "a, b, c"
+["a", "b", "c"] | join(" | ")      // "a | b | c"
+
+// Reverse array
+[1, 2, 3] | reverse                // [3, 2, 1]
+
+// Slice array
+[1, 2, 3, 4, 5] | slice(1, 3)      // [2, 3]
+
+// Default value for null/undefined
+nullValue | default("N/A")         // "N/A"
+user.name | default("Anonymous")   // "Anonymous" if null
+
+// JSON stringify
+{ a: 1 } | json                    // '{"a":1}'
+{ a: 1 } | json(2)                 // Pretty printed with 2 spaces`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "join(sep)", desc: "Join array with separator" },
+            { label: "reverse", desc: "Reverse array or string" },
+            { label: "default(val)", desc: "Fallback for null/undefined" },
+            { label: "json(indent)", desc: "Convert to JSON string" }
+        ]
+    })]
+})
+
+// Chaining pipes
+ChainingSection -> DocsCodeSection({
+    title: "Pipe Chaining",
+    description: "Chain multiple pipes for complex transformations:",
+    filename: "pipes/chain.tp",
+    code: `
+// Chain pipes left to right
+username | trim | lowercase | capitalize
+// "  JOHN DOE  " -> "John doe"
+
+// Format user display name
+user.name | default("Guest") | capitalize | truncate(20)
+
+// Format price with currency
+item.price | default(0) | currency("USD")
+
+// Format and limit description
+post.content | trim | truncate(100) | default("No content")
+
+// Format relative date from timestamp
+post.createdAt | relative | capitalize
+// "2 hours ago" -> "2 Hours Ago"`,
+    preview: [ChainPreview]
+})
+
+ChainPreview -> {
+    align: vertical
+    style: "space-y-2 p-4 bg-gray-50 rounded-lg"
+    children: [
+        Text({ text: "Each pipe receives the output of the previous one", style: "text-sm text-gray-600" }),
+        Text({ text: "input | pipe1 | pipe2 | pipe3", style: "font-mono text-sm text-blue-600" }),
+        Text({ text: "  ↓       ↓       ↓      ↓", style: "font-mono text-sm text-gray-400" }),
+        Text({ text: " start → step1 → step2 → result", style: "font-mono text-sm text-green-600" })
+    ]
+}
+
+// Live demo
+PipeDemo | {
+    State {
+        inputText: "hello world"
+        inputNumber: 1234.56
+        inputDate: "2026-01-09T10:30:00"
+    }
+}
+
+LiveDemoSection -> DocsSection({
+    id: "demo",
+    title: "Live Demo",
+    children: [DemoContent]
+})
+
+DemoContent -> {
+    align: vertical
+    style: "space-y-4 p-4 bg-gray-50 rounded-lg"
+    children: [
+        DemoRow({
+            label: "\"hello world\" | uppercase",
+            result: "hello world" | uppercase
+        }),
+        DemoRow({
+            label: "\"hello world\" | titlecase",
+            result: "hello world" | titlecase
+        }),
+        DemoRow({
+            label: "1234.56 | currency(\"USD\")",
+            result: 1234.56 | currency("USD")
+        }),
+        DemoRow({
+            label: "0.856 | percent(1)",
+            result: 0.856 | percent(1)
+        }),
+        DemoRow({
+            label: "\"hello world\" | truncate(8)",
+            result: "hello world" | truncate(8)
+        }),
+        DemoRow({
+            label: "[\"a\", \"b\", \"c\"] | join(\" - \")",
+            result: ["a", "b", "c"] | join(" - ")
+        })
+    ]
+}
+
+DemoRow(label, result) -> {
+    style: "flex justify-between items-center py-2 border-b border-gray-200 last:border-0"
+    children: [
+        Text({ text: label, style: "font-mono text-sm text-gray-600" }),
+        Text({ text: result, style: "font-mono text-sm font-bold text-blue-600" })
+    ]
+}

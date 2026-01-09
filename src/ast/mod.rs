@@ -478,6 +478,13 @@ pub enum Expression {
     /// Spread expression: `...arr`
     Spread { expr: Box<Expression> },
 
+    /// Pipe expression: `value | pipeName` or `value | pipeName(arg1, arg2)`
+    Pipe {
+        value: Box<Expression>,
+        pipe_name: String,
+        args: Vec<Expression>,
+    },
+
     /// Conditional (ternary) expression: `condition ? then : else`
     Conditional {
         condition: Box<Expression>,

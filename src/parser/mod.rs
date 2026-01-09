@@ -1456,7 +1456,7 @@ impl Parser {
     }
 
     fn ternary(&mut self) -> Result<Expression, ParseError> {
-        let condition = self.or_expression()?;
+        let condition = self.pipe_expression()?;
 
         if self.check(TokenKind::Question) {
             self.advance();
@@ -1471,6 +1471,42 @@ impl Parser {
         }
 
         Ok(condition)
+    }
+
+    /// Parse pipe expressions: `value | pipeName` or `value | pipeName(arg1, arg2)`
+    /// Pipes can be chained: `value | pipe1 | pipe2(arg)`
+    fn pipe_expression(&mut self) -> Result<Expression, ParseError> {
+        let mut left = self.or_expression()?;
+
+        while self.check(TokenKind::Pipe) {
+            self.advance();
+            // Parse pipe name (identifier)
+            let pipe_name = self.expect_identifier()?;
+
+            // Parse optional arguments: pipeName(arg1, arg2)
+            let args = if self.check(TokenKind::LParen) {
+                self.advance();
+                let mut args = Vec::new();
+                while !self.check(TokenKind::RParen) && !self.is_at_end() {
+                    args.push(self.expression()?);
+                    if !self.check(TokenKind::RParen) {
+                        self.expect(TokenKind::Comma)?;
+                    }
+                }
+                self.expect(TokenKind::RParen)?;
+                args
+            } else {
+                Vec::new()
+            };
+
+            left = Expression::Pipe {
+                value: Box::new(left),
+                pipe_name,
+                args,
+            };
+        }
+
+        Ok(left)
     }
 
     fn or_expression(&mut self) -> Result<Expression, ParseError> {
