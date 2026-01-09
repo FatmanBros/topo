@@ -1239,6 +1239,7 @@ impl JsCodegen {
             Declaration::Guard(guard) => self.generate_guard(guard),
             Declaration::GuardSetup(setup) => self.generate_guard_setup(setup),
             Declaration::Routes(routes) => self.generate_routes(routes),
+            Declaration::Router(router) => self.generate_router(router),
         }
     }
 
@@ -1385,6 +1386,59 @@ impl JsCodegen {
         self.indent -= 1;
         self.emit_line("};");
         self.emit_line("");
+    }
+
+    fn generate_router(&mut self, router: &RouterDef) {
+        let router_name = router.name.as_deref().unwrap_or("__router");
+        self.emit_line(&format!("// Router: {}", router_name));
+        self.emit_line(&format!("const {} = {{", router_name));
+        self.indent += 1;
+
+        for entry in &router.routes {
+            let guards_str = if entry.guards.is_empty() {
+                "[]".to_string()
+            } else {
+                let guards = entry.guards.iter()
+                    .map(|g| format!("{}Guard", g))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("[{}]", guards)
+            };
+
+            if let Some(ref sub_router) = entry.sub_router {
+                // Route with sub-router reference
+                self.emit_line(&format!(
+                    "{}: {{ path: '{}', guards: {}, ...{} }},",
+                    entry.name, entry.path, guards_str, sub_router
+                ));
+            } else {
+                // Simple route
+                self.emit_line(&format!(
+                    "{}: {{ path: '{}', guards: {} }},",
+                    entry.name, entry.path, guards_str
+                ));
+            }
+        }
+
+        self.indent -= 1;
+        self.emit_line("};");
+        self.emit_line("");
+
+        // Generate navigateWithGuards helper if this is the main router
+        if router.name.is_none() {
+            self.emit_line("function navigateWithGuards(route) {");
+            self.emit_line("  if (!route || !route.path) return false;");
+            self.emit_line("  for (const guard of (route.guards || [])) {");
+            self.emit_line("    if (guard && typeof guard.check === 'function' && !guard.check()) {");
+            self.emit_line("      if (guard.redirect) window.location.hash = guard.redirect;");
+            self.emit_line("      return false;");
+            self.emit_line("    }");
+            self.emit_line("  }");
+            self.emit_line("  window.location.hash = route.path;");
+            self.emit_line("  return true;");
+            self.emit_line("}");
+            self.emit_line("");
+        }
     }
 
     /// Convert path like "/users/{id}" to template literal "/users/${id}"
@@ -1882,8 +1936,14 @@ impl JsCodegen {
                 ));
             }
             Statement::Navigate { path } => {
-                let path_expr = self.generate_expression(path);
-                self.emit_line(&format!("navigate({});", path_expr));
+                // Check if it's a route reference (.home, .docs.installation)
+                if let Expression::RouteRef { .. } = path {
+                    let route_expr = self.generate_expression(path);
+                    self.emit_line(&format!("navigateWithGuards({});", route_expr));
+                } else {
+                    let path_expr = self.generate_expression(path);
+                    self.emit_line(&format!("navigate({});", path_expr));
+                }
             }
             Statement::TryCatch {
                 try_block,
@@ -2343,6 +2403,10 @@ impl JsCodegen {
                     format!("{}.state.{}", var_name, path.join("."))
                 }
             }
+            Expression::RouteRef { path } => {
+                // Route reference: .home -> __router.home, .docs.installation -> __router.docs.installation
+                format!("__router.{}", path.join("."))
+            }
             Expression::ActionRef { store, action, args } => {
                 let args_str: Vec<String> = args.iter().map(|a| self.generate_expression(a)).collect();
                 if args_str.is_empty() {
@@ -2755,6 +2819,7 @@ impl TsCodegen {
             Declaration::Guard(_) => {}      // Guards don't need type exports
             Declaration::GuardSetup(_) => {} // GuardSetup doesn't need type exports
             Declaration::Routes(_) => {}     // Routes types are handled separately
+            Declaration::Router(_) => {}     // Router types are handled separately
         }
     }
 

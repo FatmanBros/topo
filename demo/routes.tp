@@ -1,6 +1,24 @@
-// Routes definition
+// Router definition - navigation with guards
 
-// Named sub-routes for docs section
+// Sub-router for docs section
+router DocsRouter {
+    index: "/", []
+    installation: "/installation", []
+    quickStart: "/quick-start", []
+    components: "/components-guide", []
+    store: "/store", []
+}
+
+// Main router
+router {
+    home: "/", []
+    login: "/login", []
+    dashboard: "/dashboard", [isAuth]
+    docs: "/docs", [] -> DocsRouter
+    users: "/users", [isAuth]
+}
+
+// Type-safe path generation (existing Routes)
 Routes DocsRoutes {
     index: "/"
     installation: "/installation"
@@ -9,7 +27,6 @@ Routes DocsRoutes {
     store: "/store"
 }
 
-// Main routes
 Routes {
     home: "/"
     login: "/login"

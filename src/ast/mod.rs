@@ -60,6 +60,9 @@ pub enum Declaration {
 
     /// Routes definition: `Routes { ... }` or `RouteName { ... }` for subroutes
     Routes(RoutesDef),
+
+    /// Router definition: `router { ... }` - defines routes with guards for navigation
+    Router(RouterDef),
 }
 
 // ============================================================================
@@ -417,6 +420,32 @@ pub struct RoutesGuardsConfig {
 }
 
 // ============================================================================
+// Router Definition (for navigation with guards)
+// ============================================================================
+
+/// Router definition: `router { ... }` or named `router DocsRouter { ... }`
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RouterDef {
+    /// Name of the router (e.g., "router" for main, "DocsRouter" for sub-router)
+    pub name: Option<String>,
+    /// Router entries
+    pub routes: Vec<RouterEntry>,
+}
+
+/// A single router entry: `name: "/path", [guards]` or `name: "/path", [] -> SubRouter`
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RouterEntry {
+    /// Route name (e.g., "home", "dashboard")
+    pub name: String,
+    /// Route path (e.g., "/", "/dashboard")
+    pub path: String,
+    /// Guards to execute before navigation
+    pub guards: Vec<String>,
+    /// Sub-router reference (e.g., "DocsRouter")
+    pub sub_router: Option<String>,
+}
+
+// ============================================================================
 // Guard Definition (with activate/deactivate)
 // ============================================================================
 
@@ -508,6 +537,9 @@ pub enum Expression {
 
     /// Store reference: `$Store.path`
     Reference { store: String, path: Vec<String> },
+
+    /// Route reference for navigation: `.home`, `.docs.installation`
+    RouteRef { path: Vec<String> },
 
     /// Action reference: `Store.Action` or `Store.Action(args)`
     ActionRef {

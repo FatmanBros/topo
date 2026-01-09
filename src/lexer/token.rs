@@ -111,6 +111,7 @@ pub enum TokenKind {
     Activate,   // activate guard type
     Deactivate, // deactivate guard type
     Guards,     // Guards { } block in Routes
+    Router,     // router { } - navigation routes with guards
 
     // Keywords - Testing
     Test,
@@ -224,6 +225,7 @@ impl std::fmt::Display for TokenKind {
             TokenKind::Activate => write!(f, "activate"),
             TokenKind::Deactivate => write!(f, "deactivate"),
             TokenKind::Guards => write!(f, "Guards"),
+            TokenKind::Router => write!(f, "router"),
             TokenKind::Test => write!(f, "Test"),
             TokenKind::XTest => write!(f, "xTest"),
             TokenKind::BeforeEach => write!(f, "BeforeEach"),
