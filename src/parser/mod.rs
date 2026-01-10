@@ -1983,6 +1983,15 @@ impl Parser {
                     callee: Box::new(expr),
                     args,
                 };
+            } else if self.check(TokenKind::LBracket) {
+                // Index access: obj[key]
+                self.advance();
+                let index = self.expression()?;
+                self.expect(TokenKind::RBracket)?;
+                expr = Expression::IndexAccess {
+                    object: Box::new(expr),
+                    index: Box::new(index),
+                };
             } else if self.check(TokenKind::Dot) {
                 self.advance();
                 let property = self.expect_identifier_or_keyword()?;
@@ -2122,16 +2131,23 @@ impl Parser {
             }
             TokenKind::LBrace => {
                 self.advance();
-                let mut properties = Vec::new();
+                let mut members = Vec::new();
                 while !self.check(TokenKind::RBrace) && !self.is_at_end() {
-                    properties.push(self.property()?);
-                    // Handle optional comma between properties
+                    // Check for spread operator: ...expr
+                    if self.check(TokenKind::DotDotDot) {
+                        self.advance();
+                        let expr = self.expression()?;
+                        members.push(ObjectMember::Spread { expr });
+                    } else {
+                        members.push(ObjectMember::Property(self.property()?));
+                    }
+                    // Handle optional comma between members
                     if !self.check(TokenKind::RBrace) {
                         let _ = self.match_token(TokenKind::Comma);
                     }
                 }
                 self.expect(TokenKind::RBrace)?;
-                Ok(Expression::Object { properties })
+                Ok(Expression::Object { members })
             }
             TokenKind::LParen => {
                 self.advance();

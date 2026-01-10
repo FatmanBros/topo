@@ -11,7 +11,7 @@ use tungstenite::{accept, Message};
 
 use std::collections::HashMap;
 
-use topo::ast::{Declaration, Program, TypeAnnotation};
+use topo::ast::{Declaration, ObjectMember, Program, TypeAnnotation};
 use topo::codegen::JsCodegen;
 use topo::config::{Config, BuildMode, I18nConfig};
 use topo::info_server::start_info_server;
@@ -2524,10 +2524,13 @@ fn expression_to_string(expr: &topo::ast::Expression) -> String {
             let elems: Vec<String> = elements.iter().map(|e| expression_to_string(e)).collect();
             format!("[{}]", elems.join(", "))
         }
-        Expression::Object { properties } => {
-            let props: Vec<String> = properties
+        Expression::Object { members } => {
+            let props: Vec<String> = members
                 .iter()
-                .map(|p| format!("{}: {}", p.key, expression_to_string(&p.value)))
+                .map(|m| match m {
+                    ObjectMember::Property(p) => format!("{}: {}", p.key, expression_to_string(&p.value)),
+                    ObjectMember::Spread { expr } => format!("...{}", expression_to_string(expr)),
+                })
                 .collect();
             format!("{{ {} }}", props.join(", "))
         }

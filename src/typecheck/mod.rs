@@ -183,15 +183,18 @@ impl TypeChecker {
                     }
                 }
             }
-            Expression::Object { properties } => {
-                let fields = properties
+            Expression::Object { members } => {
+                let fields = members
                     .iter()
-                    .map(|p| TypedField {
-                        name: p.key.clone(),
-                        type_annotation: p
-                            .type_annotation
-                            .clone()
-                            .unwrap_or_else(|| self.infer_type(&p.value)),
+                    .filter_map(|m| match m {
+                        ObjectMember::Property(p) => Some(TypedField {
+                            name: p.key.clone(),
+                            type_annotation: p
+                                .type_annotation
+                                .clone()
+                                .unwrap_or_else(|| self.infer_type(&p.value)),
+                        }),
+                        ObjectMember::Spread { .. } => None, // Skip spreads in type inference
                     })
                     .collect();
                 TypeAnnotation::Object { fields }
@@ -383,9 +386,12 @@ impl TypeChecker {
                     self.check_expression(elem, context);
                 }
             }
-            Expression::Object { properties } => {
-                for prop in properties {
-                    self.check_property(prop, context);
+            Expression::Object { members } => {
+                for member in members {
+                    match member {
+                        ObjectMember::Property(prop) => self.check_property(prop, context),
+                        ObjectMember::Spread { expr } => self.check_expression(expr, context),
+                    }
                 }
             }
             Expression::Call { callee, args } => {

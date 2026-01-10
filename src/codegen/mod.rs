@@ -34,6 +34,8 @@ pub struct JsCodegen {
     /// Actions/state fields defined in anonymous store (for unqualified reference resolution)
     current_file_store_actions: HashSet<String>,
     current_file_store_fields: HashSet<String>,
+    /// Generated Routes names (for avoiding duplicate declarations)
+    generated_routes_names: HashMap<String, usize>,
 }
 
 impl JsCodegen {
@@ -54,6 +56,7 @@ impl JsCodegen {
             current_file_store_name: None,
             current_file_store_actions: HashSet::new(),
             current_file_store_fields: HashSet::new(),
+            generated_routes_names: HashMap::new(),
         }
     }
 
@@ -80,6 +83,18 @@ impl JsCodegen {
         }
 
         result
+    }
+
+    /// Get unique name for Routes definition, avoiding duplicate declarations
+    /// If the name was already used, append a suffix (_1, _2, etc.)
+    fn get_unique_routes_name(&mut self, name: &str) -> String {
+        let count = self.generated_routes_names.entry(name.to_string()).or_insert(0);
+        *count += 1;
+        if *count == 1 {
+            name.to_string()
+        } else {
+            format!("{}_{}", name, count)
+        }
     }
 
     /// Check if current property is an event handler
@@ -147,17 +162,21 @@ impl JsCodegen {
     /// - desktop: lg: prefix (≥1024px)
     fn generate_responsive_style(&mut self, expr: &Expression) -> std::string::String {
         match expr {
-            Expression::Object { properties } => {
+            Expression::Object { members } => {
                 // Check if this is a responsive style object
                 let responsive_keys = ["common", "base", "mobile", "tablet", "desktop"];
-                let has_responsive_keys = properties.iter()
-                    .any(|p| responsive_keys.contains(&p.key.as_str()));
+                let has_responsive_keys = members.iter()
+                    .any(|m| matches!(m, ObjectMember::Property(p) if responsive_keys.contains(&p.key.as_str())));
 
                 if has_responsive_keys {
                     // Collect classes for each breakpoint
                     let mut classes: Vec<std::string::String> = Vec::new();
 
-                    for prop in properties {
+                    for member in members {
+                        let prop = match member {
+                            ObjectMember::Property(p) => p,
+                            ObjectMember::Spread { .. } => continue, // Skip spreads in responsive style
+                        };
                         let class_value = match &prop.value {
                             Expression::String { value } => value.clone(),
                             _ => self.generate_expression(&prop.value)
@@ -1276,8 +1295,11 @@ impl JsCodegen {
     }
 
     fn generate_routes(&mut self, routes: &RoutesDef) {
-        self.emit_line(&format!("// Routes: {}", routes.name));
-        self.emit_line(&format!("const {} = {{", routes.name));
+        // Get unique name to avoid duplicate declarations
+        let unique_name = self.get_unique_routes_name(&routes.name);
+
+        self.emit_line(&format!("// Routes: {}", unique_name));
+        self.emit_line(&format!("const {} = {{", unique_name));
         self.indent += 1;
 
         for entry in &routes.routes {
@@ -1329,10 +1351,10 @@ impl JsCodegen {
         self.emit_line("");
 
         // Generate router object for navigation with guards
-        self.generate_routes_router(routes);
+        self.generate_routes_router(routes, &unique_name);
 
         // Generate guards configuration if present
-        self.generate_routes_guards(routes);
+        self.generate_routes_guards(routes, &unique_name);
     }
 
     fn generate_routes_router(&mut self, routes: &RoutesDef) {
@@ -2429,14 +2451,19 @@ impl JsCodegen {
                     None => format!("{}.map({} => {})", items_str, item, body_str),
                 }
             }
-            Expression::Object { properties } => {
-                let props: Vec<String> = properties
+            Expression::Object { members } => {
+                let props: Vec<String> = members
                     .iter()
-                    .map(|p| {
-                        self.current_property_key = Some(p.key.clone());
-                        let value = self.generate_expression(&p.value);
-                        self.current_property_key = None;
-                        format!("{}: {}", p.key, value)
+                    .map(|m| match m {
+                        ObjectMember::Property(p) => {
+                            self.current_property_key = Some(p.key.clone());
+                            let value = self.generate_expression(&p.value);
+                            self.current_property_key = None;
+                            format!("{}: {}", p.key, value)
+                        }
+                        ObjectMember::Spread { expr } => {
+                            format!("...{}", self.generate_expression(expr))
+                        }
                     })
                     .collect();
                 format!("{{ {} }}", props.join(", "))
@@ -2581,29 +2608,46 @@ impl JsCodegen {
                 let obj = self.generate_expression(object);
                 format!("{}.{}", obj, property)
             }
+            Expression::IndexAccess { object, index } => {
+                let obj = self.generate_expression(object);
+                let idx = self.generate_expression(index);
+                format!("{}[{}]", obj, idx)
+            }
             Expression::Call { callee, args } => {
                 let c = self.generate_expression(callee);
 
                 // Check for object-style props: ComponentName({ prop1: val1, prop2: val2 })
                 // Convert to positional args: ComponentName(val1, val2)
                 if args.len() == 1 {
-                    if let Expression::Object { properties } = &args[0] {
+                    if let Expression::Object { members } = &args[0] {
+                        // Extract properties (skip spreads for positional arg conversion)
+                        let properties: Vec<&Property> = members.iter()
+                            .filter_map(|m| match m {
+                                ObjectMember::Property(p) => Some(p),
+                                ObjectMember::Spread { .. } => None,
+                            })
+                            .collect();
+                        let has_spread = members.iter().any(|m| matches!(m, ObjectMember::Spread { .. }));
+
                         if let Expression::Identifier { name } = callee.as_ref() {
                             // Clone param_names to avoid borrow conflict
                             let param_names_opt = self.component_params.get(name).cloned();
                             if let Some(param_names) = param_names_opt {
-                                // If component uses single "props" param, pass object as-is
-                                if param_names.len() == 1 && param_names[0] == "props" {
-                                    let props: Vec<String> = properties
+                                // If component uses single "props" param or has spread, pass object as-is
+                                if (param_names.len() == 1 && param_names[0] == "props") || has_spread {
+                                    let props: Vec<String> = members
                                         .iter()
-                                        .map(|p| format!("{}: {}", p.key, self.generate_expression(&p.value)))
+                                        .map(|m| match m {
+                                            ObjectMember::Property(p) => format!("{}: {}", p.key, self.generate_expression(&p.value)),
+                                            ObjectMember::Spread { expr } => format!("...{}", self.generate_expression(expr)),
+                                        })
                                         .collect();
                                     return format!("{}({{ {} }})", c, props.join(", "));
                                 }
                                 // Check for Reference props and collect their paths
                                 let mut auto_data_error: Option<String> = None;
                                 let mut auto_data_field: Option<String> = None;
-                                for p in properties {
+                                for p in &properties {
                                     if let Expression::Reference { store, path } = &p.value {
                                         if let Some(last) = path.last() {
                                             if last.ends_with("Error") {
@@ -2838,6 +2882,7 @@ impl Default for JsCodegen {
             current_file_store_name: None,
             current_file_store_actions: HashSet::new(),
             current_file_store_fields: HashSet::new(),
+            generated_routes_names: HashMap::new(),
         }
     }
 }
@@ -3093,10 +3138,13 @@ impl TsCodegen {
                     format!("{}[]", self.infer_type_from_expr(&elements[0]))
                 }
             }
-            Expression::Object { properties } => {
-                let fields: Vec<String> = properties
+            Expression::Object { members } => {
+                let fields: Vec<String> = members
                     .iter()
-                    .map(|p| format!("{}: {}", p.key, self.infer_type_from_expr(&p.value)))
+                    .filter_map(|m| match m {
+                        ObjectMember::Property(p) => Some(format!("{}: {}", p.key, self.infer_type_from_expr(&p.value))),
+                        ObjectMember::Spread { .. } => None, // Skip spreads in type inference
+                    })
                     .collect();
                 format!("{{ {} }}", fields.join("; "))
             }

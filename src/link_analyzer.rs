@@ -5,7 +5,7 @@
 //! - `router.push()` programmatic navigation calls
 //! - Shared component relationships
 
-use crate::ast::{BinaryOperator, ComponentDef, Declaration, Expression};
+use crate::ast::{BinaryOperator, ComponentDef, Declaration, Expression, ObjectMember};
 // Config is now optional - we auto-detect directories
 use crate::lexer::Lexer;
 use crate::parser::Parser as TopoParser;
@@ -936,20 +936,27 @@ impl LinkAnalyzer {
         links: &mut Vec<PageLink>,
     ) {
         match expr {
-            Expression::Object { properties } => {
-                for prop in properties {
-                    if prop.key == "href" {
-                        if let Some((target, is_dynamic)) = self.extract_link_target(&prop.value) {
-                            links.push(PageLink {
-                                source: source_route.to_string(),
-                                target: Some(target),
-                                link_type: LinkType::Declarative,
-                                is_dynamic,
-                                source_file: source_file.to_string(),
-                            });
+            Expression::Object { members } => {
+                for member in members {
+                    match member {
+                        ObjectMember::Property(prop) => {
+                            if prop.key == "href" {
+                                if let Some((target, is_dynamic)) = self.extract_link_target(&prop.value) {
+                                    links.push(PageLink {
+                                        source: source_route.to_string(),
+                                        target: Some(target),
+                                        link_type: LinkType::Declarative,
+                                        is_dynamic,
+                                        source_file: source_file.to_string(),
+                                    });
+                                }
+                            }
+                            self.extract_links_from_expression(&prop.value, source_route, source_file, links);
+                        }
+                        ObjectMember::Spread { expr } => {
+                            self.extract_links_from_expression(expr, source_route, source_file, links);
                         }
                     }
-                    self.extract_links_from_expression(&prop.value, source_route, source_file, links);
                 }
             }
             Expression::Array { elements } => {

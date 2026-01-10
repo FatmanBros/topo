@@ -127,6 +127,16 @@ pub struct Property {
     pub annotations: Vec<Annotation>,
 }
 
+/// Object member: either a property or a spread expression
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "type")]
+pub enum ObjectMember {
+    /// Regular property: `key: value`
+    Property(Property),
+    /// Spread expression: `...expr`
+    Spread { expr: Expression },
+}
+
 // ============================================================================
 // Annotations (for validation)
 // ============================================================================
@@ -508,8 +518,8 @@ pub enum Expression {
         body: Box<Expression>,
     },
 
-    /// Object: `{ key: value }`
-    Object { properties: Vec<Property> },
+    /// Object: `{ key: value }` or `{ ...spread, key: value }`
+    Object { members: Vec<ObjectMember> },
 
     /// Identifier: `foo`
     Identifier { name: String },
@@ -550,6 +560,12 @@ pub enum Expression {
     MemberAccess {
         object: Box<Expression>,
         property: String,
+    },
+
+    /// Index access: `obj[key]` or `arr[0]`
+    IndexAccess {
+        object: Box<Expression>,
+        index: Box<Expression>,
     },
 
     /// Function call: `fn(args)`
