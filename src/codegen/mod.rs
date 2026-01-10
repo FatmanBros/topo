@@ -1544,6 +1544,32 @@ impl JsCodegen {
         // Resolve component name - "Page" gets renamed based on file path to avoid conflicts
         let component_name = self.resolve_page_component_name(&comp.name);
 
+        // Check if this is a data-only component (no params, no type, no guards, no lifecycle)
+        // These should be generated as const objects instead of functions
+        let is_data_component = comp.params.is_empty()
+            && comp.alias.is_none()
+            && comp.guards.is_empty()
+            && comp.init.is_none()
+            && comp.destroy.is_none()
+            && !comp.properties.iter().any(|p| p.key == "type" || p.key == "children" || p.key == "content");
+
+        if is_data_component {
+            self.emit_line(&format!("const {} = {{", component_name));
+            self.indent += 1;
+
+            let total_props = comp.properties.len();
+            for (i, prop) in comp.properties.iter().enumerate() {
+                let comma = if i < total_props - 1 { "," } else { "" };
+                let value = self.generate_expression(&prop.value);
+                self.emit_line(&format!("{}: {}{}", prop.key, value, comma));
+            }
+
+            self.indent -= 1;
+            self.emit_line("};");
+            self.local_params = old_params;
+            return;
+        }
+
         let params_str = if comp.params.is_empty() {
             String::new()
         } else {
