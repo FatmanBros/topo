@@ -1,0 +1,111 @@
+// Checkbox Atom - Checkbox input with label
+// Usage: Checkbox({ label: "Accept terms", checked: false, onChange: handler })
+
+import { CheckboxVariants } from "../../theme/variants/checkbox.tp"
+
+// =============================================================================
+// Base Checkbox Component
+// =============================================================================
+
+Checkbox(props) -> {
+    type: label
+    style: CheckboxVariants.container
+         + (props.className ? " " + props.className : "")
+    children: [
+        CheckboxInput({
+            name: props.name,
+            checked: props.checked,
+            onChange: props.onChange,
+            disabled: props.disabled,
+            variant: props.variant,
+            size: props.size
+        }),
+        props.label ? CheckboxLabel({ text: props.label, disabled: props.disabled }) : null
+    ]
+}
+
+CheckboxInput(props) -> {
+    type: checkbox
+    name: props.name
+    checked: props.checked
+    change: props.onChange
+    disabled: props.disabled
+    style: CheckboxVariants.input
+         + " " + CheckboxVariants.variant[props.variant || "primary"]
+         + " " + CheckboxVariants.size[props.size || "md"]
+}
+
+CheckboxLabel(props) -> {
+    type: text
+    content: props.text
+    style: CheckboxVariants.label
+         + (props.disabled ? " opacity-50" : "")
+}
+
+// =============================================================================
+// Checkbox with Description
+// =============================================================================
+
+CheckboxWithDescription(props) -> {
+    type: label
+    style: CheckboxVariants.container + " items-start"
+         + (props.className ? " " + props.className : "")
+    children: [
+        CheckboxInput({
+            name: props.name,
+            checked: props.checked,
+            onChange: props.onChange,
+            disabled: props.disabled,
+            variant: props.variant,
+            size: props.size
+        }),
+        CheckboxTextGroup({
+            label: props.label,
+            description: props.description,
+            disabled: props.disabled
+        })
+    ]
+}
+
+CheckboxTextGroup(props) -> {
+    style: "flex flex-col"
+    children: [
+        props.label ? CheckboxLabel({ text: props.label, disabled: props.disabled }) : null,
+        props.description ? CheckboxDescription({ text: props.description }) : null
+    ]
+}
+
+CheckboxDescription(props) -> {
+    type: text
+    content: props.text
+    style: CheckboxVariants.description
+}
+
+// =============================================================================
+// Checkbox Group
+// =============================================================================
+
+CheckboxGroup(props) -> {
+    role: "group"
+    ariaLabel: props.label
+    style: "flex flex-col gap-2"
+         + (props.className ? " " + props.className : "")
+    children: props.options.for(option => {
+        Checkbox({
+            name: props.name,
+            label: option.label,
+            checked: props.value ? props.value.includes(option.value) : false,
+            onChange: props.onChange,
+            disabled: option.disabled || props.disabled,
+            variant: props.variant
+        })
+    })
+}
+
+// =============================================================================
+// Variant Presets
+// =============================================================================
+
+PrimaryCheckbox(props) -> Checkbox({ ...props, variant: "primary" })
+SuccessCheckbox(props) -> Checkbox({ ...props, variant: "success" })
+DangerCheckbox(props) -> Checkbox({ ...props, variant: "danger" })

@@ -1258,7 +1258,23 @@ impl JsCodegen {
             Declaration::Guard(guard) => self.generate_guard(guard),
             Declaration::GuardSetup(setup) => self.generate_guard_setup(setup),
             Declaration::Routes(routes) => self.generate_routes(routes),
+            Declaration::Function(func) => self.generate_function(func),
         }
+    }
+
+    /// Generate a pure function definition
+    fn generate_function(&mut self, func: &FunctionDef) {
+        let params: Vec<String> = func.params.iter().map(|p| p.name.clone()).collect();
+        let params_str = params.join(", ");
+
+        self.emit_line(&format!("function {}({}) {{", func.name, params_str));
+        self.indent += 1;
+
+        let body_js = self.generate_expression(&func.body);
+        self.emit_line(&format!("return {};", body_js));
+
+        self.indent -= 1;
+        self.emit_line("}");
     }
 
     fn generate_guard(&mut self, guard: &GuardDef) {
@@ -1357,12 +1373,12 @@ impl JsCodegen {
         self.generate_routes_guards(routes, &unique_name);
     }
 
-    fn generate_routes_router(&mut self, routes: &RoutesDef) {
+    fn generate_routes_router(&mut self, routes: &RoutesDef, unique_name: &str) {
         // Router name: "Routes" -> "__router", "DocsRoutes" -> "DocsRoutes_router"
-        let router_name = if routes.name == "Routes" {
+        let router_name = if unique_name == "Routes" {
             "__router".to_string()
         } else {
-            format!("{}_router", routes.name)
+            format!("{}_router", unique_name)
         };
 
         self.emit_line(&format!("// Router for navigation: {}", router_name));
@@ -1406,7 +1422,7 @@ impl JsCodegen {
         self.emit_line("");
 
         // Generate navigateWithGuards helper only for main router
-        if routes.name == "Routes" {
+        if unique_name == "Routes" {
             self.emit_line("function navigateWithGuards(route) {");
             self.emit_line("  if (!route || !route.path) return false;");
             self.emit_line("  for (const guard of (route.guards || [])) {");
@@ -1422,7 +1438,7 @@ impl JsCodegen {
         }
     }
 
-    fn generate_routes_guards(&mut self, routes: &RoutesDef) {
+    fn generate_routes_guards(&mut self, routes: &RoutesDef, unique_name: &str) {
         // Collect route-specific guards from PathWithGuards configs
         let mut route_guards: Vec<(String, Vec<String>)> = Vec::new();
         for entry in &routes.routes {
@@ -1436,7 +1452,7 @@ impl JsCodegen {
             return;
         }
 
-        self.emit_line(&format!("const {}Guards = {{", routes.name));
+        self.emit_line(&format!("const {}Guards = {{", unique_name));
         self.indent += 1;
 
         // Global guards
@@ -2935,6 +2951,7 @@ impl TsCodegen {
             Declaration::Guard(_) => {}      // Guards don't need type exports
             Declaration::GuardSetup(_) => {} // GuardSetup doesn't need type exports
             Declaration::Routes(_) => {}     // Routes types are handled separately
+            Declaration::Function(_) => {}   // Functions don't need type exports
         }
     }
 

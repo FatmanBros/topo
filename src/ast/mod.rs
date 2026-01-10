@@ -60,6 +60,9 @@ pub enum Declaration {
 
     /// Routes definition: `Routes { ... }` or `RouteName { ... }` for subroutes
     Routes(RoutesDef),
+
+    /// Pure function definition: `Name(params) -> expression`
+    Function(FunctionDef),
 }
 
 // ============================================================================
@@ -107,6 +110,32 @@ pub struct ComponentAlias {
     pub base: String,
     /// Arguments to pass to the base component
     pub args: Vec<Expression>,
+}
+
+// ============================================================================
+// Function Definition (->)
+// ============================================================================
+
+/// Pure function definition: `Name(params) -> expression`
+/// Unlike components, functions return a value directly without creating a DOM element.
+/// Functions can be imported and used across files.
+///
+/// Example:
+/// ```topo
+/// // Define a helper function
+/// getInitials(name) -> name ? name[0] : "?"
+///
+/// // Define with type annotations
+/// formatPrice(value: number) -> "$" + value.toFixed(2)
+/// ```
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct FunctionDef {
+    /// Function name
+    pub name: String,
+    /// Parameters with optional type annotations
+    pub params: Vec<TypedParam>,
+    /// The expression that computes the return value
+    pub body: Expression,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

@@ -1,0 +1,163 @@
+// Radio Atom - Radio button input with label
+// Usage: Radio({ label: "Option 1", name: "choice", value: "opt1", checked: true })
+
+import { RadioVariants } from "../../theme/variants/radio.tp"
+
+// =============================================================================
+// Base Radio Component
+// =============================================================================
+
+Radio(props) -> {
+    type: label
+    style: RadioVariants.container
+         + (props.className ? " " + props.className : "")
+    children: [
+        RadioInput({
+            name: props.name,
+            value: props.value,
+            checked: props.checked,
+            onChange: props.onChange,
+            disabled: props.disabled,
+            variant: props.variant,
+            size: props.size
+        }),
+        props.label ? RadioLabel({ text: props.label, disabled: props.disabled }) : null
+    ]
+}
+
+RadioInput(props) -> {
+    type: radio
+    name: props.name
+    value: props.value
+    checked: props.checked
+    change: props.onChange
+    disabled: props.disabled
+    style: RadioVariants.input
+         + " " + RadioVariants.variant[props.variant || "primary"]
+         + " " + RadioVariants.size[props.size || "md"]
+}
+
+RadioLabel(props) -> {
+    type: text
+    content: props.text
+    style: RadioVariants.label
+         + (props.disabled ? " opacity-50" : "")
+}
+
+// =============================================================================
+// Radio with Description
+// =============================================================================
+
+RadioWithDescription(props) -> {
+    type: label
+    style: RadioVariants.container + " items-start"
+         + (props.className ? " " + props.className : "")
+    children: [
+        RadioInput({
+            name: props.name,
+            value: props.value,
+            checked: props.checked,
+            onChange: props.onChange,
+            disabled: props.disabled,
+            variant: props.variant,
+            size: props.size
+        }),
+        RadioTextGroup({
+            label: props.label,
+            description: props.description,
+            disabled: props.disabled
+        })
+    ]
+}
+
+RadioTextGroup(props) -> {
+    style: "flex flex-col"
+    children: [
+        props.label ? RadioLabel({ text: props.label, disabled: props.disabled }) : null,
+        props.description ? RadioDescription({ text: props.description }) : null
+    ]
+}
+
+RadioDescription(props) -> {
+    type: text
+    content: props.text
+    style: RadioVariants.description
+}
+
+// =============================================================================
+// Radio Group
+// =============================================================================
+
+RadioGroup(props) -> {
+    role: "radiogroup"
+    ariaLabel: props.label
+    style: RadioVariants.group[props.direction || "vertical"]
+         + (props.className ? " " + props.className : "")
+    children: props.options.for(option => {
+        Radio({
+            name: props.name,
+            value: option.value,
+            label: option.label,
+            checked: props.value == option.value,
+            onChange: props.onChange,
+            disabled: option.disabled || props.disabled,
+            variant: props.variant
+        })
+    })
+}
+
+// Horizontal Radio Group
+HorizontalRadioGroup(props) -> RadioGroup({ ...props, direction: "horizontal" })
+
+// =============================================================================
+// Radio Card (larger clickable area)
+// =============================================================================
+
+RadioCard(props) -> {
+    type: label
+    style: "flex items-start gap-3 p-4 border rounded-lg cursor-pointer transition-colors"
+         + (props.checked ? " border-indigo-600 bg-indigo-50" : " border-gray-200 hover:border-gray-300")
+         + (props.disabled ? " opacity-50 cursor-not-allowed" : "")
+         + (props.className ? " " + props.className : "")
+    children: [
+        RadioInput({
+            name: props.name,
+            value: props.value,
+            checked: props.checked,
+            onChange: props.onChange,
+            disabled: props.disabled,
+            variant: props.variant
+        }),
+        RadioCardContent({
+            label: props.label,
+            description: props.description
+        })
+    ]
+}
+
+RadioCardContent(props) -> {
+    style: "flex flex-col"
+    children: [
+        RadioCardLabel({ text: props.label }),
+        props.description ? RadioCardDescription({ text: props.description }) : null
+    ]
+}
+
+RadioCardLabel(props) -> {
+    type: text
+    content: props.text
+    style: "text-sm font-medium text-gray-900"
+}
+
+RadioCardDescription(props) -> {
+    type: text
+    content: props.text
+    style: "text-sm text-gray-500 mt-1"
+}
+
+// =============================================================================
+// Variant Presets
+// =============================================================================
+
+PrimaryRadio(props) -> Radio({ ...props, variant: "primary" })
+SuccessRadio(props) -> Radio({ ...props, variant: "success" })

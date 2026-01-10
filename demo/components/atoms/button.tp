@@ -1,12 +1,73 @@
-Button(content, onClick, style, buttonType) -> {
-    type: buttonType
-    content: content
-    click: onClick
-    style: style
+// Button Atom - Flexible button with variant/size system
+// Usage: Button({ variant: "primary", size: "md", children: "Click me" })
+
+import { ButtonVariants } from "../../theme/variants/button.tp"
+
+// =============================================================================
+// Base Button Component
+// =============================================================================
+
+Button(props) -> {
+    type: props.type || "button"
+    content: props.children || props.content
+    click: props.onClick
+    disabled: props.disabled
+    style: ButtonVariants.base
+         + " " + ButtonVariants.variant[props.variant || "primary"]
+         + " " + ButtonVariants.size[props.size || "md"]
+         + (props.fullWidth ? " " + ButtonVariants.fullWidth : "")
+         + (props.className ? " " + props.className : "")
 }
 
-PrimaryButton(content, onClick) -> Button(content, onClick, "w-full bg-indigo-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-indigo-700 transition", "button")
+// =============================================================================
+// Icon Button (square, icon-only)
+// =============================================================================
 
-SubmitButton(props) -> Button(props.content || props, null, "w-full bg-indigo-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-indigo-700 transition cursor-pointer", "submit")
+IconButton(props) -> {
+    type: props.type || "button"
+    content: props.children || props.icon
+    click: props.onClick
+    disabled: props.disabled
+    style: ButtonVariants.base
+         + " " + ButtonVariants.variant[props.variant || "secondary"]
+         + " " + ButtonVariants.iconOnly[props.size || "md"]
+         + " " + "rounded-lg"
+         + (props.className ? " " + props.className : "")
+}
 
-ActionButton(label, onClick) -> Button(label, onClick, "p-3 bg-gray-50 hover:bg-gray-100 rounded-lg text-sm font-medium text-gray-700 transition text-left", "button")
+// =============================================================================
+// Variant Presets
+// =============================================================================
+
+PrimaryButton(props) -> Button({ ...props, variant: "primary" })
+SecondaryButton(props) -> Button({ ...props, variant: "secondary" })
+OutlineButton(props) -> Button({ ...props, variant: "outline" })
+GhostButton(props) -> Button({ ...props, variant: "ghost" })
+DangerButton(props) -> Button({ ...props, variant: "danger" })
+SuccessButton(props) -> Button({ ...props, variant: "success" })
+WarningButton(props) -> Button({ ...props, variant: "warning" })
+LinkButton(props) -> Button({ ...props, variant: "link" })
+
+// =============================================================================
+// Size Presets
+// =============================================================================
+
+SmallButton(props) -> Button({ ...props, size: "sm" })
+LargeButton(props) -> Button({ ...props, size: "lg" })
+
+// =============================================================================
+// Special Purpose Buttons
+// =============================================================================
+
+SubmitButton(props) -> Button({
+    ...props,
+    type: "submit",
+    variant: props.variant || "primary"
+})
+
+ActionButton(props) -> Button({
+    ...props,
+    variant: "ghost",
+    size: "sm",
+    className: "text-left justify-start"
+})

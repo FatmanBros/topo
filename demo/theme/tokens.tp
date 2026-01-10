@@ -1,0 +1,104 @@
+// Design Tokens - Centralized style definitions
+// Usage: import { Colors, Sizes, Radius } from "../theme/tokens.tp"
+
+// =============================================================================
+// Color Palette (Tailwind class names)
+// =============================================================================
+
+Colors -> {
+    primary: {
+        50: "indigo-50",
+        100: "indigo-100",
+        500: "indigo-500",
+        600: "indigo-600",
+        700: "indigo-700"
+    },
+    secondary: {
+        50: "gray-50",
+        100: "gray-100",
+        500: "gray-500",
+        600: "gray-600",
+        700: "gray-700"
+    },
+    danger: {
+        50: "red-50",
+        500: "red-500",
+        600: "red-600",
+        700: "red-700"
+    },
+    warning: {
+        50: "amber-50",
+        500: "amber-500",
+        600: "amber-600"
+    },
+    success: {
+        50: "green-50",
+        500: "green-500",
+        600: "green-600"
+    },
+    info: {
+        50: "blue-50",
+        500: "blue-500",
+        600: "blue-600"
+    },
+    neutral: {
+        50: "gray-50",
+        100: "gray-100",
+        200: "gray-200",
+        300: "gray-300",
+        400: "gray-400",
+        500: "gray-500",
+        600: "gray-600",
+        700: "gray-700",
+        800: "gray-800",
+        900: "gray-900"
+    }
+}
+
+// =============================================================================
+// Spacing & Sizing
+// =============================================================================
+
+Sizes -> {
+    xs: { py: "py-1", px: "px-2", text: "text-xs", h: "h-6", w: "w-6" },
+    sm: { py: "py-1.5", px: "px-3", text: "text-sm", h: "h-8", w: "w-8" },
+    md: { py: "py-2", px: "px-4", text: "text-base", h: "h-10", w: "w-10" },
+    lg: { py: "py-2.5", px: "px-5", text: "text-lg", h: "h-12", w: "w-12" },
+    xl: { py: "py-3", px: "px-6", text: "text-xl", h: "h-14", w: "w-14" }
+}
+
+// =============================================================================
+// Border Radius
+// =============================================================================
+
+Radius -> {
+    none: "rounded-none",
+    sm: "rounded",
+    md: "rounded-md",
+    lg: "rounded-lg",
+    xl: "rounded-xl",
+    full: "rounded-full"
+}
+
+// =============================================================================
+// Shadows
+// =============================================================================
+
+Shadows -> {
+    none: "shadow-none",
+    sm: "shadow-sm",
+    md: "shadow",
+    lg: "shadow-lg",
+    xl: "shadow-xl"
+}
+
+// =============================================================================
+// Transitions
+// =============================================================================
+
+Transitions -> {
+    none: "",
+    fast: "transition-all duration-150",
+    normal: "transition-all duration-200",
+    slow: "transition-all duration-300"
+}

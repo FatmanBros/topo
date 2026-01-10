@@ -137,9 +137,9 @@ impl Parser {
 
         // Check which type of definition this is based on the operator
         if self.check(TokenKind::Arrow) {
-            // Component: Name(params) -> { }
+            // Component or Function: Name(params) -> ...
             self.advance();
-            Ok(Declaration::Component(self.component_def(name, params)?))
+            self.arrow_def(name, params)
         } else if self.check(TokenKind::ColonColon) {
             // API Service: Name :: { }
             self.advance();
@@ -219,16 +219,24 @@ impl Parser {
     // Component Definition (->)
     // ========================================================================
 
-    fn component_def(&mut self, name: String, params: Vec<TypedParam>) -> Result<ComponentDef, ParseError> {
-        // Check if this is an alias or guarded component
-        // Alias: Name -> Base(args)
-        // Guarded: Name -> Guard1, Guard2 { ... }
-        if self.check(TokenKind::Identifier) {
-            let first_ident = self.expect_identifier()?;
+    /// Handle arrow definitions: Component, Alias, Guarded Component, or Pure Function
+    /// - `Name -> { ... }` - Component
+    /// - `Name -> Base(args)` - Alias
+    /// - `Name -> Guard1, Guard2 { ... }` - Guarded Component
+    /// - `Name -> expression` - Pure Function
+    fn arrow_def(&mut self, name: String, params: Vec<TypedParam>) -> Result<Declaration, ParseError> {
+        // Case 1: `{ ... }` -> Regular component
+        if self.check(TokenKind::LBrace) {
+            return Ok(Declaration::Component(self.component_body(name, params, Vec::new())?));
+        }
 
-            // Check what follows the identifier
-            if self.check(TokenKind::LParen) {
-                // This is an alias: Name -> Base(args)
+        // Case 2: Starts with identifier -> could be alias, guarded component, or function
+        if self.check(TokenKind::Identifier) {
+            let peek_next = self.peek_ahead(1);
+
+            // `Identifier(` -> Alias: Name -> Base(args)
+            if peek_next.kind == TokenKind::LParen {
+                let base = self.expect_identifier()?;
                 self.advance(); // consume LParen
                 let mut args = Vec::new();
                 while !self.check(TokenKind::RParen) && !self.is_at_end() {
@@ -238,18 +246,21 @@ impl Parser {
                     }
                 }
                 self.expect(TokenKind::RParen)?;
-                return Ok(ComponentDef {
+                return Ok(Declaration::Component(ComponentDef {
                     name,
                     params,
                     properties: Vec::new(),
                     init: None,
                     destroy: None,
-                    alias: Some(ComponentAlias { base: first_ident, args }),
+                    alias: Some(ComponentAlias { base, args }),
                     guards: Vec::new(),
-                });
-            } else {
-                // This is a guarded component: Name -> Guard1, Guard2 { ... }
-                let mut guards = vec![first_ident];
+                }));
+            }
+
+            // `Identifier,` or `Identifier {` -> Guarded component: Name -> Guard1, Guard2 { ... }
+            if peek_next.kind == TokenKind::Comma || peek_next.kind == TokenKind::LBrace {
+                let first_guard = self.expect_identifier()?;
+                let mut guards = vec![first_guard];
 
                 // Parse additional guards separated by comma
                 while self.check(TokenKind::Comma) {
@@ -258,29 +269,17 @@ impl Parser {
                 }
 
                 // Now parse the component body
-                self.expect(TokenKind::LBrace)?;
-
-                let mut properties = Vec::new();
-                let mut init = None;
-                let mut destroy = None;
-
-                while !self.check(TokenKind::RBrace) && !self.is_at_end() {
-                    let prop = self.property()?;
-
-                    match prop.key.as_str() {
-                        "init" => init = Some(prop.value),
-                        "destroy" => destroy = Some(prop.value),
-                        _ => properties.push(prop),
-                    }
-                }
-
-                self.expect(TokenKind::RBrace)?;
-
-                return Ok(ComponentDef { name, params, properties, init, destroy, alias: None, guards });
+                return Ok(Declaration::Component(self.component_body(name, params, guards)?));
             }
         }
 
-        // Regular component definition: Name(params) -> { ... }
+        // Case 3: Any other expression -> Pure function: Name -> expression
+        let body = self.expression()?;
+        Ok(Declaration::Function(FunctionDef { name, params, body }))
+    }
+
+    /// Parse component body: { properties... }
+    fn component_body(&mut self, name: String, params: Vec<TypedParam>, guards: Vec<String>) -> Result<ComponentDef, ParseError> {
         self.expect(TokenKind::LBrace)?;
 
         let mut properties = Vec::new();
@@ -290,19 +289,22 @@ impl Parser {
         while !self.check(TokenKind::RBrace) && !self.is_at_end() {
             let prop = self.property()?;
 
-            // Handle lifecycle hooks specially
             match prop.key.as_str() {
                 "init" => init = Some(prop.value),
                 "destroy" => destroy = Some(prop.value),
                 _ => properties.push(prop),
             }
+
+            // Handle optional comma between properties (JSON-like syntax)
+            if !self.check(TokenKind::RBrace) {
+                let _ = self.match_token(TokenKind::Comma);
+            }
         }
 
         self.expect(TokenKind::RBrace)?;
 
-        Ok(ComponentDef { name, params, properties, init, destroy, alias: None, guards: Vec::new() })
+        Ok(ComponentDef { name, params, properties, init, destroy, alias: None, guards })
     }
-
     // ========================================================================
     // Theme Definition (*)
     // ========================================================================
@@ -313,6 +315,11 @@ impl Parser {
         let mut properties = Vec::new();
         while !self.check(TokenKind::RBrace) && !self.is_at_end() {
             properties.push(self.property()?);
+
+            // Handle optional comma between properties (JSON-like syntax)
+            if !self.check(TokenKind::RBrace) {
+                let _ = self.match_token(TokenKind::Comma);
+            }
         }
 
         self.expect(TokenKind::RBrace)?;
@@ -676,6 +683,10 @@ impl Parser {
                 let mut header_props = Vec::new();
                 while !self.check(TokenKind::RBrace) && !self.is_at_end() {
                     header_props.push(self.property()?);
+                    // Handle optional comma between properties (JSON-like syntax)
+                    if !self.check(TokenKind::RBrace) {
+                        let _ = self.match_token(TokenKind::Comma);
+                    }
                 }
                 self.expect(TokenKind::RBrace)?;
                 headers = Some(header_props);
@@ -874,6 +885,10 @@ impl Parser {
         let mut fields = Vec::new();
         while !self.check(TokenKind::RBrace) && !self.is_at_end() {
             fields.push(self.property()?);
+            // Handle optional comma between fields (JSON-like syntax)
+            if !self.check(TokenKind::RBrace) {
+                let _ = self.match_token(TokenKind::Comma);
+            }
         }
 
         self.expect(TokenKind::RBrace)?;
@@ -995,6 +1010,10 @@ impl Parser {
         let mut body = Vec::new();
         while !self.check(TokenKind::RBrace) && !self.is_at_end() {
             body.push(self.property()?);
+            // Handle optional comma between properties (JSON-like syntax)
+            if !self.check(TokenKind::RBrace) {
+                let _ = self.match_token(TokenKind::Comma);
+            }
         }
 
         self.expect(TokenKind::RBrace)?;
@@ -1372,9 +1391,24 @@ impl Parser {
         }
     }
 
-    /// Accept identifiers or keywords as property keys
+    /// Accept identifiers, keywords, numbers, or strings as property keys (JSON-like)
     fn expect_property_key(&mut self) -> Result<String, ParseError> {
         let token = self.peek().clone();
+
+        // Allow numbers as keys (e.g., 50: "value")
+        if token.kind == TokenKind::Number {
+            self.advance();
+            return Ok(token.lexeme);
+        }
+
+        // Allow strings as keys (e.g., "key": "value")
+        if token.kind == TokenKind::String {
+            self.advance();
+            // Remove quotes from the lexeme
+            let key = token.lexeme[1..token.lexeme.len() - 1].to_string();
+            return Ok(key);
+        }
+
         // Allow keywords to be used as property keys
         let is_valid_key = matches!(
             token.kind,
@@ -1407,6 +1441,7 @@ impl Parser {
                 | TokenKind::Hidden
                 | TokenKind::Url
                 | TokenKind::Fill
+                | TokenKind::None
         );
 
         if is_valid_key {
@@ -2282,6 +2317,8 @@ impl Parser {
                 | TokenKind::Url
                 | TokenKind::Fill
                 | TokenKind::For
+                | TokenKind::On
+                | TokenKind::None
         );
 
         if is_valid {

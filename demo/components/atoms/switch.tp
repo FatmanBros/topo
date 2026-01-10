@@ -1,0 +1,179 @@
+// Switch Atom - Toggle switch component
+// Usage: Switch({ checked: false, onChange: handler, label: "Enable" })
+
+import { SwitchVariants } from "../../theme/variants/switch.tp"
+
+// =============================================================================
+// Base Switch Component
+// =============================================================================
+
+Switch(props) -> {
+    type: label
+    style: SwitchVariants.container
+         + (props.className ? " " + props.className : "")
+    children: [
+        SwitchTrack({
+            checked: props.checked,
+            onChange: props.onChange,
+            disabled: props.disabled,
+            variant: props.variant || "primary",
+            size: props.size || "md"
+        }),
+        props.label ? SwitchLabel({ text: props.label, disabled: props.disabled }) : null
+    ]
+}
+
+SwitchTrack(props) -> {
+    type: button
+    role: "switch"
+    ariaChecked: props.checked
+    click: props.onChange
+    disabled: props.disabled
+    style: SwitchVariants.track
+         + " " + SwitchVariants.trackSize[props.size]
+         + " " + (props.checked
+             ? SwitchVariants.variant[props.variant].on
+             : SwitchVariants.variant[props.variant].off)
+         + " " + SwitchVariants.variant[props.variant].focus
+    children: [
+        SwitchThumb({
+            checked: props.checked,
+            size: props.size
+        })
+    ]
+}
+
+SwitchThumb(props) -> {
+    style: SwitchVariants.thumb
+         + " " + SwitchVariants.thumbSize[props.size]
+         + " " + (props.checked
+             ? SwitchVariants.thumbPosition[props.size].on
+             : SwitchVariants.thumbPosition[props.size].off)
+}
+
+SwitchLabel(props) -> {
+    type: text
+    content: props.text
+    style: SwitchVariants.label
+         + (props.disabled ? " opacity-50" : "")
+}
+
+// =============================================================================
+// Switch with Description
+// =============================================================================
+
+SwitchWithDescription(props) -> {
+    style: "flex items-start justify-between gap-4"
+         + (props.className ? " " + props.className : "")
+    children: [
+        SwitchTextGroup({
+            label: props.label,
+            description: props.description
+        }),
+        SwitchTrack({
+            checked: props.checked,
+            onChange: props.onChange,
+            disabled: props.disabled,
+            variant: props.variant || "primary",
+            size: props.size || "md"
+        })
+    ]
+}
+
+SwitchTextGroup(props) -> {
+    style: "flex flex-col"
+    children: [
+        props.label ? SwitchGroupLabel({ text: props.label }) : null,
+        props.description ? SwitchDescription({ text: props.description }) : null
+    ]
+}
+
+SwitchGroupLabel(props) -> {
+    type: text
+    content: props.text
+    style: "text-sm font-medium text-gray-900"
+}
+
+SwitchDescription(props) -> {
+    type: text
+    content: props.text
+    style: SwitchVariants.description
+}
+
+// =============================================================================
+// Switch with Icons
+// =============================================================================
+
+SwitchWithIcons(props) -> {
+    type: label
+    style: SwitchVariants.container
+         + (props.className ? " " + props.className : "")
+    children: [
+        SwitchTrackWithIcons({
+            checked: props.checked,
+            onChange: props.onChange,
+            disabled: props.disabled,
+            variant: props.variant || "primary",
+            size: props.size || "md",
+            iconOn: props.iconOn,
+            iconOff: props.iconOff
+        }),
+        props.label ? SwitchLabel({ text: props.label, disabled: props.disabled }) : null
+    ]
+}
+
+SwitchTrackWithIcons(props) -> {
+    type: button
+    role: "switch"
+    ariaChecked: props.checked
+    click: props.onChange
+    disabled: props.disabled
+    style: SwitchVariants.track
+         + " " + SwitchVariants.trackSize[props.size]
+         + " " + (props.checked
+             ? SwitchVariants.variant[props.variant].on
+             : SwitchVariants.variant[props.variant].off)
+         + " " + SwitchVariants.variant[props.variant].focus
+    children: [
+        SwitchIconsContainer({
+            checked: props.checked,
+            iconOn: props.iconOn,
+            iconOff: props.iconOff
+        }),
+        SwitchThumb({
+            checked: props.checked,
+            size: props.size
+        })
+    ]
+}
+
+SwitchIconsContainer(props) -> {
+    style: "absolute inset-0 flex items-center justify-between px-1 text-xs"
+    children: [
+        SwitchIcon({ icon: props.iconOn, visible: props.checked, position: "left" }),
+        SwitchIcon({ icon: props.iconOff, visible: !props.checked, position: "right" })
+    ]
+}
+
+SwitchIcon(props) -> {
+    type: text
+    content: props.icon
+    style: "transition-opacity duration-200"
+         + (props.visible ? " opacity-100" : " opacity-0")
+         + (props.position == "left" ? " text-white" : " text-gray-400")
+}
+
+// =============================================================================
+// Variant Presets
+// =============================================================================
+
+PrimarySwitch(props) -> Switch({ ...props, variant: "primary" })
+SuccessSwitch(props) -> Switch({ ...props, variant: "success" })
+DangerSwitch(props) -> Switch({ ...props, variant: "danger" })
+
+// =============================================================================
+// Size Presets
+// =============================================================================
+
+SmallSwitch(props) -> Switch({ ...props, size: "sm" })
+LargeSwitch(props) -> Switch({ ...props, size: "lg" })

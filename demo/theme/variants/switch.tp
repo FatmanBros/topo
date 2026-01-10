@@ -1,0 +1,63 @@
+// Switch Variants - Style definitions for Switch (toggle) component
+
+SwitchVariants -> {
+    container: "inline-flex items-center gap-2 cursor-pointer",
+
+    track: "relative inline-flex shrink-0 rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+
+    variant: {
+        primary: {
+            off: "bg-gray-200",
+            on: "bg-indigo-600",
+            focus: "focus:ring-indigo-500"
+        },
+        secondary: {
+            off: "bg-gray-200",
+            on: "bg-gray-600",
+            focus: "focus:ring-gray-500"
+        },
+        success: {
+            off: "bg-gray-200",
+            on: "bg-green-600",
+            focus: "focus:ring-green-500"
+        },
+        danger: {
+            off: "bg-gray-200",
+            on: "bg-red-600",
+            focus: "focus:ring-red-500"
+        }
+    },
+
+    trackSize: {
+        sm: "h-5 w-9",
+        md: "h-6 w-11",
+        lg: "h-7 w-14"
+    },
+
+    thumb: "pointer-events-none inline-block rounded-full bg-white shadow-lg ring-0 transition-transform duration-200 ease-in-out",
+
+    thumbSize: {
+        sm: "h-4 w-4",
+        md: "h-5 w-5",
+        lg: "h-6 w-6"
+    },
+
+    thumbPosition: {
+        sm: {
+            off: "translate-x-0.5",
+            on: "translate-x-4"
+        },
+        md: {
+            off: "translate-x-0.5",
+            on: "translate-x-5"
+        },
+        lg: {
+            off: "translate-x-0.5",
+            on: "translate-x-7"
+        }
+    },
+
+    label: "text-sm text-gray-700 select-none",
+
+    description: "text-xs text-gray-500 mt-0.5"
+}
