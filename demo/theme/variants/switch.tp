@@ -7,23 +7,23 @@ SwitchVariants -> {
 
     variant: {
         primary: {
-            off: "bg-gray-200",
-            on: "bg-indigo-600",
+            inactive: "bg-gray-200",
+            active: "bg-indigo-600",
             focus: "focus:ring-indigo-500"
         },
         secondary: {
-            off: "bg-gray-200",
-            on: "bg-gray-600",
+            inactive: "bg-gray-200",
+            active: "bg-gray-600",
             focus: "focus:ring-gray-500"
         },
         success: {
-            off: "bg-gray-200",
-            on: "bg-green-600",
+            inactive: "bg-gray-200",
+            active: "bg-green-600",
             focus: "focus:ring-green-500"
         },
         danger: {
-            off: "bg-gray-200",
-            on: "bg-red-600",
+            inactive: "bg-gray-200",
+            active: "bg-red-600",
             focus: "focus:ring-red-500"
         }
     },
@@ -44,16 +44,16 @@ SwitchVariants -> {
 
     thumbPosition: {
         sm: {
-            off: "translate-x-0.5",
-            on: "translate-x-4"
+            inactive: "translate-x-0.5",
+            active: "translate-x-4"
         },
         md: {
-            off: "translate-x-0.5",
-            on: "translate-x-5"
+            inactive: "translate-x-0.5",
+            active: "translate-x-5"
         },
         lg: {
-            off: "translate-x-0.5",
-            on: "translate-x-7"
+            inactive: "translate-x-0.5",
+            active: "translate-x-7"
         }
     },
 

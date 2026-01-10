@@ -32,8 +32,8 @@ SwitchTrack(props) -> {
     style: SwitchVariants.track
          + " " + SwitchVariants.trackSize[props.size]
          + " " + (props.checked
-             ? SwitchVariants.variant[props.variant].on
-             : SwitchVariants.variant[props.variant].off)
+             ? SwitchVariants.variant[props.variant].active
+             : SwitchVariants.variant[props.variant].inactive)
          + " " + SwitchVariants.variant[props.variant].focus
     children: [
         SwitchThumb({
@@ -47,8 +47,8 @@ SwitchThumb(props) -> {
     style: SwitchVariants.thumb
          + " " + SwitchVariants.thumbSize[props.size]
          + " " + (props.checked
-             ? SwitchVariants.thumbPosition[props.size].on
-             : SwitchVariants.thumbPosition[props.size].off)
+             ? SwitchVariants.thumbPosition[props.size].active
+             : SwitchVariants.thumbPosition[props.size].inactive)
 }
 
 SwitchLabel(props) -> {
@@ -131,8 +131,8 @@ SwitchTrackWithIcons(props) -> {
     style: SwitchVariants.track
          + " " + SwitchVariants.trackSize[props.size]
          + " " + (props.checked
-             ? SwitchVariants.variant[props.variant].on
-             : SwitchVariants.variant[props.variant].off)
+             ? SwitchVariants.variant[props.variant].active
+             : SwitchVariants.variant[props.variant].inactive)
          + " " + SwitchVariants.variant[props.variant].focus
     children: [
         SwitchIconsContainer({
