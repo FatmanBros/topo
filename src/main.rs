@@ -1,7 +1,7 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tiny_http::{Response, Server};
 use std::sync::{Arc, Mutex};
 use std::net::TcpListener;
@@ -513,6 +513,30 @@ fn build_project(input: &PathBuf, output: &PathBuf, mode: &str) -> Result<()> {
     };
     fs::write(output.join("index.html"), html)?;
 
+    // Copy public folder contents to output
+    let public_dir = project_root.join("public");
+    if public_dir.exists() && public_dir.is_dir() {
+        copy_dir_contents(&public_dir, output)?;
+    }
+
+    Ok(())
+}
+
+/// Copy all files from source directory to destination
+fn copy_dir_contents(src: &Path, dst: &Path) -> Result<()> {
+    for entry in fs::read_dir(src)? {
+        let entry = entry?;
+        let file_type = entry.file_type()?;
+        let src_path = entry.path();
+        let dst_path = dst.join(entry.file_name());
+
+        if file_type.is_dir() {
+            fs::create_dir_all(&dst_path)?;
+            copy_dir_contents(&src_path, &dst_path)?;
+        } else {
+            fs::copy(&src_path, &dst_path)?;
+        }
+    }
     Ok(())
 }
 
@@ -622,6 +646,12 @@ fn build_project_dev(input: &PathBuf, output: &PathBuf, _mode: &str, ws_port: u1
     // Generate HTML with hot reload script
     let html = generate_html_dev(config, ws_port + 1);
     fs::write(output.join("index.html"), html)?;
+
+    // Copy public folder contents to output
+    let public_dir = project_root.join("public");
+    if public_dir.exists() && public_dir.is_dir() {
+        copy_dir_contents(&public_dir, output)?;
+    }
 
     Ok(())
 }
@@ -782,6 +812,10 @@ fn generate_html(config: &Config) -> String {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
     <title>{}</title>
 {}{}</head>
 <body>
@@ -1677,6 +1711,10 @@ fn generate_html_ssg(config: &Config, _js: &str) -> String {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" href="./favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="./favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="./favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png">
     <title>{}</title>
     <link rel="stylesheet" href="./styles.css">
 </head>
@@ -1725,6 +1763,10 @@ fn generate_html_dev(config: &Config, ws_port: u16) -> String {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
     <title>{}</title>
 {}{}</head>
 <body>
