@@ -213,6 +213,15 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
         .node.faded rect { opacity: 0.3; }
         .node.faded text { opacity: 0.3; }
 
+        /* Hidden state (for node selection filter) */
+        .node.hidden { display: none; }
+        .link-edge.hidden { display: none; }
+        .api-service-group.hidden { display: none; }
+        .cluster.hidden { display: none; }
+
+        /* Selected node highlight */
+        .node.selected rect { stroke-width: 3; filter: drop-shadow(0 0 6px rgba(88, 166, 255, 0.5)); }
+
         /* Info Panel */
         .info-panel {
             position: fixed;
@@ -322,7 +331,7 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
 <body>
     <div class="header">
         <h1>Page Navigation Graph</h1>
-        <p>Scroll to zoom. Drag to pan. Click node for details.</p>
+        <p>Scroll to zoom. Drag to pan. Click node to filter connections. Esc to clear.</p>
     </div>
 
     <div class="info-panel" id="info-panel">
@@ -372,6 +381,7 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
     <script>
         let svg, g, zoom;
         let graphData, nodeData = {};
+        let selectedNodeId = null;  // Currently selected node for filtering
         const NODE_WIDTH = 120;
         const NODE_HEIGHT = 36;
 
@@ -744,16 +754,19 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
             // Initial fit
             fitToScreen();
 
-            // Hover events for page nodes
+            // Hover events for page nodes (only when not in selection mode)
             g.selectAll('.node').on('mouseenter', function(event) {
+                if (selectedNodeId) return;  // Skip hover effects when node is selected
                 const id = d3.select(this).datum();
                 highlightConnections(id);
                 showTooltip(event, nodeData[id]);
             }).on('mouseleave', function() {
+                if (selectedNodeId) return;  // Skip hover effects when node is selected
                 clearHighlight();
                 hideTooltip();
             }).on('click', function(event) {
                 const id = d3.select(this).datum();
+                selectNode(id);
                 showInfoPanel(nodeData[id]);
                 event.stopPropagation();
             });
@@ -785,9 +798,18 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
                 event.stopPropagation();
             });
 
-            // Close info panel when clicking on background
+            // Close info panel and clear selection when clicking on background
             svg.on('click', function() {
+                clearSelection();
                 closeInfoPanel();
+            });
+
+            // Escape key to clear selection
+            document.addEventListener('keydown', function(event) {
+                if (event.key === 'Escape') {
+                    clearSelection();
+                    closeInfoPanel();
+                }
             });
         }
 
@@ -818,6 +840,120 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
         function clearHighlight() {
             g.selectAll('.link-edge').classed('faded', false).classed('highlighted', false);
             g.selectAll('.node').classed('faded', false);
+        }
+
+        // Get all nodes connected to the given node (including indirect connections)
+        function getAllConnectedNodes(nodeId) {
+            const connected = new Set([nodeId]);
+            const queue = [nodeId];
+
+            while (queue.length > 0) {
+                const current = queue.shift();
+                graphData.edges.forEach(e => {
+                    // Check source -> target
+                    if (e.source === current && !connected.has(e.target)) {
+                        // Only add page nodes (not API endpoints)
+                        if (nodeData[e.target] || e.target.startsWith('@api/')) {
+                            connected.add(e.target);
+                            if (nodeData[e.target]) queue.push(e.target);
+                        }
+                    }
+                    // Check target -> source
+                    if (e.target === current && !connected.has(e.source)) {
+                        if (nodeData[e.source]) {
+                            connected.add(e.source);
+                            queue.push(e.source);
+                        }
+                    }
+                });
+            }
+
+            return connected;
+        }
+
+        // Select a node and filter to show only connected nodes
+        function selectNode(nodeId) {
+            // If clicking the same node, clear selection
+            if (selectedNodeId === nodeId) {
+                clearSelection();
+                return;
+            }
+
+            selectedNodeId = nodeId;
+            const connectedNodes = getAllConnectedNodes(nodeId);
+
+            // Get connected API service IDs
+            const connectedApiServices = new Set();
+            connectedNodes.forEach(id => {
+                if (id.startsWith('@api/')) {
+                    // Extract service ID from endpoint ID (@api/servicename/method -> @api/servicename)
+                    const parts = id.split('/');
+                    if (parts.length >= 2) {
+                        connectedApiServices.add(parts.slice(0, 2).join('/'));
+                    }
+                }
+            });
+
+            // Hide/show page nodes
+            g.selectAll('.node')
+                .classed('hidden', id => !connectedNodes.has(id))
+                .classed('selected', id => id === nodeId);
+
+            // Hide/show edges
+            g.selectAll('.link-edge')
+                .classed('hidden', function() {
+                    const source = d3.select(this).attr('data-source');
+                    const target = d3.select(this).attr('data-target');
+                    return !connectedNodes.has(source) || !connectedNodes.has(target);
+                });
+
+            // Hide/show API services
+            g.selectAll('.api-service-group')
+                .classed('hidden', function() {
+                    const apiId = d3.select(this).attr('data-api-id');
+                    return !connectedApiServices.has(apiId);
+                });
+
+            // Hide/show clusters
+            g.selectAll('.cluster')
+                .classed('hidden', function() {
+                    const clusterId = d3.select(this).datum();
+                    // Show cluster if any connected node belongs to it
+                    let hasConnectedNode = false;
+                    connectedNodes.forEach(nodeId => {
+                        if (nodeData[nodeId]) {
+                            const parts = nodeId.split('/').filter(s => s);
+                            if (parts.length >= 2 && clusterId === `cluster-/${parts[0]}`) {
+                                hasConnectedNode = true;
+                            }
+                        }
+                    });
+                    return !hasConnectedNode;
+                });
+        }
+
+        // Clear the current selection and show all nodes
+        function clearSelection() {
+            if (!selectedNodeId) return;
+
+            selectedNodeId = null;
+
+            // Show all nodes
+            g.selectAll('.node')
+                .classed('hidden', false)
+                .classed('selected', false);
+
+            // Show all edges
+            g.selectAll('.link-edge').classed('hidden', false);
+
+            // Show all API services
+            g.selectAll('.api-service-group').classed('hidden', false);
+
+            // Show all clusters
+            g.selectAll('.cluster').classed('hidden', false);
+
+            // Clear any highlight state
+            clearHighlight();
         }
 
         function showTooltip(event, d) {
