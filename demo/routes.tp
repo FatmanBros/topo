@@ -1,4 +1,4 @@
-// Routes definition - type-safe paths and navigation with guards
+// Routes definition - type-safe paths and navigation
 
 // Sub-routes for docs section
 Routes DocsRoutes {
@@ -13,13 +13,8 @@ Routes DocsRoutes {
 Routes {
     home: "/"
     login: "/login"
-    dashboard: "/dashboard", [isAuth]
+    dashboard: "/dashboard"
     docs: "/docs" -> DocsRoutes
-    userDetail(id): "/users/{id}", [isAuth]
+    userDetail(id): "/users/{id}"
     projectTask(projectId, taskId): "/projects/{projectId}/tasks/{taskId}"
-
-    Guards {
-        global: [isAuthenticated]
-        skip: [home, login, docs]
-    }
 }
