@@ -405,7 +405,6 @@ impl<'a> Lexer<'a> {
             "routes" => TokenKind::Routes,
             "Routes" => TokenKind::Routes,
             "Guards" => TokenKind::Guards,
-            "router" => TokenKind::Router,
             "none" => TokenKind::None,
             "skip" => TokenKind::Skip,
             "activate" => TokenKind::Activate,

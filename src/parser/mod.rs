@@ -86,11 +86,6 @@ impl Parser {
             return self.routes_definition();
         }
 
-        // Check for router definition: router { ... } or router Name { ... }
-        if self.check(TokenKind::Router) {
-            return self.router_definition();
-        }
-
         // Check for activate/deactivate guard: activate AuthGuard ? { } or deactivate UnsavedChanges ? { }
         if self.check(TokenKind::Activate) || self.check(TokenKind::Deactivate) {
             let guard_type = if self.check(TokenKind::Activate) {
@@ -513,7 +508,7 @@ impl Parser {
     }
 
     fn parse_route_config(&mut self) -> Result<RouteConfig, ParseError> {
-        // Check for {"/path", [guards]} syntax
+        // Check for {"/path", [guards]} syntax (legacy)
         if self.check(TokenKind::LBrace) {
             self.advance();
             let path = self.expect_string()?;
@@ -533,7 +528,7 @@ impl Parser {
             return Ok(RouteConfig::PathWithGuards { path, guards });
         }
 
-        // Simple path: "/path" or "/path" -> SubRoute
+        // Simple path: "/path", "/path" -> SubRoute, or "/path", [guards]
         let path = self.expect_string()?;
 
         // Check for subroute: -> SubRoute
@@ -541,6 +536,23 @@ impl Parser {
             self.advance();
             let route_ref = self.expect_identifier()?;
             return Ok(RouteConfig::SubRoute { path, route_ref });
+        }
+
+        // Check for guards: , [guards]
+        if self.check(TokenKind::Comma) {
+            self.advance();
+            self.expect(TokenKind::LBracket)?;
+
+            let mut guards = Vec::new();
+            while !self.check(TokenKind::RBracket) && !self.is_at_end() {
+                guards.push(self.expect_identifier()?);
+                if !self.check(TokenKind::RBracket) {
+                    let _ = self.match_token(TokenKind::Comma);
+                }
+            }
+            self.expect(TokenKind::RBracket)?;
+
+            return Ok(RouteConfig::PathWithGuards { path, guards });
         }
 
         Ok(RouteConfig::Path { path })
@@ -582,68 +594,6 @@ impl Parser {
         }
 
         Ok(RoutesGuardsConfig { global, skip })
-    }
-
-    // ========================================================================
-    // Router Definition (navigation with guards)
-    // ========================================================================
-
-    fn router_definition(&mut self) -> Result<Declaration, ParseError> {
-        // Expect router keyword
-        self.expect(TokenKind::Router)?;
-
-        // Check for optional name: router DocsRouter { } or router { }
-        let name = if self.check(TokenKind::Identifier) {
-            Some(self.expect_identifier()?)
-        } else {
-            None
-        };
-
-        self.expect(TokenKind::LBrace)?;
-
-        let mut routes = Vec::new();
-
-        while !self.check(TokenKind::RBrace) && !self.is_at_end() {
-            // Parse route entry: name: "/path", [guards] or name: "/path", [] -> SubRouter
-            let route_name = self.expect_identifier()?;
-            self.expect(TokenKind::Colon)?;
-
-            // Parse path
-            let path = self.expect_string()?;
-
-            // Expect comma before guards
-            self.expect(TokenKind::Comma)?;
-
-            // Parse guards array: [guard1, guard2] or []
-            self.expect(TokenKind::LBracket)?;
-            let mut guards = Vec::new();
-            while !self.check(TokenKind::RBracket) && !self.is_at_end() {
-                guards.push(self.expect_identifier()?);
-                if !self.check(TokenKind::RBracket) {
-                    let _ = self.match_token(TokenKind::Comma);
-                }
-            }
-            self.expect(TokenKind::RBracket)?;
-
-            // Check for sub-router reference: -> SubRouter
-            let sub_router = if self.check(TokenKind::Arrow) {
-                self.advance();
-                Some(self.expect_identifier()?)
-            } else {
-                None
-            };
-
-            routes.push(RouterEntry {
-                name: route_name,
-                path,
-                guards,
-                sub_router,
-            });
-        }
-
-        self.expect(TokenKind::RBrace)?;
-
-        Ok(Declaration::Router(RouterDef { name, routes }))
     }
 
     // ========================================================================

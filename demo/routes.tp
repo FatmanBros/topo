@@ -1,24 +1,6 @@
-// Router definition - navigation with guards
+// Routes definition - type-safe paths and navigation with guards
 
-// Sub-router for docs section
-router DocsRouter {
-    index: "/", []
-    installation: "/installation", []
-    quickStart: "/quick-start", []
-    components: "/components-guide", []
-    store: "/store", []
-}
-
-// Main router
-router {
-    home: "/", []
-    login: "/login", []
-    dashboard: "/dashboard", [isAuth]
-    docs: "/docs", [] -> DocsRouter
-    users: "/users", [isAuth]
-}
-
-// Type-safe path generation (existing Routes)
+// Sub-routes for docs section
 Routes DocsRoutes {
     index: "/"
     installation: "/installation"
@@ -27,12 +9,13 @@ Routes DocsRoutes {
     store: "/store"
 }
 
+// Main routes
 Routes {
     home: "/"
     login: "/login"
-    dashboard: "/dashboard"
+    dashboard: "/dashboard", [isAuth]
     docs: "/docs" -> DocsRoutes
-    userDetail(id): "/users/{id}"
+    userDetail(id): "/users/{id}", [isAuth]
     projectTask(projectId, taskId): "/projects/{projectId}/tasks/{taskId}"
 
     Guards {

@@ -839,7 +839,7 @@ fn generate_html(config: &Config) -> String {
     )
 }
 
-/// Deduplicate function names in JS output
+/// Deduplicate function and const names in JS output
 /// Takes a chunk of JS code and a set of already-defined names
 /// Returns the modified JS and updates the defined_names set
 fn deduplicate_functions(js: &str, defined_names: &mut std::collections::HashSet<String>) -> String {
@@ -847,10 +847,20 @@ fn deduplicate_functions(js: &str, defined_names: &mut std::collections::HashSet
 
     // Find all function declarations: "function Name(" or "function Name ("
     let func_regex = Regex::new(r"function\s+([A-Z][a-zA-Z0-9_]*)\s*\(").unwrap();
+    // Find all const declarations: "const Name =" or "const Name="
+    let const_regex = Regex::new(r"const\s+([A-Z][a-zA-Z0-9_]*)\s*=").unwrap();
 
-    // First pass: find all function names defined in this chunk
+    // First pass: find all names defined in this chunk
     let mut local_functions: Vec<String> = Vec::new();
     for cap in func_regex.captures_iter(js) {
+        if let Some(name_match) = cap.get(1) {
+            let name = name_match.as_str().to_string();
+            if !local_functions.contains(&name) {
+                local_functions.push(name);
+            }
+        }
+    }
+    for cap in const_regex.captures_iter(js) {
         if let Some(name_match) = cap.get(1) {
             let name = name_match.as_str().to_string();
             if !local_functions.contains(&name) {
@@ -884,13 +894,18 @@ fn deduplicate_functions(js: &str, defined_names: &mut std::collections::HashSet
         return js.to_string();
     }
 
-    // Apply renames - replace function declarations and references
+    // Apply renames - replace function/const declarations and references
     let mut result = js.to_string();
     for (old_name, new_name) in &rename_map {
         // Replace function declaration: "function OldName(" -> "function NewName("
         let decl_pattern = format!(r"function\s+{}\s*\(", regex::escape(old_name));
         let decl_regex = Regex::new(&decl_pattern).unwrap();
         result = decl_regex.replace_all(&result, format!("function {}(", new_name)).to_string();
+
+        // Replace const declaration: "const OldName =" -> "const NewName ="
+        let const_pattern = format!(r"const\s+{}\s*=", regex::escape(old_name));
+        let const_regex = Regex::new(&const_pattern).unwrap();
+        result = const_regex.replace_all(&result, format!("const {} =", new_name)).to_string();
 
         // Replace references using word boundaries
         // \b matches word boundary, so we match Name followed by certain characters

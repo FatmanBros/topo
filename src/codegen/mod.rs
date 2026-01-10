@@ -1239,7 +1239,6 @@ impl JsCodegen {
             Declaration::Guard(guard) => self.generate_guard(guard),
             Declaration::GuardSetup(setup) => self.generate_guard_setup(setup),
             Declaration::Routes(routes) => self.generate_routes(routes),
-            Declaration::Router(router) => self.generate_router(router),
         }
     }
 
@@ -1329,8 +1328,76 @@ impl JsCodegen {
         self.emit_line("};");
         self.emit_line("");
 
+        // Generate router object for navigation with guards
+        self.generate_routes_router(routes);
+
         // Generate guards configuration if present
         self.generate_routes_guards(routes);
+    }
+
+    fn generate_routes_router(&mut self, routes: &RoutesDef) {
+        // Router name: "Routes" -> "__router", "DocsRoutes" -> "DocsRoutes_router"
+        let router_name = if routes.name == "Routes" {
+            "__router".to_string()
+        } else {
+            format!("{}_router", routes.name)
+        };
+
+        self.emit_line(&format!("// Router for navigation: {}", router_name));
+        self.emit_line(&format!("const {} = {{", router_name));
+        self.indent += 1;
+
+        for entry in &routes.routes {
+            let (path, guards) = match &entry.config {
+                RouteConfig::Path { path } => (path.clone(), Vec::new()),
+                RouteConfig::PathWithGuards { path, guards } => (path.clone(), guards.clone()),
+                RouteConfig::SubRoute { path, route_ref } => {
+                    // Sub-route reference: spread the sub-router
+                    let sub_router_name = format!("{}_router", route_ref);
+                    let guards_str = "[]";
+                    self.emit_line(&format!(
+                        "{}: {{ path: '{}', guards: {}, ...{} }},",
+                        entry.name, path, guards_str, sub_router_name
+                    ));
+                    continue;
+                }
+            };
+
+            let guards_str = if guards.is_empty() {
+                "[]".to_string()
+            } else {
+                let guards_formatted = guards.iter()
+                    .map(|g| format!("{}Guard", g))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("[{}]", guards_formatted)
+            };
+
+            self.emit_line(&format!(
+                "{}: {{ path: '{}', guards: {} }},",
+                entry.name, path, guards_str
+            ));
+        }
+
+        self.indent -= 1;
+        self.emit_line("};");
+        self.emit_line("");
+
+        // Generate navigateWithGuards helper only for main router
+        if routes.name == "Routes" {
+            self.emit_line("function navigateWithGuards(route) {");
+            self.emit_line("  if (!route || !route.path) return false;");
+            self.emit_line("  for (const guard of (route.guards || [])) {");
+            self.emit_line("    if (guard && typeof guard.check === 'function' && !guard.check()) {");
+            self.emit_line("      if (guard.redirect) window.location.hash = guard.redirect;");
+            self.emit_line("      return false;");
+            self.emit_line("    }");
+            self.emit_line("  }");
+            self.emit_line("  window.location.hash = route.path;");
+            self.emit_line("  return true;");
+            self.emit_line("}");
+            self.emit_line("");
+        }
     }
 
     fn generate_routes_guards(&mut self, routes: &RoutesDef) {
@@ -1386,59 +1453,6 @@ impl JsCodegen {
         self.indent -= 1;
         self.emit_line("};");
         self.emit_line("");
-    }
-
-    fn generate_router(&mut self, router: &RouterDef) {
-        let router_name = router.name.as_deref().unwrap_or("__router");
-        self.emit_line(&format!("// Router: {}", router_name));
-        self.emit_line(&format!("const {} = {{", router_name));
-        self.indent += 1;
-
-        for entry in &router.routes {
-            let guards_str = if entry.guards.is_empty() {
-                "[]".to_string()
-            } else {
-                let guards = entry.guards.iter()
-                    .map(|g| format!("{}Guard", g))
-                    .collect::<Vec<_>>()
-                    .join(", ");
-                format!("[{}]", guards)
-            };
-
-            if let Some(ref sub_router) = entry.sub_router {
-                // Route with sub-router reference
-                self.emit_line(&format!(
-                    "{}: {{ path: '{}', guards: {}, ...{} }},",
-                    entry.name, entry.path, guards_str, sub_router
-                ));
-            } else {
-                // Simple route
-                self.emit_line(&format!(
-                    "{}: {{ path: '{}', guards: {} }},",
-                    entry.name, entry.path, guards_str
-                ));
-            }
-        }
-
-        self.indent -= 1;
-        self.emit_line("};");
-        self.emit_line("");
-
-        // Generate navigateWithGuards helper if this is the main router
-        if router.name.is_none() {
-            self.emit_line("function navigateWithGuards(route) {");
-            self.emit_line("  if (!route || !route.path) return false;");
-            self.emit_line("  for (const guard of (route.guards || [])) {");
-            self.emit_line("    if (guard && typeof guard.check === 'function' && !guard.check()) {");
-            self.emit_line("      if (guard.redirect) window.location.hash = guard.redirect;");
-            self.emit_line("      return false;");
-            self.emit_line("    }");
-            self.emit_line("  }");
-            self.emit_line("  window.location.hash = route.path;");
-            self.emit_line("  return true;");
-            self.emit_line("}");
-            self.emit_line("");
-        }
     }
 
     /// Convert path like "/users/{id}" to template literal "/users/${id}"
@@ -2876,7 +2890,6 @@ impl TsCodegen {
             Declaration::Guard(_) => {}      // Guards don't need type exports
             Declaration::GuardSetup(_) => {} // GuardSetup doesn't need type exports
             Declaration::Routes(_) => {}     // Routes types are handled separately
-            Declaration::Router(_) => {}     // Router types are handled separately
         }
     }
 
