@@ -1,0 +1,230 @@
+// FilterPanel Organism - Filter controls panel
+// Usage: FilterPanel({ filters: [...], activeFilters: [...], onFilterChange: handler })
+
+import { FilterPanelVariants } from "../../theme/variants/filter-panel.tp"
+import { Checkbox } from "../atoms/checkbox.tp"
+import { Radio } from "../atoms/radio.tp"
+import { PrimaryButton, SecondaryButton } from "../atoms/button.tp"
+
+// =============================================================================
+// Base FilterPanel Component
+// =============================================================================
+
+FilterPanel(props) -> {
+    style: FilterPanelVariants.container.base
+         + " " + FilterPanelVariants.container[props.variant || "inline"]
+         + (props.className ? " " + props.className : "")
+    children: [
+        FilterPanelHeader({ title: props.title, onClearAll: props.onClearAll }),
+        props.activeFilters && props.activeFilters.length > 0
+            ? ActiveFilters({ filters: props.activeFilters, onRemove: props.onRemoveFilter })
+            : null,
+        FilterSections({ sections: props.filters, onFilterChange: props.onFilterChange }),
+        props.showActions ? FilterActions({ onApply: props.onApply, onReset: props.onReset }) : null
+    ]
+}
+
+// =============================================================================
+// Header
+// =============================================================================
+
+FilterPanelHeader(props) -> {
+    style: FilterPanelVariants.header.container
+    children: [
+        HeaderTitle({ text: props.title || "Filters" }),
+        props.onClearAll ? ClearAllButton({ onClick: props.onClearAll }) : null
+    ]
+}
+
+HeaderTitle(props) -> {
+    type: text
+    content: props.text
+    style: FilterPanelVariants.header.title
+}
+
+ClearAllButton(props) -> {
+    type: button
+    click: props.onClick
+    style: FilterPanelVariants.header.clearAll
+    content: "Clear all"
+}
+
+// =============================================================================
+// Active Filters
+// =============================================================================
+
+ActiveFilters(props) -> {
+    style: FilterPanelVariants.activeFilters.container
+    children: props.filters.map(filter => FilterChip({ filter: filter, onRemove: props.onRemove }))
+}
+
+FilterChip(props) -> {
+    style: FilterPanelVariants.activeFilters.chip.base + " " + FilterPanelVariants.activeFilters.chip.style
+    children: [
+        ChipLabel({ text: props.filter.label }),
+        ChipRemoveButton({ onClick: props.onRemove, filterId: props.filter.id })
+    ]
+}
+
+ChipLabel(props) -> {
+    type: text
+    content: props.text
+}
+
+ChipRemoveButton(props) -> {
+    type: button
+    click: props.onClick
+    ariaLabel: "Remove filter"
+    style: FilterPanelVariants.activeFilters.chip.remove
+    children: [RemoveIcon({})]
+}
+
+RemoveIcon(props) -> {
+    type: svg
+    style: "h-3 w-3"
+    viewBox: "0 0 20 20"
+    fill: "currentColor"
+    children: [RemoveIconPath({})]
+}
+
+RemoveIconPath(props) -> {
+    type: path
+    d: "M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z"
+}
+
+// =============================================================================
+// Filter Sections
+// =============================================================================
+
+FilterSections(props) -> {
+    children: props.sections.map(section => FilterSection({
+        section: section,
+        onFilterChange: props.onFilterChange
+    }))
+}
+
+FilterSection(props) -> {
+    style: FilterPanelVariants.section.container
+    children: [
+        SectionHeader({ title: props.section.title, isOpen: props.section.isOpen }),
+        props.section.isOpen != false ? SectionContent({
+            section: props.section,
+            onFilterChange: props.onFilterChange
+        }) : null
+    ]
+}
+
+SectionHeader(props) -> {
+    style: FilterPanelVariants.section.header
+    children: [
+        SectionTitle({ text: props.title }),
+        SectionChevron({ isOpen: props.isOpen })
+    ]
+}
+
+SectionTitle(props) -> {
+    type: text
+    content: props.text
+    style: FilterPanelVariants.section.title
+}
+
+SectionChevron(props) -> {
+    type: svg
+    style: FilterPanelVariants.section.chevron
+         + (props.isOpen != false ? " " + FilterPanelVariants.section.chevronOpen : "")
+    viewBox: "0 0 20 20"
+    fill: "currentColor"
+    children: [ChevronDownPath({})]
+}
+
+ChevronDownPath(props) -> {
+    type: path
+    fillRule: "evenodd"
+    clipRule: "evenodd"
+    d: "M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
+}
+
+SectionContent(props) -> {
+    style: FilterPanelVariants.section.content
+    children: props.section.type == "checkbox"
+        ? props.section.options.map(option => CheckboxFilter({
+            option: option,
+            onChange: props.onFilterChange
+        }))
+        : props.section.type == "radio"
+            ? props.section.options.map(option => RadioFilter({
+                option: option,
+                name: props.section.name,
+                onChange: props.onFilterChange
+            }))
+            : props.section.type == "range"
+                ? [RangeFilter({ section: props.section, onChange: props.onFilterChange })]
+                : []
+}
+
+// =============================================================================
+// Filter Types
+// =============================================================================
+
+CheckboxFilter(props) -> {
+    style: FilterPanelVariants.checkbox.container
+    children: [
+        Checkbox({ checked: props.option.checked, onChange: props.onChange, label: props.option.label }),
+        props.option.count ? FilterCount({ count: props.option.count }) : null
+    ]
+}
+
+RadioFilter(props) -> {
+    style: FilterPanelVariants.radio.container
+    children: [
+        Radio({ checked: props.option.checked, onChange: props.onChange, label: props.option.label, name: props.name })
+    ]
+}
+
+RangeFilter(props) -> {
+    style: FilterPanelVariants.range.container
+    children: [
+        RangeInputs({ min: props.section.min, max: props.section.max, onChange: props.onChange })
+    ]
+}
+
+RangeInputs(props) -> {
+    style: FilterPanelVariants.range.inputs
+    children: [
+        RangeInput({ value: props.min, placeholder: "Min" }),
+        RangeSeparator({}),
+        RangeInput({ value: props.max, placeholder: "Max" })
+    ]
+}
+
+RangeInput(props) -> {
+    type: input
+    inputType: "number"
+    value: props.value
+    placeholder: props.placeholder
+    style: FilterPanelVariants.range.input
+}
+
+RangeSeparator(props) -> {
+    type: text
+    content: "-"
+    style: FilterPanelVariants.range.separator
+}
+
+FilterCount(props) -> {
+    type: text
+    content: "(" + props.count + ")"
+    style: FilterPanelVariants.checkbox.count
+}
+
+// =============================================================================
+// Actions
+// =============================================================================
+
+FilterActions(props) -> {
+    style: FilterPanelVariants.footer.container
+    children: [
+        SecondaryButton({ children: "Reset", onClick: props.onReset, className: FilterPanelVariants.footer.reset }),
+        PrimaryButton({ children: "Apply", onClick: props.onApply, className: FilterPanelVariants.footer.apply })
+    ]
+}

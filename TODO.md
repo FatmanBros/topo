@@ -34,8 +34,8 @@ RecentActivityCard -> {
 | レイヤー | 数 |
 |---------|-----|
 | atoms | 31 |
-| molecules | 26 |
-| organisms | 12 |
+| molecules | 32 |
+| organisms | 20 |
 
 ### Atoms（基本UI要素）
 
@@ -62,25 +62,25 @@ RecentActivityCard -> {
 | tabs | タブナビゲーション | 高 | [x] |
 | breadcrumb | パンくずリスト | 高 | [x] |
 | pagination | ページネーション | 高 | [x] |
-| search-input | 検索入力（アイコン付き） | 中 | [ ] |
-| avatar-group | 複数アバター表示 | 中 | [ ] |
-| empty-state | データなし状態 | 中 | [ ] |
-| file-upload | ファイルアップロード | 中 | [ ] |
-| rating | 星評価 | 低 | [ ] |
-| stepper | ステップインジケーター | 低 | [ ] |
+| search-input | 検索入力（アイコン付き） | 中 | [x] |
+| avatar-group | 複数アバター表示 | 中 | [x] |
+| empty-state | データなし状態 | 中 | [x] |
+| file-upload | ファイルアップロード | 中 | [x] |
+| rating | 星評価 | 低 | [x] |
+| stepper | ステップインジケーター | 低 | [x] |
 
 ### Organisms（独立セクション）
 
 | コンポーネント | 説明 | 優先度 | 状態 |
 |--------------|------|--------|------|
-| data-table | データテーブル（ソート/フィルタ対応） | 高 | [ ] |
-| navbar | 汎用ナビゲーションバー | 高 | [ ] |
-| card-list | カードリスト（グリッド/リスト切替） | 中 | [ ] |
-| comment-section | コメント欄 | 中 | [ ] |
-| notification-center | 通知一覧 | 中 | [ ] |
-| user-menu | ユーザーメニュー（ドロップダウン） | 中 | [ ] |
-| filter-panel | フィルターパネル | 低 | [ ] |
-| timeline | タイムライン表示 | 低 | [ ] |
+| data-table | データテーブル（ソート/フィルタ対応） | 高 | [x] |
+| navbar | 汎用ナビゲーションバー | 高 | [x] |
+| card-list | カードリスト（グリッド/リスト切替） | 中 | [x] |
+| comment-section | コメント欄 | 中 | [x] |
+| notification-center | 通知一覧 | 中 | [x] |
+| user-menu | ユーザーメニュー（ドロップダウン） | 中 | [x] |
+| filter-panel | フィルターパネル | 低 | [x] |
+| timeline | タイムライン表示 | 低 | [x] |
 
 ---
 

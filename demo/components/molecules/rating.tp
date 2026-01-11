@@ -1,0 +1,105 @@
+// Rating Molecule - Star rating component
+// Usage: Rating({ value: 3, max: 5, onChange: handler })
+
+import { RatingVariants } from "../../theme/variants/rating.tp"
+
+// =============================================================================
+// Base Rating Component
+// =============================================================================
+
+Rating(props) -> {
+    style: RatingVariants.container
+         + (props.interactive ? " " + RatingVariants.interactive.container : "")
+         + (props.disabled ? " " + RatingVariants.disabled : "")
+         + (props.className ? " " + props.className : "")
+    children: generateStars(props.value || 0, props.max || 5, props.size || "md", props.onChange, props.readonly)
+}
+
+// =============================================================================
+// Star Component
+// =============================================================================
+
+Star(props) -> {
+    when: props.onClick && !props.readonly
+    then: InteractiveStar({ filled: props.filled, size: props.size, onClick: props.onClick, index: props.index })
+    else: StaticStar({ filled: props.filled, size: props.size })
+}
+
+InteractiveStar(props) -> {
+    type: button
+    click: props.onClick
+    ariaLabel: "Rate " + (props.index + 1) + " stars"
+    style: RatingVariants.star.base + " " + RatingVariants.interactive.star
+    children: [StarIcon({ filled: props.filled, size: props.size })]
+}
+
+StaticStar(props) -> {
+    style: RatingVariants.star.base + " " + RatingVariants.star.readonly
+    children: [StarIcon({ filled: props.filled, size: props.size })]
+}
+
+StarIcon(props) -> {
+    type: svg
+    style: RatingVariants.size[props.size]
+         + " " + (props.filled ? RatingVariants.star.filled : RatingVariants.star.empty)
+    viewBox: "0 0 20 20"
+    fill: "currentColor"
+    children: [StarPath({})]
+}
+
+StarPath(props) -> {
+    type: path
+    fillRule: "evenodd"
+    clipRule: "evenodd"
+    d: "M10.868 2.884c-.321-.772-1.415-.772-1.736 0l-1.83 4.401-4.753.381c-.833.067-1.171 1.107-.536 1.651l3.62 3.102-1.106 4.637c-.194.813.691 1.456 1.405 1.02L10 15.591l4.069 2.485c.713.436 1.598-.207 1.404-1.02l-1.106-4.637 3.62-3.102c.635-.544.297-1.584-.536-1.65l-4.752-.382-1.831-4.401Z"
+}
+
+// =============================================================================
+// Rating with Label
+// =============================================================================
+
+RatingWithLabel(props) -> {
+    style: RatingVariants.label.container + (props.className ? " " + props.className : "")
+    children: [
+        Rating({
+            value: props.value,
+            max: props.max || 5,
+            size: props.size || "md",
+            onChange: props.onChange,
+            readonly: props.readonly
+        }),
+        RatingLabel({ value: props.value, max: props.max || 5 }),
+        props.count ? RatingCount({ count: props.count }) : null
+    ]
+}
+
+RatingLabel(props) -> {
+    type: text
+    content: props.value + "/" + props.max
+    style: RatingVariants.label.text
+}
+
+RatingCount(props) -> {
+    type: text
+    content: "(" + props.count + " reviews)"
+    style: RatingVariants.label.count
+}
+
+// =============================================================================
+// Size Presets
+// =============================================================================
+
+SmallRating(props) -> Rating({ ...props, size: "sm" })
+LargeRating(props) -> Rating({ ...props, size: "lg" })
+
+// =============================================================================
+// Display Only (readonly)
+// =============================================================================
+
+RatingDisplay(props) -> Rating({ ...props, readonly: true })
+
+// =============================================================================
+// Interactive Rating
+// =============================================================================
+
+InteractiveRating(props) -> Rating({ ...props, interactive: true })

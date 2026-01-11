@@ -1,0 +1,58 @@
+// NotificationCenter Variants - Style definitions for NotificationCenter component
+
+import { ColorStyles, Radius, Shadows } from "../tokens.tp"
+
+NotificationCenterVariants -> {
+    // Trigger button with badge
+    trigger: {
+        button: "relative p-2 " + Radius.lg + " " + ColorStyles.neutral.text + " hover:bg-gray-100 transition-colors",
+        icon: "h-6 w-6",
+        badge: {
+            container: "absolute -top-1 -right-1 flex items-center justify-center",
+            dot: "h-5 w-5 " + Radius.full + " " + ColorStyles.danger.bg + " text-white text-xs font-medium"
+        }
+    },
+
+    // Dropdown panel
+    panel: {
+        container: "absolute right-0 mt-2 w-80 bg-white " + Radius.xl + " " + Shadows.lg + " border " + ColorStyles.neutral.borderLight + " overflow-hidden z-50",
+        header: {
+            container: "flex items-center justify-between px-4 py-3 border-b " + ColorStyles.neutral.borderLight,
+            title: "font-semibold " + ColorStyles.neutral.text,
+            action: "text-sm " + ColorStyles.primary.text + " hover:underline"
+        },
+        list: "max-h-96 overflow-y-auto divide-y " + ColorStyles.neutral.borderLight,
+        footer: {
+            container: "px-4 py-3 border-t " + ColorStyles.neutral.borderLight + " text-center",
+            link: "text-sm " + ColorStyles.primary.text + " hover:underline"
+        }
+    },
+
+    // Individual notification
+    item: {
+        container: {
+            base: "flex gap-3 px-4 py-3 transition-colors cursor-pointer hover:bg-gray-50",
+            unread: "bg-blue-50 hover:bg-blue-100"
+        },
+        icon: {
+            container: "flex-shrink-0 h-10 w-10 " + Radius.full + " flex items-center justify-center",
+            success: ColorStyles.success.bgLight + " " + ColorStyles.success.text,
+            warning: ColorStyles.warning.bgLight + " " + ColorStyles.warning.text,
+            danger: ColorStyles.danger.bgLight + " " + ColorStyles.danger.text,
+            info: ColorStyles.info.bgLight + " " + ColorStyles.info.text,
+            default: ColorStyles.neutral.bgLight + " " + ColorStyles.neutral.text
+        },
+        content: "flex-1 min-w-0",
+        title: "text-sm font-medium " + ColorStyles.neutral.text,
+        message: "text-sm " + ColorStyles.neutral.textLight + " truncate",
+        time: "text-xs " + ColorStyles.neutral.textMuted + " mt-1",
+        unreadDot: "h-2 w-2 " + Radius.full + " " + ColorStyles.primary.bg + " flex-shrink-0"
+    },
+
+    // Empty state
+    empty: {
+        container: "px-4 py-12 text-center",
+        icon: "h-12 w-12 mx-auto " + ColorStyles.neutral.textMuted,
+        text: "mt-2 text-sm " + ColorStyles.neutral.textMuted
+    }
+}

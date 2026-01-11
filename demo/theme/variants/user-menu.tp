@@ -1,0 +1,58 @@
+// UserMenu Variants - Style definitions for UserMenu component
+
+import { ColorStyles, Radius, Shadows } from "../tokens.tp"
+
+UserMenuVariants -> {
+    container: "relative",
+
+    // Trigger button
+    trigger: {
+        button: "flex items-center gap-2 p-1.5 " + Radius.lg + " hover:bg-gray-100 transition-colors",
+        avatar: "h-8 w-8 " + Radius.full + " object-cover",
+        name: "hidden sm:block text-sm font-medium " + ColorStyles.neutral.text,
+        chevron: "h-4 w-4 " + ColorStyles.neutral.textMuted
+    },
+
+    // Dropdown panel
+    panel: {
+        container: "absolute right-0 mt-2 w-56 bg-white " + Radius.xl + " " + Shadows.lg + " border " + ColorStyles.neutral.borderLight + " overflow-hidden z-50",
+
+        // User info header
+        header: {
+            container: "px-4 py-3 border-b " + ColorStyles.neutral.borderLight,
+            name: "font-medium " + ColorStyles.neutral.text,
+            email: "text-sm " + ColorStyles.neutral.textMuted + " truncate"
+        },
+
+        // Menu items
+        menu: "py-1",
+
+        item: {
+            base: "flex items-center gap-3 w-full px-4 py-2 text-sm text-left transition-colors",
+            default: ColorStyles.neutral.text + " hover:bg-gray-50",
+            danger: ColorStyles.danger.text + " hover:bg-red-50",
+            active: ColorStyles.primary.bgLight + " " + ColorStyles.primary.text
+        },
+
+        itemIcon: "h-4 w-4 flex-shrink-0",
+
+        // Divider
+        divider: "my-1 border-t " + ColorStyles.neutral.borderLight,
+
+        // Section label
+        sectionLabel: "px-4 py-2 text-xs font-semibold " + ColorStyles.neutral.textMuted + " uppercase tracking-wider"
+    },
+
+    // Status indicator
+    status: {
+        container: "flex items-center gap-2",
+        dot: {
+            base: "h-2 w-2 " + Radius.full,
+            online: "bg-green-500",
+            away: "bg-amber-500",
+            busy: "bg-red-500",
+            offline: "bg-gray-400"
+        },
+        text: "text-xs " + ColorStyles.neutral.textMuted
+    }
+}

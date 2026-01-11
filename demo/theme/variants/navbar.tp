@@ -1,0 +1,77 @@
+// Navbar Variants - Style definitions for Navbar component
+
+import { ColorStyles, Shadows } from "../tokens.tp"
+
+NavbarVariants -> {
+    container: {
+        base: "w-full",
+        fixed: "fixed top-0 left-0 right-0 z-40",
+        sticky: "sticky top-0 z-40"
+    },
+
+    inner: {
+        base: "flex items-center justify-between px-4 lg:px-8",
+        height: {
+            sm: "h-14",
+            md: "h-16",
+            lg: "h-20"
+        }
+    },
+
+    variant: {
+        light: "bg-white border-b " + ColorStyles.neutral.borderLight,
+        dark: "bg-gray-900 text-white",
+        transparent: "bg-transparent",
+        blur: "bg-white/80 backdrop-blur-md border-b " + ColorStyles.neutral.borderLight
+    },
+
+    shadow: {
+        none: "",
+        sm: Shadows.sm,
+        md: Shadows.md
+    },
+
+    // Logo section
+    brand: {
+        container: "flex items-center gap-2",
+        logo: "h-8 w-auto",
+        text: "text-xl font-bold"
+    },
+
+    // Navigation links
+    nav: {
+        container: "hidden md:flex items-center gap-1",
+        item: {
+            base: "px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+            light: ColorStyles.neutral.text + " hover:bg-gray-100",
+            dark: "text-gray-300 hover:text-white hover:bg-white/10",
+            active: {
+                light: ColorStyles.primary.text + " " + ColorStyles.primary.bgLight,
+                dark: "text-white bg-white/20"
+            }
+        }
+    },
+
+    // Actions section (buttons, icons)
+    actions: {
+        container: "flex items-center gap-2",
+        iconButton: {
+            base: "p-2 rounded-lg transition-colors",
+            light: ColorStyles.neutral.text + " hover:bg-gray-100",
+            dark: "text-gray-300 hover:text-white hover:bg-white/10"
+        }
+    },
+
+    // Mobile menu button
+    menuButton: {
+        container: "md:hidden",
+        button: "p-2 rounded-lg " + ColorStyles.neutral.text + " hover:bg-gray-100"
+    },
+
+    // Mobile menu
+    mobileMenu: {
+        container: "md:hidden border-t " + ColorStyles.neutral.borderLight,
+        inner: "px-4 py-3 space-y-1",
+        item: "block px-3 py-2 rounded-lg text-base font-medium " + ColorStyles.neutral.text + " hover:bg-gray-100"
+    }
+}

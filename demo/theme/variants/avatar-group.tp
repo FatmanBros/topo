@@ -1,0 +1,44 @@
+// AvatarGroup Variants - Style definitions for AvatarGroup component
+
+import { ColorStyles } from "../tokens.tp"
+
+AvatarGroupVariants -> {
+    container: "flex items-center",
+
+    // Stacking direction
+    stack: {
+        left: "flex-row-reverse",
+        right: "flex-row"
+    },
+
+    // Avatar overlap
+    overlap: {
+        sm: "-space-x-1",
+        md: "-space-x-2",
+        lg: "-space-x-3"
+    },
+
+    // Individual avatar in group
+    avatar: {
+        base: "relative inline-block rounded-full ring-2 ring-white",
+        hover: "hover:z-10 transition-transform hover:scale-110"
+    },
+
+    // Size variants
+    size: {
+        xs: "h-6 w-6 text-xs",
+        sm: "h-8 w-8 text-sm",
+        md: "h-10 w-10 text-base",
+        lg: "h-12 w-12 text-lg",
+        xl: "h-14 w-14 text-xl"
+    },
+
+    // Overflow count badge
+    overflow: {
+        base: "relative inline-flex items-center justify-center rounded-full ring-2 ring-white font-medium",
+        style: ColorStyles.neutral.bg + " " + ColorStyles.neutral.text
+    },
+
+    // Max display info
+    moreLabel: ColorStyles.neutral.textLight + " text-sm ml-2"
+}
