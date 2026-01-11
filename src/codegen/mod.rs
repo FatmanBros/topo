@@ -908,6 +908,10 @@ impl JsCodegen {
         self.emit_line("  if (__basePath && path.startsWith(__basePath)) {");
         self.emit_line("    path = path.slice(__basePath.length) || '/';");
         self.emit_line("  }");
+        self.emit_line("  // Normalize trailing slash (except root)");
+        self.emit_line("  if (path !== '/' && path.endsWith('/')) {");
+        self.emit_line("    path = path.slice(0, -1);");
+        self.emit_line("  }");
         self.emit_line("  const matched = matchRoute(path);");
         self.emit_line("  routeState.path = path;");
         self.emit_line("  routeState.query = parseQuery(location.search);");
