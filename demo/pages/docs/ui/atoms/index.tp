@@ -1,17 +1,22 @@
 // UI Atoms showcase page
 import { DocsTemplate } from "../../template.tp"
 import { DocsSection, DocsDescription } from "@/components/molecules/docs-section.tp"
-import { DocsCodeSection } from "@/components/organisms/docs-code-section.tp"
 import { Text } from "@/components/atoms/text.tp"
 import { Heading } from "@/components/atoms/heading.tp"
 
 // Atoms
-import { Divider, DividerWithLabel, DashedDivider } from "@/components/atoms/divider.tp"
+import { Button, PrimaryButton, SecondaryButton, OutlineButton, GhostButton, DangerButton } from "@/components/atoms/button.tp"
+import { Badge, PrimaryBadge, SuccessBadge, DangerBadge, WarningBadge, InfoBadge, OutlineBadge } from "@/components/atoms/badge.tp"
+import { Avatar, SmallAvatar, LargeAvatar } from "@/components/atoms/avatar.tp"
+import { Spinner, SmallSpinner, LargeSpinner } from "@/components/atoms/spinner.tp"
+import { Checkbox } from "@/components/atoms/checkbox.tp"
+import { Radio } from "@/components/atoms/radio.tp"
+import { Switch, SmallSwitch, LargeSwitch } from "@/components/atoms/switch.tp"
+import { Divider, DividerWithLabel, DashedDivider, VerticalDivider } from "@/components/atoms/divider.tp"
 import { Tooltip, TopTooltip, BottomTooltip } from "@/components/atoms/tooltip.tp"
 import { Link, PrimaryLink, ExternalLink } from "@/components/atoms/link.tp"
 import { Image, RoundedImage, CircleImage } from "@/components/atoms/image.tp"
 import { Skeleton, TextSkeleton, AvatarSkeleton, SkeletonListItem } from "@/components/atoms/skeleton.tp"
-import { PrimaryButton, SecondaryButton } from "@/components/atoms/button.tp"
 
 Page -> DocsTemplate({ children: [AtomsContent] })
 
@@ -20,6 +25,11 @@ AtomsContent -> {
     style: "space-y-12"
     children: [
         PageHeader,
+        ButtonSection,
+        BadgeSection,
+        AvatarSection,
+        SpinnerSection,
+        FormControlsSection,
         DividerSection,
         TooltipSection,
         LinkSection,
@@ -37,6 +47,276 @@ PageHeader -> DocsSection({
 HeaderDesc -> DocsDescription({
     text: "Atoms are the smallest UI building blocks. These components are the foundation for building more complex molecules and organisms."
 })
+
+// =============================================================================
+// Button Section
+// =============================================================================
+
+ButtonSection -> {
+    align: vertical
+    style: "space-y-6"
+    children: [
+        SectionHeading({ text: "Button" }),
+        SectionDesc({ text: "Interactive buttons with multiple variants and sizes." }),
+        ButtonExamples
+    ]
+}
+
+ButtonExamples -> {
+    style: "p-6 bg-gray-50 rounded-lg space-y-6"
+    children: [
+        ButtonVariantsRow,
+        ButtonSizesRow
+    ]
+}
+
+ButtonVariantsRow -> {
+    align: vertical
+    style: "space-y-2"
+    children: [
+        Text({ text: "Variants", style: "text-sm font-medium text-gray-700" }),
+        ButtonVariantsDemo
+    ]
+}
+
+ButtonVariantsDemo -> {
+    style: "flex flex-wrap items-center gap-3"
+    children: [
+        PrimaryButton({ children: "Primary" }),
+        SecondaryButton({ children: "Secondary" }),
+        OutlineButton({ children: "Outline" }),
+        GhostButton({ children: "Ghost" }),
+        DangerButton({ children: "Danger" })
+    ]
+}
+
+ButtonSizesRow -> {
+    align: vertical
+    style: "space-y-2"
+    children: [
+        Text({ text: "Sizes", style: "text-sm font-medium text-gray-700" }),
+        ButtonSizesDemo
+    ]
+}
+
+ButtonSizesDemo -> {
+    style: "flex flex-wrap items-center gap-3"
+    children: [
+        Button({ size: "xs", children: "Extra Small" }),
+        Button({ size: "sm", children: "Small" }),
+        Button({ size: "md", children: "Medium" }),
+        Button({ size: "lg", children: "Large" }),
+        Button({ size: "xl", children: "Extra Large" })
+    ]
+}
+
+// =============================================================================
+// Badge Section
+// =============================================================================
+
+BadgeSection -> {
+    align: vertical
+    style: "space-y-6"
+    children: [
+        SectionHeading({ text: "Badge" }),
+        SectionDesc({ text: "Status indicators and labels with semantic colors." }),
+        BadgeExamples
+    ]
+}
+
+BadgeExamples -> {
+    style: "p-6 bg-gray-50 rounded-lg"
+    children: [BadgeRow]
+}
+
+BadgeRow -> {
+    style: "flex flex-wrap items-center gap-3"
+    children: [
+        PrimaryBadge({ children: "Primary" }),
+        SuccessBadge({ children: "Success" }),
+        WarningBadge({ children: "Warning" }),
+        DangerBadge({ children: "Danger" }),
+        InfoBadge({ children: "Info" }),
+        OutlineBadge({ children: "Outline" })
+    ]
+}
+
+// =============================================================================
+// Avatar Section
+// =============================================================================
+
+AvatarSection -> {
+    align: vertical
+    style: "space-y-6"
+    children: [
+        SectionHeading({ text: "Avatar" }),
+        SectionDesc({ text: "User avatars with image or initials fallback." }),
+        AvatarExamples
+    ]
+}
+
+AvatarExamples -> {
+    style: "p-6 bg-gray-50 rounded-lg space-y-6"
+    children: [
+        AvatarSizesRow,
+        AvatarInitialsRow
+    ]
+}
+
+AvatarSizesRow -> {
+    align: vertical
+    style: "space-y-2"
+    children: [
+        Text({ text: "With Image", style: "text-sm font-medium text-gray-700" }),
+        AvatarSizesDemo
+    ]
+}
+
+AvatarSizesDemo -> {
+    style: "flex items-end gap-4"
+    children: [
+        Avatar({ src: "https://i.pravatar.cc/40?img=1", size: "xs" }),
+        Avatar({ src: "https://i.pravatar.cc/40?img=2", size: "sm" }),
+        Avatar({ src: "https://i.pravatar.cc/40?img=3", size: "md" }),
+        Avatar({ src: "https://i.pravatar.cc/40?img=4", size: "lg" }),
+        Avatar({ src: "https://i.pravatar.cc/40?img=5", size: "xl" })
+    ]
+}
+
+AvatarInitialsRow -> {
+    align: vertical
+    style: "space-y-2"
+    children: [
+        Text({ text: "With Initials", style: "text-sm font-medium text-gray-700" }),
+        AvatarInitialsDemo
+    ]
+}
+
+AvatarInitialsDemo -> {
+    style: "flex items-end gap-4"
+    children: [
+        Avatar({ name: "Alice", size: "sm" }),
+        Avatar({ name: "Bob Smith", size: "md" }),
+        Avatar({ name: "Carol", size: "lg" })
+    ]
+}
+
+// =============================================================================
+// Spinner Section
+// =============================================================================
+
+SpinnerSection -> {
+    align: vertical
+    style: "space-y-6"
+    children: [
+        SectionHeading({ text: "Spinner" }),
+        SectionDesc({ text: "Loading indicators with different sizes and colors." }),
+        SpinnerExamples
+    ]
+}
+
+SpinnerExamples -> {
+    style: "p-6 bg-gray-50 rounded-lg"
+    children: [SpinnerRow]
+}
+
+SpinnerRow -> {
+    style: "flex items-center gap-8"
+    children: [
+        SpinnerItem({ label: "Small", child: SmallSpinner({}) }),
+        SpinnerItem({ label: "Medium", child: Spinner({}) }),
+        SpinnerItem({ label: "Large", child: LargeSpinner({}) }),
+        SpinnerItem({ label: "Primary", child: Spinner({ variant: "primary" }) }),
+        SpinnerItem({ label: "Secondary", child: Spinner({ variant: "secondary" }) })
+    ]
+}
+
+SpinnerItem(props) -> {
+    align: vertical
+    style: "items-center gap-2"
+    children: [
+        props.child,
+        Text({ text: props.label, style: "text-sm text-gray-500" })
+    ]
+}
+
+// =============================================================================
+// Form Controls Section
+// =============================================================================
+
+FormControlsSection -> {
+    align: vertical
+    style: "space-y-6"
+    children: [
+        SectionHeading({ text: "Form Controls" }),
+        SectionDesc({ text: "Checkbox, Radio, and Switch components for form inputs." }),
+        FormControlsExamples
+    ]
+}
+
+FormControlsExamples -> {
+    style: "p-6 bg-gray-50 rounded-lg space-y-8"
+    children: [
+        CheckboxRow,
+        RadioRow,
+        SwitchRow
+    ]
+}
+
+CheckboxRow -> {
+    align: vertical
+    style: "space-y-3"
+    children: [
+        Text({ text: "Checkbox", style: "text-sm font-medium text-gray-700" }),
+        CheckboxDemo
+    ]
+}
+
+CheckboxDemo -> {
+    style: "flex items-center gap-6"
+    children: [
+        Checkbox({ label: "Unchecked", checked: false }),
+        Checkbox({ label: "Checked", checked: true }),
+        Checkbox({ label: "Disabled", checked: false, disabled: true })
+    ]
+}
+
+RadioRow -> {
+    align: vertical
+    style: "space-y-3"
+    children: [
+        Text({ text: "Radio", style: "text-sm font-medium text-gray-700" }),
+        RadioDemo
+    ]
+}
+
+RadioDemo -> {
+    style: "flex items-center gap-6"
+    children: [
+        Radio({ label: "Option A", name: "demo", checked: true }),
+        Radio({ label: "Option B", name: "demo", checked: false }),
+        Radio({ label: "Option C", name: "demo", checked: false })
+    ]
+}
+
+SwitchRow -> {
+    align: vertical
+    style: "space-y-3"
+    children: [
+        Text({ text: "Switch", style: "text-sm font-medium text-gray-700" }),
+        SwitchDemo
+    ]
+}
+
+SwitchDemo -> {
+    style: "flex items-center gap-6"
+    children: [
+        Switch({ label: "Off", checked: false }),
+        Switch({ label: "On", checked: true }),
+        SmallSwitch({ label: "Small", checked: true }),
+        LargeSwitch({ label: "Large", checked: true })
+    ]
+}
 
 // =============================================================================
 // Divider Section
@@ -57,7 +337,8 @@ DividerExamples -> {
     children: [
         DividerExample1,
         DividerExample2,
-        DividerExample3
+        DividerExample3,
+        DividerExample4
     ]
 }
 
@@ -85,6 +366,23 @@ DividerExample3 -> {
     children: [
         Text({ text: "Divider with Label", style: "text-sm text-gray-500" }),
         DividerWithLabel({ label: "OR" })
+    ]
+}
+
+DividerExample4 -> {
+    style: "space-y-2"
+    children: [
+        Text({ text: "Vertical Divider", style: "text-sm text-gray-500" }),
+        VerticalDividerDemo
+    ]
+}
+
+VerticalDividerDemo -> {
+    style: "flex items-center gap-4 h-8"
+    children: [
+        Text({ text: "Left", style: "text-gray-600" }),
+        VerticalDivider({}),
+        Text({ text: "Right", style: "text-gray-600" })
     ]
 }
 

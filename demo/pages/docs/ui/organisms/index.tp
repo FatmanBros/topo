@@ -1,0 +1,415 @@
+// UI Organisms showcase page
+import { DocsTemplate } from "../../template.tp"
+import { DocsSection, DocsDescription } from "@/components/molecules/docs-section.tp"
+import { Text } from "@/components/atoms/text.tp"
+import { Heading } from "@/components/atoms/heading.tp"
+import { PrimaryButton, SecondaryButton } from "@/components/atoms/button.tp"
+import { Avatar } from "@/components/atoms/avatar.tp"
+
+// Organisms
+import { DataTable } from "@/components/organisms/data-table.tp"
+import { Navbar, TransparentNavbar } from "@/components/organisms/navbar.tp"
+import { CardList, GridCardList } from "@/components/organisms/card-list.tp"
+import { CommentSection } from "@/components/organisms/comment-section.tp"
+import { NotificationCenter } from "@/components/organisms/notification-center.tp"
+import { UserMenu } from "@/components/organisms/user-menu.tp"
+import { FilterPanel } from "@/components/organisms/filter-panel.tp"
+import { Timeline, VerticalTimeline } from "@/components/organisms/timeline.tp"
+
+Page -> DocsTemplate({ children: [OrganismsContent] })
+
+OrganismsContent -> {
+    align: vertical
+    style: "space-y-12"
+    children: [
+        PageHeader,
+        DataTableSection,
+        NavbarSection,
+        CardListSection,
+        TimelineSection,
+        CommentSectionDemo,
+        NotificationSection,
+        UserMenuSection,
+        FilterPanelSection
+    ]
+}
+
+PageHeader -> DocsSection({
+    id: "organisms",
+    title: "Organisms",
+    children: [HeaderDesc]
+})
+
+HeaderDesc -> DocsDescription({
+    text: "Organisms are complex UI components composed of molecules and atoms. They represent distinct sections of an interface and can function independently."
+})
+
+// =============================================================================
+// DataTable Section
+// =============================================================================
+
+DataTableSection -> {
+    align: vertical
+    style: "space-y-6"
+    children: [
+        SectionHeading({ text: "DataTable" }),
+        SectionDesc({ text: "Feature-rich data table with sorting, selection, and pagination." }),
+        DataTableExample
+    ]
+}
+
+DataTableExample -> {
+    style: "bg-gray-50 rounded-lg overflow-hidden"
+    children: [DataTableDemo]
+}
+
+DataTableDemo -> DataTable({
+    columns: [
+        { key: "name", label: "Name", sortable: true },
+        { key: "email", label: "Email", sortable: true },
+        { key: "role", label: "Role" },
+        { key: "status", label: "Status" }
+    ],
+    data: [
+        { id: 1, name: "Alice Johnson", email: "alice@example.com", role: "Admin", status: "Active" },
+        { id: 2, name: "Bob Smith", email: "bob@example.com", role: "User", status: "Active" },
+        { id: 3, name: "Carol White", email: "carol@example.com", role: "Editor", status: "Inactive" }
+    ],
+    selectable: true,
+    pagination: { currentPage: 1, totalPages: 5, pageSize: 10 }
+})
+
+// =============================================================================
+// Navbar Section
+// =============================================================================
+
+NavbarSection -> {
+    align: vertical
+    style: "space-y-6"
+    children: [
+        SectionHeading({ text: "Navbar" }),
+        SectionDesc({ text: "Responsive navigation bar with logo, links, and actions." }),
+        NavbarExample
+    ]
+}
+
+NavbarExample -> {
+    style: "bg-gray-50 rounded-lg overflow-hidden"
+    children: [NavbarDemo]
+}
+
+NavbarDemo -> Navbar({
+    logo: NavbarLogoText({}),
+    items: [
+        { label: "Home", href: "/", active: true },
+        { label: "Products", href: "/products" },
+        { label: "About", href: "/about" },
+        { label: "Contact", href: "/contact" }
+    ],
+    actions: [NavbarActionButton({})]
+})
+
+NavbarLogoText(props) -> {
+    type: text
+    content: "Brand"
+    style: "text-xl font-bold text-indigo-600"
+}
+
+NavbarActionButton(props) -> PrimaryButton({ children: "Sign Up", size: "sm" })
+
+// =============================================================================
+// CardList Section
+// =============================================================================
+
+CardListSection -> {
+    align: vertical
+    style: "space-y-6"
+    children: [
+        SectionHeading({ text: "CardList" }),
+        SectionDesc({ text: "Card collection with grid/list view toggle." }),
+        CardListExample
+    ]
+}
+
+CardListExample -> {
+    style: "p-6 bg-gray-50 rounded-lg"
+    children: [CardListDemo]
+}
+
+CardListDemo -> GridCardList({
+    items: [
+        {
+            title: "Project Alpha",
+            description: "A revolutionary new approach to web development.",
+            image: "https://picsum.photos/400/200?random=1",
+            tags: ["React", "TypeScript"]
+        },
+        {
+            title: "Project Beta",
+            description: "Scalable infrastructure for modern applications.",
+            image: "https://picsum.photos/400/200?random=2",
+            tags: ["Node.js", "Docker"]
+        },
+        {
+            title: "Project Gamma",
+            description: "AI-powered analytics and insights platform.",
+            image: "https://picsum.photos/400/200?random=3",
+            tags: ["Python", "ML"]
+        }
+    ]
+})
+
+// =============================================================================
+// Timeline Section
+// =============================================================================
+
+TimelineSection -> {
+    align: vertical
+    style: "space-y-6"
+    children: [
+        SectionHeading({ text: "Timeline" }),
+        SectionDesc({ text: "Vertical and horizontal timeline for displaying events." }),
+        TimelineExample
+    ]
+}
+
+TimelineExample -> {
+    style: "p-6 bg-gray-50 rounded-lg"
+    children: [TimelineDemo]
+}
+
+TimelineDemo -> VerticalTimeline({
+    items: [
+        {
+            title: "Project Started",
+            description: "Initial planning and team formation.",
+            time: "Jan 2024",
+            variant: "success",
+            completed: true
+        },
+        {
+            title: "Design Phase",
+            description: "UI/UX design and prototyping.",
+            time: "Feb 2024",
+            variant: "success",
+            completed: true
+        },
+        {
+            title: "Development",
+            description: "Core feature implementation.",
+            time: "Mar 2024",
+            variant: "primary",
+            completed: false
+        },
+        {
+            title: "Launch",
+            description: "Public release and marketing.",
+            time: "Apr 2024",
+            variant: "default",
+            completed: false
+        }
+    ]
+})
+
+// =============================================================================
+// CommentSection Demo
+// =============================================================================
+
+CommentSectionDemo -> {
+    align: vertical
+    style: "space-y-6"
+    children: [
+        SectionHeading({ text: "CommentSection" }),
+        SectionDesc({ text: "Comment thread with replies and reactions." }),
+        CommentExample
+    ]
+}
+
+CommentExample -> {
+    style: "p-6 bg-gray-50 rounded-lg"
+    children: [CommentSectionPreview]
+}
+
+CommentSectionPreview -> CommentSection({
+    comments: [
+        {
+            id: 1,
+            author: { name: "Alice", avatar: "https://i.pravatar.cc/40?img=1" },
+            content: "This is a great feature! Looking forward to using it.",
+            time: "2 hours ago",
+            likes: 5,
+            replies: [
+                {
+                    id: 2,
+                    author: { name: "Bob", avatar: "https://i.pravatar.cc/40?img=2" },
+                    content: "Agreed! The implementation looks solid.",
+                    time: "1 hour ago",
+                    likes: 2
+                }
+            ]
+        },
+        {
+            id: 3,
+            author: { name: "Carol", avatar: "https://i.pravatar.cc/40?img=3" },
+            content: "Would love to see more documentation on this.",
+            time: "30 minutes ago",
+            likes: 1
+        }
+    ]
+})
+
+// =============================================================================
+// NotificationCenter Section
+// =============================================================================
+
+NotificationSection -> {
+    align: vertical
+    style: "space-y-6"
+    children: [
+        SectionHeading({ text: "NotificationCenter" }),
+        SectionDesc({ text: "Notification dropdown with badge and list." }),
+        NotificationExample
+    ]
+}
+
+NotificationExample -> {
+    style: "p-6 bg-gray-50 rounded-lg"
+    children: [NotificationPreviewContainer]
+}
+
+NotificationPreviewContainer -> {
+    style: "flex justify-center"
+    children: [NotificationCenterPreview]
+}
+
+NotificationCenterPreview -> NotificationCenter({
+    isOpen: true,
+    unreadCount: 3,
+    notifications: [
+        {
+            title: "New Comment",
+            message: "Alice commented on your post.",
+            time: "5 min ago",
+            type: "info",
+            unread: true
+        },
+        {
+            title: "Task Completed",
+            message: "Project Alpha milestone reached.",
+            time: "1 hour ago",
+            type: "success",
+            unread: true
+        },
+        {
+            title: "Warning",
+            message: "Storage usage at 80%.",
+            time: "2 hours ago",
+            type: "warning",
+            unread: false
+        }
+    ]
+})
+
+// =============================================================================
+// UserMenu Section
+// =============================================================================
+
+UserMenuSection -> {
+    align: vertical
+    style: "space-y-6"
+    children: [
+        SectionHeading({ text: "UserMenu" }),
+        SectionDesc({ text: "User dropdown menu with profile info and actions." }),
+        UserMenuExample
+    ]
+}
+
+UserMenuExample -> {
+    style: "p-6 bg-gray-50 rounded-lg"
+    children: [UserMenuPreviewContainer]
+}
+
+UserMenuPreviewContainer -> {
+    style: "flex justify-center"
+    children: [UserMenuPreview]
+}
+
+UserMenuPreview -> UserMenu({
+    isOpen: true,
+    user: {
+        name: "John Doe",
+        email: "john@example.com",
+        avatar: "https://i.pravatar.cc/40?img=8"
+    },
+    status: "online",
+    items: [
+        { label: "Profile", icon: "👤" },
+        { label: "Settings", icon: "⚙️" },
+        { type: "divider" },
+        { label: "Sign Out", icon: "🚪", danger: true }
+    ]
+})
+
+// =============================================================================
+// FilterPanel Section
+// =============================================================================
+
+FilterPanelSection -> {
+    align: vertical
+    style: "space-y-6"
+    children: [
+        SectionHeading({ text: "FilterPanel" }),
+        SectionDesc({ text: "Filter controls with checkboxes, radios, and range inputs." }),
+        FilterPanelExample
+    ]
+}
+
+FilterPanelExample -> {
+    style: "bg-gray-50 rounded-lg overflow-hidden"
+    children: [FilterPanelPreviewContainer]
+}
+
+FilterPanelPreviewContainer -> {
+    style: "max-w-xs"
+    children: [FilterPanelPreview]
+}
+
+FilterPanelPreview -> FilterPanel({
+    title: "Filters",
+    filters: [
+        {
+            title: "Category",
+            type: "checkbox",
+            isOpen: true,
+            options: [
+                { label: "Electronics", checked: true, count: 42 },
+                { label: "Clothing", checked: false, count: 28 },
+                { label: "Books", checked: false, count: 15 }
+            ]
+        },
+        {
+            title: "Price Range",
+            type: "radio",
+            name: "price",
+            isOpen: true,
+            options: [
+                { label: "Under $50", checked: false },
+                { label: "$50 - $100", checked: true },
+                { label: "Over $100", checked: false }
+            ]
+        }
+    ],
+    activeFilters: [
+        { id: "cat-electronics", label: "Electronics" },
+        { id: "price-50-100", label: "$50 - $100" }
+    ],
+    showActions: true
+})
+
+// =============================================================================
+// Shared Components
+// =============================================================================
+
+SectionHeading(props) -> Heading({ level: 2, text: props.text, style: "text-xl font-semibold text-gray-900" })
+
+SectionDesc(props) -> Text({ text: props.text, style: "text-gray-600" })

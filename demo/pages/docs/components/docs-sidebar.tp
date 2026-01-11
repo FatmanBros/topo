@@ -34,7 +34,8 @@ DocsSidebarNav -> {
             title: "UI Components",
             items: [
                 DocsSidebarItem({ label: "Atoms", href: "/docs/ui/atoms", active: false }),
-                DocsSidebarItem({ label: "Molecules", href: "/docs/ui/molecules", active: false })
+                DocsSidebarItem({ label: "Molecules", href: "/docs/ui/molecules", active: false }),
+                DocsSidebarItem({ label: "Organisms", href: "/docs/ui/organisms", active: false })
             ]
         }),
         SidebarSection({

@@ -4,6 +4,7 @@ import { DocsSection, DocsDescription } from "@/components/molecules/docs-sectio
 import { Text } from "@/components/atoms/text.tp"
 import { Heading } from "@/components/atoms/heading.tp"
 import { PrimaryButton, SecondaryButton, DangerButton } from "@/components/atoms/button.tp"
+import { Avatar } from "@/components/atoms/avatar.tp"
 
 // Molecules
 import { Alert, SuccessAlert, DangerAlert, WarningAlert, InfoAlert } from "@/components/molecules/alert.tp"
@@ -11,6 +12,12 @@ import { Tabs, LineTabs, PillsTabs } from "@/components/molecules/tabs.tp"
 import { Breadcrumb, SlashBreadcrumb } from "@/components/molecules/breadcrumb.tp"
 import { Pagination, SimplePagination } from "@/components/molecules/pagination.tp"
 import { Dropdown } from "@/components/molecules/dropdown.tp"
+import { SearchInput, LargeSearchInput } from "@/components/molecules/search-input.tp"
+import { AvatarGroup, SmallAvatarGroup } from "@/components/molecules/avatar-group.tp"
+import { EmptyState, NoDataState, NoResultsState } from "@/components/molecules/empty-state.tp"
+import { FileUpload, CompactFileUpload } from "@/components/molecules/file-upload.tp"
+import { Rating, SmallRating, LargeRating } from "@/components/molecules/rating.tp"
+import { Stepper, VerticalStepper } from "@/components/molecules/stepper.tp"
 
 Page -> DocsTemplate({ children: [MoleculesContent] })
 
@@ -24,7 +31,13 @@ MoleculesContent -> {
         BreadcrumbSection,
         PaginationSection,
         DropdownSection,
-        ModalSection
+        ModalSection,
+        SearchInputSection,
+        AvatarGroupSection,
+        EmptyStateSection,
+        FileUploadSection,
+        RatingSection,
+        StepperSection
     ]
 }
 
@@ -350,6 +363,305 @@ ModalPreviewFooter -> {
         SecondaryButton({ children: "Cancel" }),
         PrimaryButton({ children: "Confirm" })
     ]
+}
+
+// =============================================================================
+// SearchInput Section
+// =============================================================================
+
+SearchInputSection -> {
+    align: vertical
+    style: "space-y-6"
+    children: [
+        SectionHeading({ text: "SearchInput" }),
+        SectionDesc({ text: "Search input with icon and clear button." }),
+        SearchInputExamples
+    ]
+}
+
+SearchInputExamples -> {
+    style: "p-6 bg-gray-50 rounded-lg space-y-6"
+    children: [
+        SearchInputRow1,
+        SearchInputRow2
+    ]
+}
+
+SearchInputRow1 -> {
+    align: vertical
+    style: "space-y-2"
+    children: [
+        Text({ text: "Default Size", style: "text-sm font-medium text-gray-700" }),
+        SearchInputDefaultDemo
+    ]
+}
+
+SearchInputDefaultDemo -> {
+    style: "max-w-md"
+    children: [SearchInput({ placeholder: "Search..." })]
+}
+
+SearchInputRow2 -> {
+    align: vertical
+    style: "space-y-2"
+    children: [
+        Text({ text: "Large Size", style: "text-sm font-medium text-gray-700" }),
+        SearchInputLargeDemo
+    ]
+}
+
+SearchInputLargeDemo -> {
+    style: "max-w-md"
+    children: [LargeSearchInput({ placeholder: "Search products, categories..." })]
+}
+
+// =============================================================================
+// AvatarGroup Section
+// =============================================================================
+
+AvatarGroupSection -> {
+    align: vertical
+    style: "space-y-6"
+    children: [
+        SectionHeading({ text: "AvatarGroup" }),
+        SectionDesc({ text: "Display multiple avatars with overflow count." }),
+        AvatarGroupExamples
+    ]
+}
+
+AvatarGroupExamples -> {
+    style: "p-6 bg-gray-50 rounded-lg space-y-6"
+    children: [
+        AvatarGroupRow1,
+        AvatarGroupRow2
+    ]
+}
+
+AvatarGroupRow1 -> {
+    align: vertical
+    style: "space-y-2"
+    children: [
+        Text({ text: "Default", style: "text-sm font-medium text-gray-700" }),
+        AvatarGroupDefaultDemo
+    ]
+}
+
+AvatarGroupDefaultDemo -> AvatarGroup({
+    avatars: [
+        { src: "https://i.pravatar.cc/40?img=1", name: "Alice" },
+        { src: "https://i.pravatar.cc/40?img=2", name: "Bob" },
+        { src: "https://i.pravatar.cc/40?img=3", name: "Carol" },
+        { src: "https://i.pravatar.cc/40?img=4", name: "David" },
+        { src: "https://i.pravatar.cc/40?img=5", name: "Eve" }
+    ],
+    max: 3
+})
+
+AvatarGroupRow2 -> {
+    align: vertical
+    style: "space-y-2"
+    children: [
+        Text({ text: "Small Size", style: "text-sm font-medium text-gray-700" }),
+        AvatarGroupSmallDemo
+    ]
+}
+
+AvatarGroupSmallDemo -> SmallAvatarGroup({
+    avatars: [
+        { src: "https://i.pravatar.cc/40?img=6", name: "Frank" },
+        { src: "https://i.pravatar.cc/40?img=7", name: "Grace" },
+        { src: "https://i.pravatar.cc/40?img=8", name: "Henry" }
+    ]
+})
+
+// =============================================================================
+// EmptyState Section
+// =============================================================================
+
+EmptyStateSection -> {
+    align: vertical
+    style: "space-y-6"
+    children: [
+        SectionHeading({ text: "EmptyState" }),
+        SectionDesc({ text: "Placeholder for empty data or no results." }),
+        EmptyStateExamples
+    ]
+}
+
+EmptyStateExamples -> {
+    style: "p-6 bg-gray-50 rounded-lg"
+    children: [EmptyStateGrid]
+}
+
+EmptyStateGrid -> {
+    style: "grid grid-cols-1 md:grid-cols-2 gap-6"
+    children: [
+        NoDataState({
+            title: "No data yet",
+            description: "Start by adding some data to see it here.",
+            action: PrimaryButton({ children: "Add Data", size: "sm" })
+        }),
+        NoResultsState({
+            title: "No results found",
+            description: "Try adjusting your search or filters."
+        })
+    ]
+}
+
+// =============================================================================
+// FileUpload Section
+// =============================================================================
+
+FileUploadSection -> {
+    align: vertical
+    style: "space-y-6"
+    children: [
+        SectionHeading({ text: "FileUpload" }),
+        SectionDesc({ text: "Drag and drop file upload zone." }),
+        FileUploadExamples
+    ]
+}
+
+FileUploadExamples -> {
+    style: "p-6 bg-gray-50 rounded-lg space-y-6"
+    children: [
+        FileUploadRow1,
+        FileUploadRow2
+    ]
+}
+
+FileUploadRow1 -> {
+    align: vertical
+    style: "space-y-2"
+    children: [
+        Text({ text: "Default", style: "text-sm font-medium text-gray-700" }),
+        FileUploadDefaultDemo
+    ]
+}
+
+FileUploadDefaultDemo -> {
+    style: "max-w-md"
+    children: [FileUpload({
+        accept: ".pdf,.doc,.docx",
+        maxSize: "10MB"
+    })]
+}
+
+FileUploadRow2 -> {
+    align: vertical
+    style: "space-y-2"
+    children: [
+        Text({ text: "Compact", style: "text-sm font-medium text-gray-700" }),
+        FileUploadCompactDemo
+    ]
+}
+
+FileUploadCompactDemo -> {
+    style: "max-w-md"
+    children: [CompactFileUpload({
+        accept: "image/*",
+        maxSize: "5MB"
+    })]
+}
+
+// =============================================================================
+// Rating Section
+// =============================================================================
+
+RatingSection -> {
+    align: vertical
+    style: "space-y-6"
+    children: [
+        SectionHeading({ text: "Rating" }),
+        SectionDesc({ text: "Star rating component with different sizes." }),
+        RatingExamples
+    ]
+}
+
+RatingExamples -> {
+    style: "p-6 bg-gray-50 rounded-lg"
+    children: [RatingRow]
+}
+
+RatingRow -> {
+    style: "flex items-center gap-8"
+    children: [
+        RatingItem({ label: "Small", child: SmallRating({ value: 3, max: 5 }) }),
+        RatingItem({ label: "Medium", child: Rating({ value: 4, max: 5 }) }),
+        RatingItem({ label: "Large", child: LargeRating({ value: 5, max: 5 }) }),
+        RatingItem({ label: "Half Stars", child: Rating({ value: 3.5, max: 5 }) })
+    ]
+}
+
+RatingItem(props) -> {
+    align: vertical
+    style: "items-center gap-2"
+    children: [
+        props.child,
+        Text({ text: props.label, style: "text-sm text-gray-500" })
+    ]
+}
+
+// =============================================================================
+// Stepper Section
+// =============================================================================
+
+StepperSection -> {
+    align: vertical
+    style: "space-y-6"
+    children: [
+        SectionHeading({ text: "Stepper" }),
+        SectionDesc({ text: "Step indicator for multi-step processes." }),
+        StepperExamples
+    ]
+}
+
+StepperExamples -> {
+    style: "p-6 bg-gray-50 rounded-lg space-y-8"
+    children: [
+        StepperHorizontalExample,
+        StepperVerticalExample
+    ]
+}
+
+StepperHorizontalExample -> {
+    align: vertical
+    style: "space-y-2"
+    children: [
+        Text({ text: "Horizontal", style: "text-sm font-medium text-gray-700" }),
+        StepperHorizontalDemo
+    ]
+}
+
+StepperHorizontalDemo -> Stepper({
+    currentStep: 2,
+    steps: [
+        { label: "Account", description: "Create account" },
+        { label: "Profile", description: "Set up profile" },
+        { label: "Review", description: "Review details" },
+        { label: "Complete", description: "All done!" }
+    ]
+})
+
+StepperVerticalExample -> {
+    align: vertical
+    style: "space-y-2"
+    children: [
+        Text({ text: "Vertical", style: "text-sm font-medium text-gray-700" }),
+        StepperVerticalDemo
+    ]
+}
+
+StepperVerticalDemo -> {
+    style: "max-w-xs"
+    children: [VerticalStepper({
+        currentStep: 1,
+        steps: [
+            { label: "Step 1", description: "First step" },
+            { label: "Step 2", description: "Second step" },
+            { label: "Step 3", description: "Final step" }
+        ]
+    })]
 }
 
 // =============================================================================
