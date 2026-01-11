@@ -1,0 +1,132 @@
+// Dropdown Molecule - Dropdown menu component
+// Usage: Dropdown({ trigger: Button({ ... }), items: [...], isOpen: false })
+
+import { DropdownVariants } from "../../theme/variants/dropdown.tp"
+
+// =============================================================================
+// Base Dropdown Component
+// =============================================================================
+
+Dropdown(props) -> {
+    style: DropdownVariants.wrapper + (props.className ? " " + props.className : "")
+    children: [
+        DropdownTrigger({
+            children: props.trigger,
+            onClick: props.onToggle
+        }),
+        props.isOpen ? DropdownMenu({
+            items: props.items,
+            position: props.position || "bottomLeft",
+            onSelect: props.onSelect,
+            header: props.header
+        }) : null
+    ]
+}
+
+// =============================================================================
+// Dropdown Trigger
+// =============================================================================
+
+DropdownTrigger(props) -> {
+    click: props.onClick
+    style: DropdownVariants.trigger
+    children: props.children
+}
+
+// =============================================================================
+// Dropdown Menu
+// =============================================================================
+
+DropdownMenu(props) -> {
+    role: "menu"
+    style: DropdownVariants.menu + " " + DropdownVariants.position[props.position]
+    children: [
+        props.header ? DropdownHeader({ text: props.header }) : null,
+        ...props.items.map(item => DropdownItemWrapper({ item: item, onSelect: props.onSelect }))
+    ]
+}
+
+DropdownItemWrapper(props) -> {
+    when: props.item.type == "divider"
+    then: DropdownDivider({})
+    else: DropdownItem({
+        label: props.item.label,
+        icon: props.item.icon,
+        shortcut: props.item.shortcut,
+        onClick: props.item.onClick || props.onSelect,
+        disabled: props.item.disabled,
+        active: props.item.active,
+        danger: props.item.danger,
+        value: props.item.value
+    })
+}
+
+// =============================================================================
+// Dropdown Item
+// =============================================================================
+
+DropdownItem(props) -> {
+    type: button
+    role: "menuitem"
+    disabled: props.disabled
+    click: props.onClick
+    style: DropdownVariants.item.base
+         + " " + (props.disabled
+             ? DropdownVariants.item.disabled
+             : (props.danger
+                 ? DropdownVariants.item.danger
+                 : (props.active
+                     ? DropdownVariants.item.active
+                     : DropdownVariants.item.default)))
+    children: [
+        props.icon ? DropdownItemIcon({ icon: props.icon }) : null,
+        DropdownItemLabel({ text: props.label }),
+        props.shortcut ? DropdownItemShortcut({ text: props.shortcut }) : null
+    ]
+}
+
+DropdownItemIcon(props) -> {
+    type: text
+    content: props.icon
+    style: DropdownVariants.itemIcon
+}
+
+DropdownItemLabel(props) -> {
+    type: text
+    content: props.text
+    style: DropdownVariants.itemLabel
+}
+
+DropdownItemShortcut(props) -> {
+    type: text
+    content: props.text
+    style: DropdownVariants.itemShortcut
+}
+
+// =============================================================================
+// Dropdown Divider
+// =============================================================================
+
+DropdownDivider(props) -> {
+    role: "separator"
+    style: DropdownVariants.divider
+}
+
+// =============================================================================
+// Dropdown Header
+// =============================================================================
+
+DropdownHeader(props) -> {
+    type: text
+    content: props.text
+    style: DropdownVariants.header
+}
+
+// =============================================================================
+// Position Presets
+// =============================================================================
+
+DropdownBottomLeft(props) -> Dropdown({ ...props, position: "bottomLeft" })
+DropdownBottomRight(props) -> Dropdown({ ...props, position: "bottomRight" })
+DropdownTopLeft(props) -> Dropdown({ ...props, position: "topLeft" })
+DropdownTopRight(props) -> Dropdown({ ...props, position: "topRight" })

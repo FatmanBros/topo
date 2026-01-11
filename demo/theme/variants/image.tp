@@ -1,0 +1,48 @@
+// Image Variants - Style definitions for Image component
+
+import { Radius } from "../tokens.tp"
+
+ImageVariants -> {
+    base: "max-w-full h-auto",
+
+    objectFit: {
+        contain: "object-contain",
+        cover: "object-cover",
+        fill: "object-fill",
+        none: "object-none",
+        scaleDown: "object-scale-down"
+    },
+
+    objectPosition: {
+        center: "object-center",
+        top: "object-top",
+        bottom: "object-bottom",
+        left: "object-left",
+        right: "object-right"
+    },
+
+    radius: {
+        none: Radius.none,
+        sm: Radius.sm,
+        md: Radius.md,
+        lg: Radius.lg,
+        xl: Radius.xl,
+        full: Radius.full
+    },
+
+    aspectRatio: {
+        auto: "",
+        square: "aspect-square",
+        video: "aspect-video",
+        portrait: "aspect-[3/4]",
+        wide: "aspect-[16/9]"
+    },
+
+    responsive: "w-full h-auto",
+
+    placeholder: {
+        container: "relative overflow-hidden bg-gray-100",
+        blur: "blur-sm scale-105 transition-all duration-300",
+        loaded: "blur-0 scale-100"
+    }
+}

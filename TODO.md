@@ -33,35 +33,35 @@ RecentActivityCard -> {
 
 | レイヤー | 数 |
 |---------|-----|
-| atoms | 19 |
-| molecules | 20 |
+| atoms | 31 |
+| molecules | 26 |
 | organisms | 12 |
 
 ### Atoms（基本UI要素）
 
 | コンポーネント | 説明 | 優先度 | 状態 |
 |--------------|------|--------|------|
-| avatar | ユーザーアイコン（画像/イニシャル） | 高 | [ ] |
-| spinner | ローディングインジケーター | 高 | [ ] |
-| checkbox | チェックボックス | 高 | [ ] |
-| radio | ラジオボタン | 高 | [ ] |
-| switch | トグルスイッチ | 高 | [ ] |
-| divider | 区切り線（水平/垂直） | 中 | [ ] |
-| tooltip | ツールチップ | 中 | [ ] |
-| link | スタイル付きリンク | 中 | [ ] |
-| image | レスポンシブ画像 | 中 | [ ] |
-| skeleton | スケルトンローダー | 中 | [ ] |
+| avatar | ユーザーアイコン（画像/イニシャル） | 高 | [x] |
+| spinner | ローディングインジケーター | 高 | [x] |
+| checkbox | チェックボックス | 高 | [x] |
+| radio | ラジオボタン | 高 | [x] |
+| switch | トグルスイッチ | 高 | [x] |
+| divider | 区切り線（水平/垂直） | 中 | [x] |
+| tooltip | ツールチップ | 中 | [x] |
+| link | スタイル付きリンク | 中 | [x] |
+| image | レスポンシブ画像 | 中 | [x] |
+| skeleton | スケルトンローダー | 中 | [x] |
 
 ### Molecules（機能単位）
 
 | コンポーネント | 説明 | 優先度 | 状態 |
 |--------------|------|--------|------|
-| alert | 通知メッセージ（success/error/warning/info） | 高 | [ ] |
-| modal | モーダルダイアログ | 高 | [ ] |
-| dropdown | ドロップダウンメニュー | 高 | [ ] |
-| tabs | タブナビゲーション | 高 | [ ] |
-| breadcrumb | パンくずリスト | 高 | [ ] |
-| pagination | ページネーション | 高 | [ ] |
+| alert | 通知メッセージ（success/error/warning/info） | 高 | [x] |
+| modal | モーダルダイアログ | 高 | [x] |
+| dropdown | ドロップダウンメニュー | 高 | [x] |
+| tabs | タブナビゲーション | 高 | [x] |
+| breadcrumb | パンくずリスト | 高 | [x] |
+| pagination | ページネーション | 高 | [x] |
 | search-input | 検索入力（アイコン付き） | 中 | [ ] |
 | avatar-group | 複数アバター表示 | 中 | [ ] |
 | empty-state | データなし状態 | 中 | [ ] |
@@ -308,11 +308,11 @@ ExamplePage -> {
 
 ### 6. 実装順序
 
-1. [ ] `theme/tokens.tp` - デザイントークン定義
-2. [ ] `theme/variants/button.tp` - Button variant
-3. [ ] `atoms/button.tp` 改修 - 新システム適用
-4. [ ] 他のatomsへ展開（badge, input, etc.）
-5. [ ] moleculesへ展開（alert, card, etc.）
+1. [x] `theme/tokens.tp` - デザイントークン定義（Colors, ColorStyles, Sizes, Radius, Shadows, Transitions）
+2. [x] `theme/variants/button.tp` - Button variant
+3. [x] `atoms/button.tp` 改修 - 新システム適用
+4. [x] 他のatomsへ展開（avatar, spinner, checkbox, radio, switch, divider, tooltip, link, image, skeleton）
+5. [x] moleculesへ展開（alert, modal, dropdown, tabs, breadcrumb, pagination）
 
 ### 7. 構文サポート状況 [確認済み]
 

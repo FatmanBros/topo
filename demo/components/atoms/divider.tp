@@ -1,0 +1,69 @@
+// Divider Atom - Horizontal/Vertical separator line
+// Usage: Divider({ orientation: "horizontal", variant: "solid", spacing: "md" })
+
+import { DividerVariants } from "../../theme/variants/divider.tp"
+
+// =============================================================================
+// Base Divider Component
+// =============================================================================
+
+Divider(props) -> {
+    type: hr
+    role: "separator"
+    ariaOrientation: props.orientation || "horizontal"
+    style: DividerVariants.base
+         + " " + DividerVariants.orientation[props.orientation || "horizontal"]
+         + " " + DividerVariants.variant[props.variant || "solid"]
+         + " " + DividerVariants.color[props.color || "default"]
+         + " " + DividerVariants.thickness[props.thickness || "thin"]
+         + " " + (props.spacing
+             ? DividerVariants.spacing[props.spacing][props.orientation || "horizontal"]
+             : "")
+         + (props.className ? " " + props.className : "")
+}
+
+// =============================================================================
+// Divider with Label (text in the middle)
+// =============================================================================
+
+DividerWithLabel(props) -> {
+    role: "separator"
+    style: DividerVariants.withLabel.container
+         + (props.className ? " " + props.className : "")
+    children: [
+        DividerLine({ color: props.color }),
+        DividerLabel({ text: props.label }),
+        DividerLine({ color: props.color })
+    ]
+}
+
+DividerLine(props) -> {
+    style: DividerVariants.withLabel.line
+         + (props.color ? " border-" + props.color : "")
+}
+
+DividerLabel(props) -> {
+    type: text
+    content: props.text
+    style: DividerVariants.withLabel.label
+}
+
+// =============================================================================
+// Orientation Presets
+// =============================================================================
+
+HorizontalDivider(props) -> Divider({ ...props, orientation: "horizontal" })
+VerticalDivider(props) -> Divider({ ...props, orientation: "vertical" })
+
+// =============================================================================
+// Variant Presets
+// =============================================================================
+
+DashedDivider(props) -> Divider({ ...props, variant: "dashed" })
+DottedDivider(props) -> Divider({ ...props, variant: "dotted" })
+
+// =============================================================================
+// Spacing Presets
+// =============================================================================
+
+SpacedDivider(props) -> Divider({ ...props, spacing: "md" })

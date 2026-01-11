@@ -1,0 +1,126 @@
+// Skeleton Atom - Loading placeholder component
+// Usage: Skeleton({ width: "full", height: "md", radius: "md" })
+
+import { SkeletonVariants } from "../../theme/variants/skeleton.tp"
+
+// =============================================================================
+// Base Skeleton Component
+// =============================================================================
+
+Skeleton(props) -> {
+    role: "status"
+    ariaLabel: "Loading..."
+    style: SkeletonVariants.base
+         + " " + SkeletonVariants.variant[props.variant || "default"]
+         + " " + SkeletonVariants.radius[props.radius || "md"]
+         + (props.width ? " " + SkeletonVariants.width[props.width] : " w-full")
+         + (props.height ? " " + SkeletonVariants.height[props.height] : " h-4")
+         + (props.className ? " " + props.className : "")
+}
+
+// =============================================================================
+// Preset Shapes
+// =============================================================================
+
+TextSkeleton(props) -> {
+    role: "status"
+    ariaLabel: "Loading text..."
+    style: SkeletonVariants.base
+         + " " + SkeletonVariants.variant[props.variant || "default"]
+         + " " + SkeletonVariants.radius.sm
+         + " " + SkeletonVariants.text
+         + (props.width ? " " + SkeletonVariants.width[props.width] : "")
+         + (props.className ? " " + props.className : "")
+}
+
+HeadingSkeleton(props) -> {
+    role: "status"
+    ariaLabel: "Loading heading..."
+    style: SkeletonVariants.base
+         + " " + SkeletonVariants.variant[props.variant || "default"]
+         + " " + SkeletonVariants.radius.sm
+         + " " + SkeletonVariants.heading
+         + (props.className ? " " + props.className : "")
+}
+
+AvatarSkeleton(props) -> {
+    role: "status"
+    ariaLabel: "Loading avatar..."
+    style: SkeletonVariants.base
+         + " " + SkeletonVariants.variant[props.variant || "default"]
+         + " " + SkeletonVariants.avatar
+         + " " + SkeletonVariants.size[props.size || "md"]
+         + (props.className ? " " + props.className : "")
+}
+
+ButtonSkeleton(props) -> {
+    role: "status"
+    ariaLabel: "Loading button..."
+    style: SkeletonVariants.base
+         + " " + SkeletonVariants.variant[props.variant || "default"]
+         + " " + SkeletonVariants.radius.md
+         + " " + SkeletonVariants.button
+         + (props.className ? " " + props.className : "")
+}
+
+ThumbnailSkeleton(props) -> {
+    role: "status"
+    ariaLabel: "Loading image..."
+    style: SkeletonVariants.base
+         + " " + SkeletonVariants.variant[props.variant || "default"]
+         + " " + SkeletonVariants.radius[props.radius || "md"]
+         + " " + SkeletonVariants.thumbnail
+         + (props.className ? " " + props.className : "")
+}
+
+CardSkeleton(props) -> {
+    role: "status"
+    ariaLabel: "Loading card..."
+    style: SkeletonVariants.base
+         + " " + SkeletonVariants.variant[props.variant || "default"]
+         + " " + SkeletonVariants.radius.lg
+         + " " + SkeletonVariants.card
+         + (props.className ? " " + props.className : "")
+}
+
+// =============================================================================
+// Skeleton Group (multiple lines)
+// =============================================================================
+
+SkeletonParagraph(props) -> {
+    style: "space-y-2" + (props.className ? " " + props.className : "")
+    children: [
+        TextSkeleton({ variant: props.variant }),
+        TextSkeleton({ variant: props.variant }),
+        TextSkeleton({ variant: props.variant, width: "threeQuarters" })
+    ]
+}
+
+SkeletonCard(props) -> {
+    style: "space-y-4 p-4 border border-gray-200 rounded-lg" + (props.className ? " " + props.className : "")
+    children: [
+        ThumbnailSkeleton({ variant: props.variant }),
+        HeadingSkeleton({ variant: props.variant }),
+        SkeletonParagraph({ variant: props.variant })
+    ]
+}
+
+// =============================================================================
+// Skeleton with Avatar and Text (for list items)
+// =============================================================================
+
+SkeletonListItem(props) -> {
+    style: "flex items-center gap-3" + (props.className ? " " + props.className : "")
+    children: [
+        AvatarSkeleton({ size: props.avatarSize || "md", variant: props.variant }),
+        SkeletonListItemContent({ variant: props.variant })
+    ]
+}
+
+SkeletonListItemContent(props) -> {
+    style: "flex-1 space-y-2"
+    children: [
+        TextSkeleton({ width: "half", variant: props.variant }),
+        TextSkeleton({ width: "threeQuarters", variant: props.variant })
+    ]
+}
