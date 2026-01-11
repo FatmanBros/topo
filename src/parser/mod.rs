@@ -156,6 +156,10 @@ impl Parser {
             // Guard: Name ? { }
             self.advance();
             Ok(Declaration::Guard(self.guard_def(name)?))
+        } else if self.check(TokenKind::Bang) {
+            // Resolver: Name ! { }
+            self.advance();
+            Ok(Declaration::Resolver(self.resolver_def(name, params)?))
         } else if self.check(TokenKind::LBrace) {
             // Method: Name { }
             Ok(Declaration::Method(self.method_def(name)?))
@@ -387,6 +391,65 @@ impl Parser {
         })
     }
 
+    // ========================================================================
+    // Resolver Definition (!)
+    // ========================================================================
+
+    fn resolver_def(&mut self, name: String, params: Vec<TypedParam>) -> Result<ResolverDef, ParseError> {
+        self.expect(TokenKind::LBrace)?;
+
+        let mut fetch = None;
+        let mut fallback = None;
+        let mut cache = None;
+
+        while !self.check(TokenKind::RBrace) && !self.is_at_end() {
+            let key = self.expect_property_key()?;
+            self.expect(TokenKind::Colon)?;
+
+            match key.as_str() {
+                "fetch" => {
+                    fetch = Some(self.expression()?);
+                }
+                "fallback" => {
+                    fallback = Some(self.expression()?);
+                }
+                "cache" => {
+                    if let Expression::Number { value } = self.expression()? {
+                        cache = Some(value as u64);
+                    }
+                }
+                _ => {
+                    // Skip unknown properties
+                    let _ = self.expression()?;
+                }
+            }
+        }
+
+        self.expect(TokenKind::RBrace)?;
+
+        let fetch_expr = fetch.ok_or_else(|| ParseError::UnexpectedToken {
+            expected: "fetch property".to_string(),
+            found: "missing".to_string(),
+            line: self.peek().line,
+            column: self.peek().column,
+        })?;
+
+        let fallback_expr = fallback.ok_or_else(|| ParseError::UnexpectedToken {
+            expected: "fallback property".to_string(),
+            found: "missing".to_string(),
+            line: self.peek().line,
+            column: self.peek().column,
+        })?;
+
+        Ok(ResolverDef {
+            name,
+            params: params.into_iter().map(|p| p.name).collect(),
+            fetch: fetch_expr,
+            fallback: fallback_expr,
+            cache,
+        })
+    }
+
     fn guard_setup_definition(&mut self) -> Result<Declaration, ParseError> {
         self.expect(TokenKind::GuardSetup)?;
         self.expect(TokenKind::LBrace)?;
@@ -515,27 +578,7 @@ impl Parser {
     }
 
     fn parse_route_config(&mut self) -> Result<RouteConfig, ParseError> {
-        // Check for {"/path", [guards]} syntax (legacy)
-        if self.check(TokenKind::LBrace) {
-            self.advance();
-            let path = self.expect_string()?;
-            self.expect(TokenKind::Comma)?;
-            self.expect(TokenKind::LBracket)?;
-
-            let mut guards = Vec::new();
-            while !self.check(TokenKind::RBracket) && !self.is_at_end() {
-                guards.push(self.expect_identifier()?);
-                if !self.check(TokenKind::RBracket) {
-                    let _ = self.match_token(TokenKind::Comma);
-                }
-            }
-            self.expect(TokenKind::RBracket)?;
-            self.expect(TokenKind::RBrace)?;
-
-            return Ok(RouteConfig::PathWithGuards { path, guards });
-        }
-
-        // Simple path: "/path", "/path" -> SubRoute, or "/path", [guards]
+        // Simple path: "/path", "/path" -> SubRoute, "/path", [guards], or "/path", {resolvers}
         let path = self.expect_string()?;
 
         // Check for subroute: -> SubRoute
@@ -545,24 +588,82 @@ impl Parser {
             return Ok(RouteConfig::SubRoute { path, route_ref });
         }
 
-        // Check for guards: , [guards]
+        // Check for guards and/or resolvers: , [guards], {resolvers}
         if self.check(TokenKind::Comma) {
             self.advance();
-            self.expect(TokenKind::LBracket)?;
 
             let mut guards = Vec::new();
-            while !self.check(TokenKind::RBracket) && !self.is_at_end() {
-                guards.push(self.expect_identifier()?);
-                if !self.check(TokenKind::RBracket) {
-                    let _ = self.match_token(TokenKind::Comma);
+            let mut resolvers = Vec::new();
+
+            // Parse [guards] if present
+            if self.check(TokenKind::LBracket) {
+                self.advance();
+                while !self.check(TokenKind::RBracket) && !self.is_at_end() {
+                    guards.push(self.expect_identifier()?);
+                    if !self.check(TokenKind::RBracket) {
+                        let _ = self.match_token(TokenKind::Comma);
+                    }
+                }
+                self.expect(TokenKind::RBracket)?;
+
+                // Check for {resolvers} after guards
+                if self.check(TokenKind::Comma) {
+                    self.advance();
+                    if self.check(TokenKind::LBrace) {
+                        resolvers = self.parse_resolver_refs()?;
+                    }
                 }
             }
-            self.expect(TokenKind::RBracket)?;
+            // Parse {resolvers} if present (without guards)
+            else if self.check(TokenKind::LBrace) {
+                resolvers = self.parse_resolver_refs()?;
+            }
 
-            return Ok(RouteConfig::PathWithGuards { path, guards });
+            // Return appropriate variant based on what was parsed
+            return match (guards.is_empty(), resolvers.is_empty()) {
+                (true, true) => Ok(RouteConfig::Path { path }),
+                (false, true) => Ok(RouteConfig::PathWithGuards { path, guards }),
+                (true, false) => Ok(RouteConfig::PathWithResolvers { path, resolvers }),
+                (false, false) => Ok(RouteConfig::PathWithGuardsAndResolvers { path, guards, resolvers }),
+            };
         }
 
         Ok(RouteConfig::Path { path })
+    }
+
+    /// Parse resolver references: {Resolver1, Resolver2(arg)}
+    fn parse_resolver_refs(&mut self) -> Result<Vec<ResolverRef>, ParseError> {
+        self.expect(TokenKind::LBrace)?;
+        let mut resolvers = Vec::new();
+
+        while !self.check(TokenKind::RBrace) && !self.is_at_end() {
+            let name = self.expect_identifier()?;
+
+            // Check for arguments: Resolver(arg1, arg2)
+            let args = if self.check(TokenKind::LParen) {
+                self.advance();
+                let mut args = Vec::new();
+                while !self.check(TokenKind::RParen) && !self.is_at_end() {
+                    args.push(self.expect_identifier()?);
+                    if !self.check(TokenKind::RParen) {
+                        let _ = self.match_token(TokenKind::Comma);
+                    }
+                }
+                self.expect(TokenKind::RParen)?;
+                args
+            } else {
+                Vec::new()
+            };
+
+            resolvers.push(ResolverRef { name, args });
+
+            if !self.check(TokenKind::RBrace) {
+                let _ = self.match_token(TokenKind::Comma);
+            }
+        }
+
+        self.expect(TokenKind::RBrace)?;
+        Ok(resolvers)
     }
 
     fn parse_routes_guards_config(&mut self) -> Result<RoutesGuardsConfig, ParseError> {

@@ -1257,6 +1257,7 @@ impl JsCodegen {
             Declaration::AfterOnce(_) => {}  // Handled separately for Playwright test generation
             Declaration::Guard(guard) => self.generate_guard(guard),
             Declaration::GuardSetup(setup) => self.generate_guard_setup(setup),
+            Declaration::Resolver(resolver) => self.generate_resolver(resolver),
             Declaration::Routes(routes) => self.generate_routes(routes),
             Declaration::Function(func) => self.generate_function(func),
         }
@@ -1310,6 +1311,82 @@ impl JsCodegen {
         // TODO: Handle new style guards with body statements
     }
 
+    fn generate_resolver(&mut self, resolver: &ResolverDef) {
+        let resolver_name = &resolver.name;
+        let params_str = resolver.params.join(", ");
+        let fetch_expr = self.generate_expression(&resolver.fetch);
+        let fallback_expr = self.generate_expression(&resolver.fallback);
+
+        self.emit_line(&format!("const {}Resolver = {{", resolver_name));
+        self.indent += 1;
+
+        // Parameters for route param mapping
+        if !resolver.params.is_empty() {
+            self.emit_line(&format!(
+                "params: [{}],",
+                resolver
+                    .params
+                    .iter()
+                    .map(|p| format!("'{}'", p))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ));
+        }
+
+        // Cache configuration
+        if let Some(cache_ms) = resolver.cache {
+            self.emit_line(&format!("cacheMs: {},", cache_ms));
+            self.emit_line("_cache: null,");
+            self.emit_line("_cacheTime: 0,");
+        }
+
+        // Resolve function
+        self.emit_line(&format!("async resolve({}) {{", params_str));
+        self.indent += 1;
+
+        // Cache check
+        if resolver.cache.is_some() {
+            self.emit_line("const now = Date.now();");
+            self.emit_line("if (this._cache && (now - this._cacheTime) < this.cacheMs) {");
+            self.emit_line("  return this._cache;");
+            self.emit_line("}");
+        }
+
+        self.emit_line("try {");
+        self.indent += 1;
+        self.emit_line(&format!("const data = await {};", fetch_expr));
+
+        // Cache storage
+        if resolver.cache.is_some() {
+            self.emit_line("this._cache = data;");
+            self.emit_line("this._cacheTime = Date.now();");
+        }
+
+        self.emit_line("return data;");
+        self.indent -= 1;
+        self.emit_line("} catch (e) {");
+        self.indent += 1;
+        self.emit_line("console.error('Resolver error:', e);");
+        self.emit_line(&format!("return {};", fallback_expr));
+        self.indent -= 1;
+        self.emit_line("}");
+
+        self.indent -= 1;
+        self.emit_line("},");
+
+        // Clear cache method
+        if resolver.cache.is_some() {
+            self.emit_line("clearCache() {");
+            self.emit_line("  this._cache = null;");
+            self.emit_line("  this._cacheTime = 0;");
+            self.emit_line("},");
+        }
+
+        self.indent -= 1;
+        self.emit_line("};");
+        self.emit_line("");
+    }
+
     fn generate_routes(&mut self, routes: &RoutesDef) {
         // Get unique name to avoid duplicate declarations
         let unique_name = self.get_unique_routes_name(&routes.name);
@@ -1331,8 +1408,10 @@ impl JsCodegen {
                         self.emit_line(&format!("{}: ({}) => `{}`,", entry.name, params, template_path));
                     }
                 }
-                RouteConfig::PathWithGuards { path, guards: _ } => {
-                    // Route with guards - same generation, guards are handled elsewhere
+                RouteConfig::PathWithGuards { path, guards: _ } |
+                RouteConfig::PathWithResolvers { path, resolvers: _ } |
+                RouteConfig::PathWithGuardsAndResolvers { path, guards: _, resolvers: _ } => {
+                    // Route with guards/resolvers - same generation, guards/resolvers are handled elsewhere
                     if entry.params.is_empty() {
                         self.emit_line(&format!("{}: () => '{}',", entry.name, path));
                     } else {
@@ -1386,16 +1465,19 @@ impl JsCodegen {
         self.indent += 1;
 
         for entry in &routes.routes {
-            let (path, guards) = match &entry.config {
-                RouteConfig::Path { path } => (path.clone(), Vec::new()),
-                RouteConfig::PathWithGuards { path, guards } => (path.clone(), guards.clone()),
+            let (path, guards, resolvers) = match &entry.config {
+                RouteConfig::Path { path } => (path.clone(), Vec::new(), Vec::new()),
+                RouteConfig::PathWithGuards { path, guards } => (path.clone(), guards.clone(), Vec::new()),
+                RouteConfig::PathWithResolvers { path, resolvers } => (path.clone(), Vec::new(), resolvers.clone()),
+                RouteConfig::PathWithGuardsAndResolvers { path, guards, resolvers } => {
+                    (path.clone(), guards.clone(), resolvers.clone())
+                }
                 RouteConfig::SubRoute { path, route_ref } => {
                     // Sub-route reference: spread the sub-router
                     let sub_router_name = format!("{}_router", route_ref);
-                    let guards_str = "[]";
                     self.emit_line(&format!(
-                        "{}: {{ path: '{}', guards: {}, ...{} }},",
-                        entry.name, path, guards_str, sub_router_name
+                        "{}: {{ path: '{}', guards: [], resolvers: [], ...{} }},",
+                        entry.name, path, sub_router_name
                     ));
                     continue;
                 }
@@ -1411,9 +1493,19 @@ impl JsCodegen {
                 format!("[{}]", guards_formatted)
             };
 
+            let resolvers_str = if resolvers.is_empty() {
+                "[]".to_string()
+            } else {
+                let resolvers_formatted = resolvers.iter()
+                    .map(|r| format!("{}Resolver", r.name))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("[{}]", resolvers_formatted)
+            };
+
             self.emit_line(&format!(
-                "{}: {{ path: '{}', guards: {} }},",
-                entry.name, path, guards_str
+                "{}: {{ path: '{}', guards: {}, resolvers: {} }},",
+                entry.name, path, guards_str, resolvers_str
             ));
         }
 
@@ -1435,15 +1527,51 @@ impl JsCodegen {
             self.emit_line("  return true;");
             self.emit_line("}");
             self.emit_line("");
+
+            // Generate navigateWithResolvers helper
+            self.emit_line("async function navigateWithResolvers(route, params = {}) {");
+            self.emit_line("  if (!route || !route.path) return { success: false };");
+            self.emit_line("  // Execute guards first");
+            self.emit_line("  for (const guard of (route.guards || [])) {");
+            self.emit_line("    if (guard && typeof guard.check === 'function' && !guard.check()) {");
+            self.emit_line("      if (guard.redirect) window.location.hash = guard.redirect;");
+            self.emit_line("      return { success: false, blocked: true };");
+            self.emit_line("    }");
+            self.emit_line("  }");
+            self.emit_line("  // Execute resolvers in parallel");
+            self.emit_line("  const resolvedData = {};");
+            self.emit_line("  const resolverPromises = (route.resolvers || []).map(async (resolver) => {");
+            self.emit_line("    if (resolver && typeof resolver.resolve === 'function') {");
+            self.emit_line("      const args = resolver.params ? resolver.params.map(p => params[p]) : [];");
+            self.emit_line("      resolvedData[resolver.name || 'data'] = await resolver.resolve(...args);");
+            self.emit_line("    }");
+            self.emit_line("  });");
+            self.emit_line("  try {");
+            self.emit_line("    await Promise.all(resolverPromises);");
+            self.emit_line("  } catch (e) {");
+            self.emit_line("    console.error('Resolver execution error:', e);");
+            self.emit_line("    return { success: false, error: e };");
+            self.emit_line("  }");
+            self.emit_line("  // Navigate");
+            self.emit_line("  window.location.hash = route.path;");
+            self.emit_line("  return { success: true, data: resolvedData };");
+            self.emit_line("}");
+            self.emit_line("");
         }
     }
 
     fn generate_routes_guards(&mut self, routes: &RoutesDef, unique_name: &str) {
-        // Collect route-specific guards from PathWithGuards configs
+        // Collect route-specific guards from PathWithGuards and PathWithGuardsAndResolvers configs
         let mut route_guards: Vec<(String, Vec<String>)> = Vec::new();
         for entry in &routes.routes {
-            if let RouteConfig::PathWithGuards { path, guards } = &entry.config {
-                route_guards.push((path.clone(), guards.clone()));
+            match &entry.config {
+                RouteConfig::PathWithGuards { path, guards } => {
+                    route_guards.push((path.clone(), guards.clone()));
+                }
+                RouteConfig::PathWithGuardsAndResolvers { path, guards, .. } => {
+                    route_guards.push((path.clone(), guards.clone()));
+                }
+                _ => {}
             }
         }
 
@@ -2976,6 +3104,7 @@ impl TsCodegen {
             Declaration::AfterOnce(_) => {}  // Tests don't need type exports
             Declaration::Guard(_) => {}      // Guards don't need type exports
             Declaration::GuardSetup(_) => {} // GuardSetup doesn't need type exports
+            Declaration::Resolver(_) => {}   // Resolvers don't need type exports
             Declaration::Routes(_) => {}     // Routes types are handled separately
             Declaration::Function(_) => {}   // Functions don't need type exports
         }

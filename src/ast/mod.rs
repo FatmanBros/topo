@@ -1,11 +1,12 @@
 //! AST (Abstract Syntax Tree) definitions for topo language
 //!
-//! The topo language has 5 types of definitions:
+//! The topo language has 6 types of definitions:
 //! - Component: `Name -> { }` - UI components
 //! - Method: `Name { }` - Logic/functions
 //! - ApiService: `Name :: { }` - API service definitions
 //! - Store: `Name | { }` - State management
 //! - Guard: `Name ? { }` - Route guards
+//! - Resolver: `Name ! { }` - Data pre-fetching before route navigation
 
 use serde::{Deserialize, Serialize};
 
@@ -63,6 +64,9 @@ pub enum Declaration {
 
     /// Pure function definition: `Name(params) -> expression`
     Function(FunctionDef),
+
+    /// Resolver definition: `Name ! { fetch: expr, fallback: value }`
+    Resolver(ResolverDef),
 }
 
 // ============================================================================
@@ -231,6 +235,36 @@ pub struct RouteGuard {
     pub pattern: String,
     /// Guard name or "none" to disable guards for this route
     pub guard: Option<String>,
+}
+
+// ============================================================================
+// Resolver Definition (!)
+// ============================================================================
+
+/// Resolver definition: `Name ! { fetch: expr, fallback: value, cache?: ms }`
+/// Resolvers pre-fetch data before route navigation completes.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ResolverDef {
+    /// Resolver name
+    pub name: String,
+    /// Parameters (e.g., `UserResolver(id)` -> ["id"])
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub params: Vec<String>,
+    /// Fetch expression - the async data fetching logic
+    pub fetch: Expression,
+    /// Fallback value when fetch fails
+    pub fallback: Expression,
+    /// Optional cache duration in milliseconds
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cache: Option<u64>,
+}
+
+/// Resolver reference in routes with optional arguments
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ResolverRef {
+    pub name: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub args: Vec<String>,
 }
 
 // ============================================================================
@@ -442,14 +476,22 @@ pub struct RouteEntry {
     pub config: RouteConfig,
 }
 
-/// Route configuration - path only, path with guards, or subroute reference
+/// Route configuration - path only, path with guards, resolvers, or subroute reference
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum RouteConfig {
     /// Simple path: `"/dashboard"`
     Path { path: String },
-    /// Path with guards: `{"/dashboard", [guard1, guard2]}`
+    /// Path with guards: `"/dashboard", [guard1, guard2]`
     PathWithGuards { path: String, guards: Vec<String> },
+    /// Path with resolvers: `"/dashboard", {resolver1, resolver2}`
+    PathWithResolvers { path: String, resolvers: Vec<ResolverRef> },
+    /// Path with guards and resolvers: `"/users/{id}", [isAuth], {UserResolver(id)}`
+    PathWithGuardsAndResolvers {
+        path: String,
+        guards: Vec<String>,
+        resolvers: Vec<ResolverRef>,
+    },
     /// Subroute reference: `"/docs" -> DocsRoute`
     SubRoute { path: String, route_ref: String },
 }
