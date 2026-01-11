@@ -1,12 +1,13 @@
 //! AST (Abstract Syntax Tree) definitions for topo language
 //!
-//! The topo language has 6 types of definitions:
+//! The topo language has 7 types of definitions:
 //! - Component: `Name -> { }` - UI components
 //! - Method: `Name { }` - Logic/functions
 //! - ApiService: `Name :: { }` - API service definitions
 //! - Store: `Name | { }` - State management
 //! - Guard: `Name ? { }` - Route guards
 //! - Resolver: `Name ! { }` - Data pre-fetching before route navigation
+//! - Directive: `Name @ { }` - Custom DOM element behaviors
 
 use serde::{Deserialize, Serialize};
 
@@ -67,6 +68,9 @@ pub enum Declaration {
 
     /// Resolver definition: `Name ! { fetch: expr, fallback: value }`
     Resolver(ResolverDef),
+
+    /// Directive definition: `Name @ { onMount, onDestroy }`
+    Directive(DirectiveDef),
 }
 
 // ============================================================================
@@ -105,6 +109,9 @@ pub struct ComponentDef {
     /// Guards applied to this component: `Name -> Guard1, Guard2 { }`
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub guards: Vec<String>,
+    /// Directives applied to this component: `@Focus`, `@Tooltip("text")`
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub directives: Vec<DirectiveUsage>,
 }
 
 /// Component alias definition
@@ -265,6 +272,38 @@ pub struct ResolverRef {
     pub name: String,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub args: Vec<String>,
+}
+
+// ============================================================================
+// Directive Definition (@)
+// ============================================================================
+
+/// Directive definition: `Name @ { onMount: fn, onDestroy: fn }`
+/// Directives attach custom behavior to DOM elements.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct DirectiveDef {
+    /// Directive name
+    pub name: String,
+    /// Parameters (e.g., `Tooltip(text)` -> ["text"])
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub params: Vec<String>,
+    /// Called when element is mounted to DOM
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub on_mount: Option<Expression>,
+    /// Called when element is removed from DOM
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub on_destroy: Option<Expression>,
+    /// Called when directive value changes
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub on_update: Option<Expression>,
+}
+
+/// Directive usage in a component: `@DirectiveName` or `@DirectiveName(args)`
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct DirectiveUsage {
+    pub name: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub args: Vec<Expression>,
 }
 
 // ============================================================================

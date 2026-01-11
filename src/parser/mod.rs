@@ -160,6 +160,10 @@ impl Parser {
             // Resolver: Name ! { }
             self.advance();
             Ok(Declaration::Resolver(self.resolver_def(name, params)?))
+        } else if self.check(TokenKind::At) {
+            // Directive: Name @ { }
+            self.advance();
+            Ok(Declaration::Directive(self.directive_def(name, params)?))
         } else if self.check(TokenKind::LBrace) {
             // Method: Name { }
             Ok(Declaration::Method(self.method_def(name)?))
@@ -258,6 +262,7 @@ impl Parser {
                     destroy: None,
                     alias: Some(ComponentAlias { base, args }),
                     guards: Vec::new(),
+                    directives: Vec::new(),
                 }));
             }
 
@@ -307,7 +312,7 @@ impl Parser {
 
         self.expect(TokenKind::RBrace)?;
 
-        Ok(ComponentDef { name, params, properties, init, destroy, alias: None, guards })
+        Ok(ComponentDef { name, params, properties, init, destroy, alias: None, guards, directives: Vec::new() })
     }
     // ========================================================================
     // Theme Definition (*)
@@ -447,6 +452,49 @@ impl Parser {
             fetch: fetch_expr,
             fallback: fallback_expr,
             cache,
+        })
+    }
+
+    // ========================================================================
+    // Directive Definition (@)
+    // ========================================================================
+
+    fn directive_def(&mut self, name: String, params: Vec<TypedParam>) -> Result<DirectiveDef, ParseError> {
+        self.expect(TokenKind::LBrace)?;
+
+        let mut on_mount = None;
+        let mut on_destroy = None;
+        let mut on_update = None;
+
+        while !self.check(TokenKind::RBrace) && !self.is_at_end() {
+            let key = self.expect_property_key()?;
+            self.expect(TokenKind::Colon)?;
+
+            match key.as_str() {
+                "onMount" | "mount" => {
+                    on_mount = Some(self.expression()?);
+                }
+                "onDestroy" | "destroy" => {
+                    on_destroy = Some(self.expression()?);
+                }
+                "onUpdate" | "update" => {
+                    on_update = Some(self.expression()?);
+                }
+                _ => {
+                    // Skip unknown properties
+                    let _ = self.expression()?;
+                }
+            }
+        }
+
+        self.expect(TokenKind::RBrace)?;
+
+        Ok(DirectiveDef {
+            name,
+            params: params.into_iter().map(|p| p.name).collect(),
+            on_mount,
+            on_destroy,
+            on_update,
         })
     }
 

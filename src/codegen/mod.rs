@@ -1258,6 +1258,7 @@ impl JsCodegen {
             Declaration::Guard(guard) => self.generate_guard(guard),
             Declaration::GuardSetup(setup) => self.generate_guard_setup(setup),
             Declaration::Resolver(resolver) => self.generate_resolver(resolver),
+            Declaration::Directive(directive) => self.generate_directive(directive),
             Declaration::Routes(routes) => self.generate_routes(routes),
             Declaration::Function(func) => self.generate_function(func),
         }
@@ -1380,6 +1381,64 @@ impl JsCodegen {
             self.emit_line("  this._cache = null;");
             self.emit_line("  this._cacheTime = 0;");
             self.emit_line("},");
+        }
+
+        self.indent -= 1;
+        self.emit_line("};");
+        self.emit_line("");
+    }
+
+    fn generate_directive(&mut self, directive: &DirectiveDef) {
+        let directive_name = &directive.name;
+        let params_str = directive.params.join(", ");
+
+        self.emit_line(&format!("const {}Directive = {{", directive_name));
+        self.indent += 1;
+
+        // Name for identification
+        self.emit_line(&format!("name: '{}',", directive_name));
+
+        // Parameters
+        if !directive.params.is_empty() {
+            self.emit_line(&format!(
+                "params: [{}],",
+                directive
+                    .params
+                    .iter()
+                    .map(|p| format!("'{}'", p))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ));
+        }
+
+        // onMount handler
+        if let Some(ref on_mount) = directive.on_mount {
+            let mount_expr = self.generate_expression(on_mount);
+            if directive.params.is_empty() {
+                self.emit_line(&format!("onMount: (el) => ({})(el),", mount_expr));
+            } else {
+                self.emit_line(&format!("onMount: (el, {}) => ({})(el, {}),", params_str, mount_expr, params_str));
+            }
+        }
+
+        // onDestroy handler
+        if let Some(ref on_destroy) = directive.on_destroy {
+            let destroy_expr = self.generate_expression(on_destroy);
+            if directive.params.is_empty() {
+                self.emit_line(&format!("onDestroy: (el) => ({})(el),", destroy_expr));
+            } else {
+                self.emit_line(&format!("onDestroy: (el, {}) => ({})(el, {}),", params_str, destroy_expr, params_str));
+            }
+        }
+
+        // onUpdate handler
+        if let Some(ref on_update) = directive.on_update {
+            let update_expr = self.generate_expression(on_update);
+            if directive.params.is_empty() {
+                self.emit_line(&format!("onUpdate: (el) => ({})(el),", update_expr));
+            } else {
+                self.emit_line(&format!("onUpdate: (el, {}) => ({})(el, {}),", params_str, update_expr, params_str));
+            }
         }
 
         self.indent -= 1;
@@ -3162,6 +3221,7 @@ impl TsCodegen {
             Declaration::Guard(_) => {}      // Guards don't need type exports
             Declaration::GuardSetup(_) => {} // GuardSetup doesn't need type exports
             Declaration::Resolver(_) => {}   // Resolvers don't need type exports
+            Declaration::Directive(_) => {}  // Directives don't need type exports
             Declaration::Routes(_) => {}     // Routes types are handled separately
             Declaration::Function(_) => {}   // Functions don't need type exports
         }
