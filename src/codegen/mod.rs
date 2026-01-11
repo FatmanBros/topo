@@ -939,9 +939,43 @@ impl JsCodegen {
         self.emit_line("const $route = routeState;");
         self.emit_line("");
 
-        // Initialize router on load
-        self.emit_line("window.addEventListener('popstate', updateRoute);");
-        self.emit_line("document.addEventListener('DOMContentLoaded', updateRoute);");
+        // Initialize router on load (browser only)
+        self.emit_line("if (typeof window !== 'undefined') {");
+        self.emit_line("  window.addEventListener('popstate', updateRoute);");
+        self.emit_line("  document.addEventListener('DOMContentLoaded', updateRoute);");
+        self.emit_line("}");
+        self.emit_line("");
+
+        // SSR support - export renderPage for server-side rendering
+        self.emit_line("// SSR support");
+        self.emit_line("const __components = new Map();");
+        self.emit_line("function registerComponent(name, fn) { __components.set(name, fn); }");
+        self.emit_line("");
+        self.emit_line("async function renderPage(componentName, params = {}) {");
+        self.emit_line("  // Set route params for the component");
+        self.emit_line("  routeState.params = params;");
+        self.emit_line("  routeState.path = '/';");
+        self.emit_line("");
+        self.emit_line("  // Find the component");
+        self.emit_line("  const component = __components.get(componentName);");
+        self.emit_line("  if (!component) {");
+        self.emit_line("    return { content: '', title: null };");
+        self.emit_line("  }");
+        self.emit_line("");
+        self.emit_line("  try {");
+        self.emit_line("    // Execute component to get vdom");
+        self.emit_line("    const vdom = typeof component === 'function' ? component() : component;");
+        self.emit_line("    const content = renderVdom(vdom);");
+        self.emit_line("    const title = vdom && vdom.title ? resolveText(vdom.title) : null;");
+        self.emit_line("    return { content, title };");
+        self.emit_line("  } catch (e) {");
+        self.emit_line("    console.error('SSR render error:', e);");
+        self.emit_line("    return { content: '', title: null };");
+        self.emit_line("  }");
+        self.emit_line("}");
+        self.emit_line("");
+        self.emit_line("// Export for SSR");
+        self.emit_line("export { renderPage };");
     }
 
     fn emit_runtime_validators(&mut self) {

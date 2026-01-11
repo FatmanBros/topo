@@ -51,6 +51,10 @@ enum Commands {
         /// Build mode: spa, ssg, ssr (overrides config)
         #[arg(short, long)]
         mode: Option<String>,
+
+        /// SSR target: cloudflare, rust (default: cloudflare)
+        #[arg(short, long)]
+        target: Option<String>,
     },
 
     /// Build and start the server (alias: s)
@@ -147,7 +151,7 @@ fn main() -> Result<()> {
         Commands::Init => {
             init_project()?;
         }
-        Commands::Build { input, output, mode } => {
+        Commands::Build { input, output, mode, target } => {
             let config = Config::load_or_default();
             let build_config = config.build_config();
             let paths_config = config.paths_config();
@@ -159,8 +163,9 @@ fn main() -> Result<()> {
                 BuildMode::Ssg => "ssg".to_string(),
                 BuildMode::Ssr => "ssr".to_string(),
             });
+            let target = target.unwrap_or_else(|| "cloudflare".to_string());
 
-            build_project(&input, &output, &mode)?;
+            build_project(&input, &output, &mode, &target)?;
         }
         Commands::Start { port, no_open } => {
             let config = Config::load_or_default();
@@ -176,9 +181,10 @@ fn main() -> Result<()> {
                 BuildMode::Ssg => "ssg".to_string(),
                 BuildMode::Ssr => "ssr".to_string(),
             };
+            let target = "cloudflare"; // Default target for start command
 
             // Build first
-            build_project(&input, &output, &mode)?;
+            build_project(&input, &output, &mode, target)?;
 
             // Then start server
             start_server(port, &output, !no_open && dev_config.open)?;
@@ -347,11 +353,14 @@ fn init_project() -> Result<()> {
     Ok(())
 }
 
-fn build_project(input: &PathBuf, output: &PathBuf, mode: &str) -> Result<()> {
+fn build_project(input: &PathBuf, output: &PathBuf, mode: &str, target: &str) -> Result<()> {
     println!("Building project...");
     println!("  Input: {:?}", input);
     println!("  Output: {:?}", output);
     println!("  Mode: {}", mode);
+    if mode == "ssr" {
+        println!("  Target: {}", target);
+    }
 
     // Create output directory
     fs::create_dir_all(output)?;
@@ -476,6 +485,7 @@ fn build_project(input: &PathBuf, output: &PathBuf, mode: &str) -> Result<()> {
         all_output.push_str("\n// File-based routes\n");
         for (pattern, component) in &routes {
             all_output.push_str(&format!("registerRoute('{}', {});\n", pattern, component));
+            all_output.push_str(&format!("registerComponent('{}', {});\n", component, component));
         }
         all_output.push_str("\n");
     }
@@ -544,6 +554,11 @@ fn build_project(input: &PathBuf, output: &PathBuf, mode: &str) -> Result<()> {
     let public_dir = project_root.join("public");
     if public_dir.exists() && public_dir.is_dir() {
         copy_dir_contents(&public_dir, output)?;
+    }
+
+    // SSR mode: generate server-side rendering code
+    if mode == "ssr" {
+        generate_ssr_output(output, &routes, &config, target)?;
     }
 
     Ok(())
@@ -653,6 +668,7 @@ fn build_project_dev(input: &PathBuf, output: &PathBuf, _mode: &str, ws_port: u1
         all_output.push_str("\n// File-based routes\n");
         for (pattern, component) in &routes {
             all_output.push_str(&format!("registerRoute('{}', {});\n", pattern, component));
+            all_output.push_str(&format!("registerComponent('{}', {});\n", component, component));
         }
         all_output.push_str("\n");
     }
@@ -3230,4 +3246,192 @@ fn capitalize(s: &str) -> String {
             }
         })
         .collect()
+}
+
+/// Generate SSR output files for the specified target
+fn generate_ssr_output(output: &PathBuf, routes: &[(String, String)], config: &Config, target: &str) -> Result<()> {
+    match target {
+        "cloudflare" => generate_cloudflare_worker(output, routes, config),
+        "rust" => {
+            println!("  Rust SSR target is not yet implemented");
+            Ok(())
+        }
+        _ => {
+            eprintln!("Unknown SSR target: {}. Using cloudflare.", target);
+            generate_cloudflare_worker(output, routes, config)
+        }
+    }
+}
+
+/// Generate Cloudflare Workers code for SSR
+fn generate_cloudflare_worker(output: &PathBuf, routes: &[(String, String)], config: &Config) -> Result<()> {
+    let base_path = config
+        .build
+        .as_ref()
+        .and_then(|b| b.base_path.clone())
+        .unwrap_or_default();
+
+    let title = config
+        .project
+        .as_ref()
+        .map(|p| p.name.clone())
+        .unwrap_or_else(|| "topo App".to_string());
+
+    // Generate worker.js
+    let worker_js = generate_worker_js(&base_path, &title, routes);
+    fs::write(output.join("worker.js"), &worker_js)?;
+    println!("  Generated: worker.js");
+
+    // Generate wrangler.toml
+    let wrangler_toml = generate_wrangler_toml(&title);
+    fs::write(output.join("wrangler.toml"), &wrangler_toml)?;
+    println!("  Generated: wrangler.toml");
+
+    println!("✓ SSR build complete for Cloudflare Workers");
+    println!("  To deploy: cd {} && wrangler deploy", output.display());
+
+    Ok(())
+}
+
+/// Generate Cloudflare Worker JavaScript
+fn generate_worker_js(base_path: &str, title: &str, routes: &[(String, String)]) -> String {
+    let routes_json: Vec<String> = routes
+        .iter()
+        .map(|(pattern, component)| format!("  {{ pattern: '{}', component: '{}' }}", pattern, component))
+        .collect();
+
+    format!(r#"// Cloudflare Worker for topo SSR
+// Auto-generated - do not edit directly
+
+import {{ renderPage }} from './app.js';
+
+const BASE_PATH = '{base_path}';
+const DEFAULT_TITLE = '{title}';
+
+const ROUTES = [
+{routes}
+];
+
+// Match route pattern to path
+function matchRoute(path) {{
+  for (const route of ROUTES) {{
+    const paramNames = [];
+    const regexPattern = route.pattern.replace(/\[([^\]]+)\]/g, (_, name) => {{
+      if (name.startsWith('...')) {{
+        paramNames.push(name.slice(3));
+        return '(.*)';
+      }}
+      paramNames.push(name);
+      return '([^/]+)';
+    }});
+    const regex = new RegExp(`^${{regexPattern}}$`);
+    const match = path.match(regex);
+    if (match) {{
+      const params = {{}};
+      paramNames.forEach((name, i) => {{ params[name] = match[i + 1]; }});
+      return {{ component: route.component, params }};
+    }}
+  }}
+  return null;
+}}
+
+// Generate HTML shell
+function generateHtml(content, pageTitle) {{
+  const fullTitle = pageTitle ? `${{pageTitle}} | ${{DEFAULT_TITLE}}` : DEFAULT_TITLE;
+  const assetPrefix = BASE_PATH ? `${{BASE_PATH}}/` : '/';
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${{fullTitle}}</title>
+    <link rel="stylesheet" href="${{assetPrefix}}styles.css">
+</head>
+<body>
+    <div id="app">${{content}}</div>
+    <script>window.__TOPO_BASE_PATH = '${{BASE_PATH}}'; window.__TOPO_DEFAULT_TITLE = '${{DEFAULT_TITLE}}';</script>
+    <script type="module" src="${{assetPrefix}}app.js"></script>
+</body>
+</html>`;
+}}
+
+export default {{
+  async fetch(request, env, ctx) {{
+    const url = new URL(request.url);
+    let path = url.pathname;
+
+    // Remove base path prefix
+    if (BASE_PATH && path.startsWith(BASE_PATH)) {{
+      path = path.slice(BASE_PATH.length) || '/';
+    }}
+
+    // Normalize trailing slash
+    if (path !== '/' && path.endsWith('/')) {{
+      path = path.slice(0, -1);
+    }}
+
+    // Check for static assets
+    if (path.match(/\.(js|css|ico|png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot)$/)) {{
+      // Let static assets be served by Cloudflare Pages or R2
+      return env.ASSETS ? env.ASSETS.fetch(request) : new Response('Not Found', {{ status: 404 }});
+    }}
+
+    // Match route
+    const matched = matchRoute(path);
+
+    if (matched) {{
+      try {{
+        // Call renderPage from app.js (server-side render)
+        const {{ content, title }} = await renderPage(matched.component, matched.params);
+        const html = generateHtml(content, title);
+        return new Response(html, {{
+          headers: {{ 'content-type': 'text/html;charset=UTF-8' }}
+        }});
+      }} catch (e) {{
+        console.error('SSR Error:', e);
+        // Fallback to client-side rendering
+        const html = generateHtml('', null);
+        return new Response(html, {{
+          headers: {{ 'content-type': 'text/html;charset=UTF-8' }}
+        }});
+      }}
+    }}
+
+    // 404 - render empty shell for client-side routing
+    const html = generateHtml('', null);
+    return new Response(html, {{
+      status: 404,
+      headers: {{ 'content-type': 'text/html;charset=UTF-8' }}
+    }});
+  }}
+}};
+"#,
+        base_path = base_path,
+        title = title,
+        routes = routes_json.join(",\n")
+    )
+}
+
+/// Generate wrangler.toml configuration
+fn generate_wrangler_toml(name: &str) -> String {
+    format!(r#"name = "{name}"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+# Uncomment for custom domain
+# routes = [
+#   {{ pattern = "example.com/*", zone_name = "example.com" }}
+# ]
+
+# Static assets (if using Cloudflare Pages)
+# [site]
+# bucket = "./"
+
+# Environment variables
+# [vars]
+# MY_VAR = "value"
+"#,
+        name = name.to_lowercase().replace(' ', "-")
+    )
 }
