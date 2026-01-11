@@ -1,0 +1,65 @@
+// Tooltip Atom - Hover tooltip for additional information
+// Usage: Tooltip({ content: "Help text", position: "top", children: Button({ ... }) })
+
+import { TooltipVariants } from "../../theme/variants/tooltip.tp"
+
+// =============================================================================
+// Base Tooltip Component
+// =============================================================================
+
+Tooltip(props) -> {
+    style: TooltipVariants.wrapper + " group"
+         + (props.className ? " " + props.className : "")
+    children: [
+        props.children,
+        TooltipContent({
+            text: props.content,
+            position: props.position || "top",
+            variant: props.variant || "dark",
+            showArrow: props.showArrow != false
+        })
+    ]
+}
+
+TooltipContent(props) -> {
+    role: "tooltip"
+    style: TooltipVariants.content
+         + " " + TooltipVariants.position[props.position].content
+         + " " + TooltipVariants.variant[props.variant].bg
+         + " " + TooltipVariants.variant[props.variant].text
+    children: [
+        TooltipText({ text: props.text }),
+        props.showArrow ? TooltipArrow({
+            position: props.position,
+            variant: props.variant
+        }) : null
+    ]
+}
+
+TooltipText(props) -> {
+    type: text
+    content: props.text
+}
+
+TooltipArrow(props) -> {
+    style: TooltipVariants.arrow
+         + " " + TooltipVariants.position[props.position].arrow
+         + " " + TooltipVariants.variant[props.variant].bg
+}
+
+// =============================================================================
+// Position Presets
+// =============================================================================
+
+TopTooltip(props) -> Tooltip({ ...props, position: "top" })
+BottomTooltip(props) -> Tooltip({ ...props, position: "bottom" })
+LeftTooltip(props) -> Tooltip({ ...props, position: "left" })
+RightTooltip(props) -> Tooltip({ ...props, position: "right" })
+
+// =============================================================================
+// Variant Presets
+// =============================================================================
+
+LightTooltip(props) -> Tooltip({ ...props, variant: "light" })
+PrimaryTooltip(props) -> Tooltip({ ...props, variant: "primary" })
+DangerTooltip(props) -> Tooltip({ ...props, variant: "danger" })

@@ -1,0 +1,120 @@
+// Tabs Molecule - Tab navigation component
+// Usage: Tabs({ items: [{ label: "Tab 1", content: ... }], activeIndex: 0 })
+
+import { TabsVariants } from "../../theme/variants/tabs.tp"
+
+// =============================================================================
+// Base Tabs Component
+// =============================================================================
+
+Tabs(props) -> {
+    style: TabsVariants.container + (props.className ? " " + props.className : "")
+    children: [
+        TabList({
+            items: props.items,
+            activeIndex: props.activeIndex || 0,
+            onChange: props.onChange,
+            variant: props.variant || "line",
+            size: props.size || "md"
+        }),
+        TabPanels({
+            items: props.items,
+            activeIndex: props.activeIndex || 0
+        })
+    ]
+}
+
+// =============================================================================
+// Tab List
+// =============================================================================
+
+TabList(props) -> {
+    role: "tablist"
+    style: TabsVariants.list.base + " " + TabsVariants.list[props.variant]
+    children: props.items.map((item, index) => Tab({
+        label: item.label,
+        icon: item.icon,
+        badge: item.badge,
+        disabled: item.disabled,
+        isActive: index == props.activeIndex,
+        onClick: props.onChange,
+        index: index,
+        variant: props.variant,
+        size: props.size
+    }))
+}
+
+// =============================================================================
+// Individual Tab
+// =============================================================================
+
+Tab(props) -> {
+    type: button
+    role: "tab"
+    ariaSelected: props.isActive
+    disabled: props.disabled
+    click: props.onClick
+    style: TabsVariants.tab.base
+         + " " + TabsVariants.size[props.size]
+         + " " + (props.isActive
+             ? TabsVariants.tab[props.variant].active
+             : TabsVariants.tab[props.variant].default)
+         + (props.disabled ? " " + TabsVariants.tab.disabled : "")
+    children: [
+        props.icon ? TabIcon({ icon: props.icon }) : null,
+        TabLabel({ text: props.label }),
+        props.badge ? TabBadge({ text: props.badge }) : null
+    ]
+}
+
+TabIcon(props) -> {
+    type: text
+    content: props.icon
+    style: TabsVariants.icon
+}
+
+TabLabel(props) -> {
+    type: text
+    content: props.text
+}
+
+TabBadge(props) -> {
+    type: text
+    content: props.text
+    style: TabsVariants.badge
+}
+
+// =============================================================================
+// Tab Panels
+// =============================================================================
+
+TabPanels(props) -> {
+    children: props.items.map((item, index) => TabPanel({
+        content: item.content,
+        isActive: index == props.activeIndex,
+        index: index
+    }))
+}
+
+TabPanel(props) -> {
+    when: props.isActive
+    role: "tabpanel"
+    tabIndex: 0
+    style: TabsVariants.panel
+    children: props.content
+}
+
+// =============================================================================
+// Variant Presets
+// =============================================================================
+
+LineTabs(props) -> Tabs({ ...props, variant: "line" })
+PillsTabs(props) -> Tabs({ ...props, variant: "pills" })
+EnclosedTabs(props) -> Tabs({ ...props, variant: "enclosed" })
+
+// =============================================================================
+// Size Presets
+// =============================================================================
+
+SmallTabs(props) -> Tabs({ ...props, size: "sm" })
+LargeTabs(props) -> Tabs({ ...props, size: "lg" })

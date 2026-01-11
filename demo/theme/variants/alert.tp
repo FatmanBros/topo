@@ -1,0 +1,62 @@
+// Alert Variants - Style definitions for Alert component
+
+import { ColorStyles } from "../tokens.tp"
+
+AlertVariants -> {
+    base: "relative flex gap-3 p-4 rounded-lg",
+
+    variant: {
+        success: {
+            bg: ColorStyles.success.bgLight,
+            border: ColorStyles.success.borderLight + " border",
+            icon: ColorStyles.success.text,
+            title: "text-green-800",
+            text: "text-green-700"
+        },
+        danger: {
+            bg: ColorStyles.danger.bgLight,
+            border: ColorStyles.danger.borderLight + " border",
+            icon: ColorStyles.danger.text,
+            title: "text-red-800",
+            text: "text-red-700"
+        },
+        warning: {
+            bg: ColorStyles.warning.bgLight,
+            border: ColorStyles.warning.borderLight + " border",
+            icon: ColorStyles.warning.text,
+            title: "text-amber-800",
+            text: "text-amber-700"
+        },
+        info: {
+            bg: ColorStyles.info.bgLight,
+            border: ColorStyles.info.borderLight + " border",
+            icon: ColorStyles.info.text,
+            title: "text-blue-800",
+            text: "text-blue-700"
+        },
+        neutral: {
+            bg: ColorStyles.neutral.bgLight,
+            border: ColorStyles.neutral.borderLight + " border",
+            icon: ColorStyles.neutral.text,
+            title: "text-gray-800",
+            text: "text-gray-700"
+        }
+    },
+
+    icon: {
+        container: "flex-shrink-0 mt-0.5",
+        size: "h-5 w-5"
+    },
+
+    content: "flex-1 min-w-0",
+
+    title: "font-medium text-sm",
+
+    description: "text-sm mt-1",
+
+    actions: "flex gap-2 mt-3",
+
+    dismissButton: "absolute top-3 right-3 p-1 rounded hover:bg-black/5 transition-colors",
+
+    dismissIcon: "h-4 w-4"
+}

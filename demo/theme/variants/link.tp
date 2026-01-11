@@ -1,0 +1,45 @@
+// Link Variants - Style definitions for Link component
+
+import { ColorStyles } from "../tokens.tp"
+
+LinkVariants -> {
+    base: "inline-flex items-center gap-1 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2",
+
+    variant: {
+        primary: ColorStyles.primary.text + " " + ColorStyles.primary.textHover + " " + ColorStyles.primary.focusRing,
+        secondary: ColorStyles.secondary.text + " " + ColorStyles.secondary.textHover + " " + ColorStyles.secondary.focusRing,
+        subtle: ColorStyles.neutral.textLight + " " + ColorStyles.neutral.textHover + " " + ColorStyles.neutral.focusRing,
+        danger: ColorStyles.danger.text + " " + ColorStyles.danger.textHover + " " + ColorStyles.danger.focusRing,
+        success: ColorStyles.success.text + " " + ColorStyles.success.textHover + " " + ColorStyles.success.focusRing,
+        info: ColorStyles.info.text + " " + ColorStyles.info.textHover + " " + ColorStyles.info.focusRing,
+        warning: ColorStyles.warning.text + " " + ColorStyles.warning.textHover + " " + ColorStyles.warning.focusRing,
+        inherit: "text-inherit hover:opacity-80"
+    },
+
+    underline: {
+        always: "underline",
+        hover: "hover:underline",
+        none: "no-underline"
+    },
+
+    size: {
+        xs: "text-xs",
+        sm: "text-sm",
+        md: "text-base",
+        lg: "text-lg",
+        xl: "text-xl"
+    },
+
+    weight: {
+        normal: "font-normal",
+        medium: "font-medium",
+        semibold: "font-semibold",
+        bold: "font-bold"
+    },
+
+    disabled: "opacity-50 cursor-not-allowed pointer-events-none",
+
+    external: {
+        icon: "inline-block w-3 h-3 ml-0.5"
+    }
+}
