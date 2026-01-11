@@ -7,9 +7,9 @@
 - [x] Guard
 - [x] Pipe
 - [x] インターセプターの実装
-- [ ] Resolver（ルート遷移前のデータプリフェッチ）
-- [ ] CanDeactivate（ページ離脱時の確認）
-- [ ] Directive（カスタムディレクティブ）
+- [x] Resolver（ルート遷移前のデータプリフェッチ）
+- [x] CanDeactivate（ページ離脱時の確認）
+- [x] Directive（カスタムディレクティブ）
 - [ ] Async Validator（非同期バリデーション）
 
 ### DX
