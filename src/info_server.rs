@@ -214,10 +214,10 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
         .node.faded text { opacity: 0.3; }
 
         /* Hidden state (for node selection filter) */
-        .node.hidden { display: none; }
-        .link-edge.hidden { display: none; }
-        .api-service-group.hidden { display: none; }
-        .cluster.hidden { display: none; }
+        .node.hidden { visibility: hidden; pointer-events: none; }
+        .link-edge.hidden { visibility: hidden; }
+        .api-service-group.hidden { visibility: hidden; pointer-events: none; }
+        .cluster.hidden { visibility: hidden; }
 
         /* Selected node highlight */
         .node.selected rect { stroke-width: 3; filter: drop-shadow(0 0 6px rgba(88, 166, 255, 0.5)); }
@@ -379,9 +379,13 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
     <svg id="graph"></svg>
 
     <script>
-        let svg, g, zoom;
+        let svg, g, zoom, bgGroup;
         let graphData, nodeData = {};
         let selectedNodeId = null;  // Currently selected node for filtering
+        let originalPositions = {};  // Store original node positions for restore
+        let originalApiPositions = {};  // Store original API service positions
+        let originalZoneBounds = {};  // Store original zone bounds
+        let pageNodeIds = new Set();  // All page node IDs
         const NODE_WIDTH = 120;
         const NODE_HEIGHT = 36;
 
@@ -401,7 +405,7 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
                 .attr('height', height);
 
             // Background group (for zones)
-            const bgGroup = svg.append('g').attr('class', 'background');
+            bgGroup = svg.append('g').attr('class', 'background');
 
             g = svg.append('g');
 
@@ -423,7 +427,7 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
 
             // Filter out component nodes (they are handled separately or not shown)
             const pageNodes = data.nodes.filter(n => n.node_type !== 'component');
-            const pageNodeIds = new Set(pageNodes.map(n => n.id));
+            pageNodeIds = new Set(pageNodes.map(n => n.id));
 
             // Helper: get parent path
             function getParentPath(path) {
@@ -520,6 +524,14 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
 
             // Render pages graph (layout only with hierarchy edges)
             render(g, dagreGraph);
+
+            // Store original positions for all nodes
+            pageNodes.forEach(n => {
+                const node = dagreGraph.node(n.id);
+                if (node) {
+                    originalPositions[n.id] = { x: node.x, y: node.y };
+                }
+            });
 
             // Draw actual link edges manually after layout
             // Only forward links (left to right) - browser back handles navigation back
@@ -686,6 +698,15 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
 
                 apiY += serviceHeight + 20;
             });
+
+            // Store original API positions and zone bounds
+            originalApiPositions = { ...apiEndpointPositions, ...apiNodePositions };
+            originalZoneBounds = {
+                centerLineX,
+                apiStartX,
+                pageGraphWidth,
+                pageGraphHeight: Math.max(pageGraphHeight + 160, height)
+            };
 
             // Draw API call edges (page -> specific endpoint)
             const apiEdges = data.edges.filter(e => e.link_type === 'api-call');
@@ -871,7 +892,7 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
             return connected;
         }
 
-        // Select a node and filter to show only connected nodes
+        // Select a node and filter to show only connected nodes with re-layout
         function selectNode(nodeId) {
             // If clicking the same node, clear selection
             if (selectedNodeId === nodeId) {
@@ -882,11 +903,13 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
             selectedNodeId = nodeId;
             const connectedNodes = getAllConnectedNodes(nodeId);
 
+            // Get only page nodes (filter out API endpoints for layout)
+            const connectedPageNodes = [...connectedNodes].filter(id => pageNodeIds.has(id));
+
             // Get connected API service IDs
             const connectedApiServices = new Set();
             connectedNodes.forEach(id => {
                 if (id.startsWith('@api/')) {
-                    // Extract service ID from endpoint ID (@api/servicename/method -> @api/servicename)
                     const parts = id.split('/');
                     if (parts.length >= 2) {
                         connectedApiServices.add(parts.slice(0, 2).join('/'));
@@ -894,66 +917,336 @@ const VISUALIZER_HTML: &str = r##"<!DOCTYPE html>
                 }
             });
 
-            // Hide/show page nodes
-            g.selectAll('.node')
-                .classed('hidden', id => !connectedNodes.has(id))
-                .classed('selected', id => id === nodeId);
+            // Create new dagre graph for connected nodes only
+            const filteredGraph = new dagreD3.graphlib.Graph()
+                .setGraph({
+                    rankdir: 'LR',
+                    nodesep: 40,
+                    ranksep: 100,
+                    marginx: 40,
+                    marginy: 40
+                })
+                .setDefaultEdgeLabel(() => ({}));
 
-            // Hide/show edges
-            g.selectAll('.link-edge')
-                .classed('hidden', function() {
-                    const source = d3.select(this).attr('data-source');
-                    const target = d3.select(this).attr('data-target');
-                    return !connectedNodes.has(source) || !connectedNodes.has(target);
+            // Add connected nodes
+            connectedPageNodes.forEach(id => {
+                filteredGraph.setNode(id, {
+                    width: NODE_WIDTH,
+                    height: NODE_HEIGHT
                 });
+            });
 
-            // Hide/show API services
-            g.selectAll('.api-service-group')
-                .classed('hidden', function() {
-                    const apiId = d3.select(this).attr('data-api-id');
-                    return !connectedApiServices.has(apiId);
-                });
+            // Add edges between connected nodes
+            graphData.edges.forEach(e => {
+                if (connectedPageNodes.includes(e.source) && connectedPageNodes.includes(e.target)) {
+                    filteredGraph.setEdge(e.source, e.target);
+                }
+            });
 
-            // Hide/show clusters
-            g.selectAll('.cluster')
-                .classed('hidden', function() {
-                    const clusterId = d3.select(this).datum();
-                    // Show cluster if any connected node belongs to it
-                    let hasConnectedNode = false;
-                    connectedNodes.forEach(nodeId => {
-                        if (nodeData[nodeId]) {
-                            const parts = nodeId.split('/').filter(s => s);
-                            if (parts.length >= 2 && clusterId === `cluster-/${parts[0]}`) {
-                                hasConnectedNode = true;
+            // Calculate new layout using dagre-d3's bundled dagre
+            dagreD3.dagre.layout(filteredGraph);
+
+            // Animate nodes to new positions
+            g.selectAll('.node').each(function(id) {
+                const node = d3.select(this);
+                if (connectedNodes.has(id)) {
+                    const newPos = filteredGraph.node(id);
+                    if (newPos) {
+                        node.transition()
+                            .duration(300)
+                            .attr('transform', `translate(${newPos.x}, ${newPos.y})`);
+                    }
+                    node.attr('display', null).classed('selected', id === nodeId);
+                } else {
+                    node.attr('display', 'none');
+                }
+            });
+
+            // Hide clusters
+            g.selectAll('.cluster').attr('display', 'none');
+
+            // Update edges
+            g.selectAll('.link-edge').each(function() {
+                const edge = d3.select(this);
+                const source = edge.attr('data-source');
+                const target = edge.attr('data-target');
+
+                if (connectedNodes.has(source) && connectedNodes.has(target)) {
+                    const sourcePos = filteredGraph.node(source);
+                    const targetPos = filteredGraph.node(target);
+                    if (sourcePos && targetPos) {
+                        const sx = sourcePos.x + NODE_WIDTH / 2;
+                        const sy = sourcePos.y;
+                        const tx = targetPos.x - NODE_WIDTH / 2;
+                        const ty = targetPos.y;
+                        const controlOffset = Math.max((tx - sx) * 0.4, 40);
+                        const pathD = `M${sx},${sy} C${sx + controlOffset},${sy} ${tx - controlOffset},${ty} ${tx},${ty}`;
+                        edge.transition().duration(300).attr('d', pathD);
+                    }
+                    edge.attr('display', null);
+                } else {
+                    edge.attr('display', 'none');
+                }
+            });
+
+            // Calculate bounds for visible nodes
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            connectedPageNodes.forEach(id => {
+                const pos = filteredGraph.node(id);
+                if (pos) {
+                    minX = Math.min(minX, pos.x - NODE_WIDTH / 2);
+                    minY = Math.min(minY, pos.y - NODE_HEIGHT / 2);
+                    maxX = Math.max(maxX, pos.x + NODE_WIDTH / 2);
+                    maxY = Math.max(maxY, pos.y + NODE_HEIGHT / 2);
+                }
+            });
+
+            // Position API services after page nodes
+            const newApiStartX = maxX + 150;
+            const newCenterLineX = maxX + 75;
+            let newApiY = minY;
+
+            // Hide/show and reposition API services
+            g.selectAll('.api-service-group').each(function() {
+                const group = d3.select(this);
+                const apiId = group.attr('data-api-id');
+                if (connectedApiServices.has(apiId)) {
+                    group.transition().duration(300)
+                        .attr('transform', `translate(${newApiStartX}, ${newApiY})`);
+                    // Get height from the rect
+                    const rect = group.select('.api-service');
+                    const h = parseFloat(rect.attr('height')) || 100;
+                    newApiY += h + 20;
+                    maxX = Math.max(maxX, newApiStartX + 200);
+                    maxY = Math.max(maxY, newApiY);
+                    group.attr('display', null);
+                } else {
+                    group.attr('display', 'none');
+                }
+            });
+
+            // Update API call edges
+            g.selectAll('.link-edge.api-call').each(function() {
+                const edge = d3.select(this);
+                const source = edge.attr('data-source');
+                const target = edge.attr('data-target');
+
+                if (connectedNodes.has(source) && connectedNodes.has(target)) {
+                    const sourcePos = filteredGraph.node(source);
+                    // Find API service position
+                    let targetY = minY;
+                    let found = false;
+                    let searchY = minY;
+                    g.selectAll('.api-service-group').each(function() {
+                        const grp = d3.select(this);
+                        if (grp.attr('display') !== 'none') {
+                            const apiId = grp.attr('data-api-id');
+                            if (target.startsWith(apiId)) {
+                                targetY = searchY + 50;
+                                found = true;
                             }
+                            const rect = grp.select('.api-service');
+                            const h = parseFloat(rect.attr('height')) || 100;
+                            searchY += h + 20;
                         }
                     });
-                    return !hasConnectedNode;
-                });
+
+                    if (sourcePos && found) {
+                        const sx = sourcePos.x + NODE_WIDTH / 2;
+                        const sy = sourcePos.y;
+                        const tx = newApiStartX;
+                        const ty = targetY;
+                        const controlOffset = Math.max((tx - sx) * 0.4, 40);
+                        const pathD = `M${sx},${sy} C${sx + controlOffset},${sy} ${tx - controlOffset},${ty} ${tx},${ty}`;
+                        edge.transition().duration(300).attr('d', pathD);
+                        edge.attr('display', null);
+                    } else {
+                        edge.attr('display', 'none');
+                    }
+                } else {
+                    edge.attr('display', 'none');
+                }
+            });
+
+            // Update zone backgrounds
+            const padding = 40;
+            bgGroup.select('.zone-frontend')
+                .transition().duration(300)
+                .attr('x', minX - padding)
+                .attr('y', minY - padding)
+                .attr('width', newCenterLineX - minX + padding)
+                .attr('height', maxY - minY + padding * 2);
+
+            bgGroup.select('.zone-backend')
+                .transition().duration(300)
+                .attr('x', newCenterLineX)
+                .attr('y', minY - padding)
+                .attr('width', maxX - newCenterLineX + padding)
+                .attr('height', maxY - minY + padding * 2);
+
+            bgGroup.select('.center-line')
+                .transition().duration(300)
+                .attr('x1', newCenterLineX)
+                .attr('x2', newCenterLineX)
+                .attr('y1', minY - padding)
+                .attr('y2', maxY + padding);
+
+            // Update zone labels
+            bgGroup.selectAll('.zone-label').each(function(d, i) {
+                const label = d3.select(this);
+                if (i === 0) {
+                    label.transition().duration(300)
+                        .attr('x', (minX - padding + newCenterLineX) / 2)
+                        .attr('y', minY - padding + 20);
+                } else {
+                    label.transition().duration(300)
+                        .attr('x', newCenterLineX + 100)
+                        .attr('y', minY - padding + 20);
+                }
+            });
+
+            // Fit view to visible content (simultaneous with animations)
+            fitToVisibleContent(minX - padding, minY - padding, maxX + padding, maxY + padding);
         }
 
-        // Clear the current selection and show all nodes
+        // Clear the current selection and restore all nodes to original positions
         function clearSelection() {
             if (!selectedNodeId) return;
 
             selectedNodeId = null;
 
-            // Show all nodes
-            g.selectAll('.node')
-                .classed('hidden', false)
-                .classed('selected', false);
+            // Restore all nodes to original positions
+            g.selectAll('.node').each(function(id) {
+                const node = d3.select(this);
+                const origPos = originalPositions[id];
+                if (origPos) {
+                    node.transition()
+                        .duration(300)
+                        .attr('transform', `translate(${origPos.x}, ${origPos.y})`);
+                }
+                node.attr('display', null).classed('selected', false);
+            });
 
-            // Show all edges
-            g.selectAll('.link-edge').classed('hidden', false);
+            // Restore edges to original paths (page-to-page)
+            g.selectAll('.link-edge:not(.api-call)').each(function() {
+                const edge = d3.select(this);
+                const source = edge.attr('data-source');
+                const target = edge.attr('data-target');
+                const sourcePos = originalPositions[source];
+                const targetPos = originalPositions[target];
 
-            // Show all API services
-            g.selectAll('.api-service-group').classed('hidden', false);
+                if (sourcePos && targetPos && targetPos.x > sourcePos.x) {
+                    const sx = sourcePos.x + NODE_WIDTH / 2;
+                    const sy = sourcePos.y;
+                    const tx = targetPos.x - NODE_WIDTH / 2;
+                    const ty = targetPos.y;
+                    const controlOffset = Math.max((tx - sx) * 0.4, 40);
+                    const pathD = `M${sx},${sy} C${sx + controlOffset},${sy} ${tx - controlOffset},${ty} ${tx},${ty}`;
+                    edge.transition().duration(300).attr('d', pathD);
+                }
+                edge.attr('display', null);
+            });
+
+            // Restore API services to original positions
+            g.selectAll('.api-service-group').each(function() {
+                const group = d3.select(this);
+                const apiId = group.attr('data-api-id');
+                const origPos = originalApiPositions[apiId];
+                if (origPos) {
+                    group.transition().duration(300)
+                        .attr('transform', `translate(${origPos.x}, ${origPos.y - origPos.height / 2})`);
+                }
+                group.attr('display', null);
+            });
+
+            // Restore API call edges
+            g.selectAll('.link-edge.api-call').each(function() {
+                const edge = d3.select(this);
+                const source = edge.attr('data-source');
+                const target = edge.attr('data-target');
+                const sourcePos = originalPositions[source];
+                const targetPos = originalApiPositions[target];
+
+                if (sourcePos && targetPos) {
+                    const sx = sourcePos.x + NODE_WIDTH / 2;
+                    const sy = sourcePos.y;
+                    const tx = targetPos.x;
+                    const ty = targetPos.y;
+                    const controlOffset = Math.max((tx - sx) * 0.4, 40);
+                    const pathD = `M${sx},${sy} C${sx + controlOffset},${sy} ${tx - controlOffset},${ty} ${tx},${ty}`;
+                    edge.transition().duration(300).attr('d', pathD);
+                }
+                edge.attr('display', null);
+            });
+
+            // Restore zone backgrounds
+            const zb = originalZoneBounds;
+            bgGroup.select('.zone-frontend')
+                .transition().duration(300)
+                .attr('x', 0)
+                .attr('y', 0)
+                .attr('width', zb.centerLineX)
+                .attr('height', zb.pageGraphHeight);
+
+            bgGroup.select('.zone-backend')
+                .transition().duration(300)
+                .attr('x', zb.centerLineX)
+                .attr('y', 0)
+                .attr('width', Math.max(500, window.innerWidth - zb.centerLineX))
+                .attr('height', zb.pageGraphHeight);
+
+            bgGroup.select('.center-line')
+                .transition().duration(300)
+                .attr('x1', zb.centerLineX)
+                .attr('x2', zb.centerLineX)
+                .attr('y1', 0)
+                .attr('y2', zb.pageGraphHeight);
+
+            bgGroup.selectAll('.zone-label').each(function(d, i) {
+                const label = d3.select(this);
+                if (i === 0) {
+                    label.transition().duration(300)
+                        .attr('x', zb.centerLineX / 2)
+                        .attr('y', 30);
+                } else {
+                    label.transition().duration(300)
+                        .attr('x', zb.centerLineX + 150)
+                        .attr('y', 30);
+                }
+            });
 
             // Show all clusters
-            g.selectAll('.cluster').classed('hidden', false);
+            g.selectAll('.cluster').attr('display', null);
 
             // Clear any highlight state
             clearHighlight();
+
+            // Fit to original view (simultaneous with animations)
+            fitToScreen();
+        }
+
+        // Fit view to specific bounds
+        function fitToVisibleContent(minX, minY, maxX, maxY) {
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            const padding = 60;
+
+            const contentWidth = maxX - minX;
+            const contentHeight = maxY - minY;
+
+            const scale = Math.min(
+                (width - padding * 2) / contentWidth,
+                (height - padding * 2) / contentHeight,
+                1.5
+            );
+
+            const tx = (width - contentWidth * scale) / 2 - minX * scale;
+            const ty = (height - contentHeight * scale) / 2 - minY * scale;
+
+            svg.transition().duration(300).call(
+                zoom.transform,
+                d3.zoomIdentity.translate(tx, ty).scale(scale)
+            );
         }
 
         function showTooltip(event, d) {
