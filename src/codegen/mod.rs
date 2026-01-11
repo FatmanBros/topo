@@ -1408,9 +1408,9 @@ impl JsCodegen {
                         self.emit_line(&format!("{}: ({}) => `{}`,", entry.name, params, template_path));
                     }
                 }
-                RouteConfig::PathWithGuards { path, guards: _ } |
+                RouteConfig::PathWithGuards { path, guards: _, can_deactivate: _ } |
                 RouteConfig::PathWithResolvers { path, resolvers: _ } |
-                RouteConfig::PathWithGuardsAndResolvers { path, guards: _, resolvers: _ } => {
+                RouteConfig::PathWithGuardsAndResolvers { path, guards: _, can_deactivate: _, resolvers: _ } => {
                     // Route with guards/resolvers - same generation, guards/resolvers are handled elsewhere
                     if entry.params.is_empty() {
                         self.emit_line(&format!("{}: () => '{}',", entry.name, path));
@@ -1465,18 +1465,22 @@ impl JsCodegen {
         self.indent += 1;
 
         for entry in &routes.routes {
-            let (path, guards, resolvers) = match &entry.config {
-                RouteConfig::Path { path } => (path.clone(), Vec::new(), Vec::new()),
-                RouteConfig::PathWithGuards { path, guards } => (path.clone(), guards.clone(), Vec::new()),
-                RouteConfig::PathWithResolvers { path, resolvers } => (path.clone(), Vec::new(), resolvers.clone()),
-                RouteConfig::PathWithGuardsAndResolvers { path, guards, resolvers } => {
-                    (path.clone(), guards.clone(), resolvers.clone())
+            let (path, guards, can_deactivate, resolvers) = match &entry.config {
+                RouteConfig::Path { path } => (path.clone(), Vec::new(), Vec::new(), Vec::new()),
+                RouteConfig::PathWithGuards { path, guards, can_deactivate } => {
+                    (path.clone(), guards.clone(), can_deactivate.clone(), Vec::new())
+                }
+                RouteConfig::PathWithResolvers { path, resolvers } => {
+                    (path.clone(), Vec::new(), Vec::new(), resolvers.clone())
+                }
+                RouteConfig::PathWithGuardsAndResolvers { path, guards, can_deactivate, resolvers } => {
+                    (path.clone(), guards.clone(), can_deactivate.clone(), resolvers.clone())
                 }
                 RouteConfig::SubRoute { path, route_ref } => {
                     // Sub-route reference: spread the sub-router
                     let sub_router_name = format!("{}_router", route_ref);
                     self.emit_line(&format!(
-                        "{}: {{ path: '{}', guards: [], resolvers: [], ...{} }},",
+                        "{}: {{ path: '{}', guards: [], canDeactivate: [], resolvers: [], ...{} }},",
                         entry.name, path, sub_router_name
                     ));
                     continue;
@@ -1493,6 +1497,16 @@ impl JsCodegen {
                 format!("[{}]", guards_formatted)
             };
 
+            let can_deactivate_str = if can_deactivate.is_empty() {
+                "[]".to_string()
+            } else {
+                let deactivate_formatted = can_deactivate.iter()
+                    .map(|g| format!("{}Guard", g))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("[{}]", deactivate_formatted)
+            };
+
             let resolvers_str = if resolvers.is_empty() {
                 "[]".to_string()
             } else {
@@ -1504,8 +1518,8 @@ impl JsCodegen {
             };
 
             self.emit_line(&format!(
-                "{}: {{ path: '{}', guards: {}, resolvers: {} }},",
-                entry.name, path, guards_str, resolvers_str
+                "{}: {{ path: '{}', guards: {}, canDeactivate: {}, resolvers: {} }},",
+                entry.name, path, guards_str, can_deactivate_str, resolvers_str
             ));
         }
 
@@ -1557,6 +1571,49 @@ impl JsCodegen {
             self.emit_line("  return { success: true, data: resolvedData };");
             self.emit_line("}");
             self.emit_line("");
+
+            // Generate canLeave helper for canDeactivate guards
+            self.emit_line("let __currentRoute = null;");
+            self.emit_line("");
+            self.emit_line("function setCurrentRoute(route) {");
+            self.emit_line("  __currentRoute = route;");
+            self.emit_line("}");
+            self.emit_line("");
+            self.emit_line("function canLeaveCurrentRoute() {");
+            self.emit_line("  if (!__currentRoute) return true;");
+            self.emit_line("  for (const guard of (__currentRoute.canDeactivate || [])) {");
+            self.emit_line("    if (guard && typeof guard.check === 'function' && !guard.check()) {");
+            self.emit_line("      return false;");
+            self.emit_line("    }");
+            self.emit_line("  }");
+            self.emit_line("  return true;");
+            self.emit_line("}");
+            self.emit_line("");
+            self.emit_line("// Enhanced navigation with canDeactivate support");
+            self.emit_line("function navigateTo(route, params = {}) {");
+            self.emit_line("  if (!canLeaveCurrentRoute()) {");
+            self.emit_line("    return { success: false, blocked: 'canDeactivate' };");
+            self.emit_line("  }");
+            self.emit_line("  // Execute activate guards");
+            self.emit_line("  for (const guard of (route.guards || [])) {");
+            self.emit_line("    if (guard && typeof guard.check === 'function' && !guard.check()) {");
+            self.emit_line("      if (guard.redirect) window.location.hash = guard.redirect;");
+            self.emit_line("      return { success: false, blocked: 'guard' };");
+            self.emit_line("    }");
+            self.emit_line("  }");
+            self.emit_line("  setCurrentRoute(route);");
+            self.emit_line("  window.location.hash = route.path;");
+            self.emit_line("  return { success: true };");
+            self.emit_line("}");
+            self.emit_line("");
+            self.emit_line("// beforeunload handler for canDeactivate");
+            self.emit_line("window.addEventListener('beforeunload', (e) => {");
+            self.emit_line("  if (!canLeaveCurrentRoute()) {");
+            self.emit_line("    e.preventDefault();");
+            self.emit_line("    e.returnValue = '';");
+            self.emit_line("  }");
+            self.emit_line("});");
+            self.emit_line("");
         }
     }
 
@@ -1565,10 +1622,10 @@ impl JsCodegen {
         let mut route_guards: Vec<(String, Vec<String>)> = Vec::new();
         for entry in &routes.routes {
             match &entry.config {
-                RouteConfig::PathWithGuards { path, guards } => {
+                RouteConfig::PathWithGuards { path, guards, can_deactivate: _ } => {
                     route_guards.push((path.clone(), guards.clone()));
                 }
-                RouteConfig::PathWithGuardsAndResolvers { path, guards, .. } => {
+                RouteConfig::PathWithGuardsAndResolvers { path, guards, can_deactivate: _, .. } => {
                     route_guards.push((path.clone(), guards.clone()));
                 }
                 _ => {}

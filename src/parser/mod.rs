@@ -593,13 +593,21 @@ impl Parser {
             self.advance();
 
             let mut guards = Vec::new();
+            let mut can_deactivate = Vec::new();
             let mut resolvers = Vec::new();
 
             // Parse [guards] if present
+            // Guards with ! prefix are canDeactivate guards
             if self.check(TokenKind::LBracket) {
                 self.advance();
                 while !self.check(TokenKind::RBracket) && !self.is_at_end() {
-                    guards.push(self.expect_identifier()?);
+                    // Check for ! prefix (canDeactivate guard)
+                    if self.check(TokenKind::Bang) {
+                        self.advance();
+                        can_deactivate.push(self.expect_identifier()?);
+                    } else {
+                        guards.push(self.expect_identifier()?);
+                    }
                     if !self.check(TokenKind::RBracket) {
                         let _ = self.match_token(TokenKind::Comma);
                     }
@@ -620,11 +628,12 @@ impl Parser {
             }
 
             // Return appropriate variant based on what was parsed
-            return match (guards.is_empty(), resolvers.is_empty()) {
-                (true, true) => Ok(RouteConfig::Path { path }),
-                (false, true) => Ok(RouteConfig::PathWithGuards { path, guards }),
-                (true, false) => Ok(RouteConfig::PathWithResolvers { path, resolvers }),
-                (false, false) => Ok(RouteConfig::PathWithGuardsAndResolvers { path, guards, resolvers }),
+            let has_guards = !guards.is_empty() || !can_deactivate.is_empty();
+            return match (has_guards, resolvers.is_empty()) {
+                (true, true) => Ok(RouteConfig::PathWithGuards { path, guards, can_deactivate }),
+                (true, false) => Ok(RouteConfig::PathWithGuardsAndResolvers { path, guards, can_deactivate, resolvers }),
+                (false, true) => Ok(RouteConfig::Path { path }),
+                (false, false) => Ok(RouteConfig::PathWithResolvers { path, resolvers }),
             };
         }
 

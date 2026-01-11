@@ -482,18 +482,39 @@ pub struct RouteEntry {
 pub enum RouteConfig {
     /// Simple path: `"/dashboard"`
     Path { path: String },
-    /// Path with guards: `"/dashboard", [guard1, guard2]`
-    PathWithGuards { path: String, guards: Vec<String> },
+    /// Path with guards: `"/dashboard", [guard1, guard2]` (! prefix for canDeactivate)
+    PathWithGuards {
+        path: String,
+        guards: Vec<String>,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        can_deactivate: Vec<String>,
+    },
     /// Path with resolvers: `"/dashboard", {resolver1, resolver2}`
     PathWithResolvers { path: String, resolvers: Vec<ResolverRef> },
-    /// Path with guards and resolvers: `"/users/{id}", [isAuth], {UserResolver(id)}`
+    /// Path with guards and resolvers: `"/users/{id}", [isAuth, !unsaved], {UserResolver(id)}`
     PathWithGuardsAndResolvers {
         path: String,
         guards: Vec<String>,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        can_deactivate: Vec<String>,
         resolvers: Vec<ResolverRef>,
     },
     /// Subroute reference: `"/docs" -> DocsRoute`
     SubRoute { path: String, route_ref: String },
+}
+
+/// Route modifiers - guards, resolvers, and canDeactivate
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct RouteModifiers {
+    /// Activate guards (executed when entering route)
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub guards: Vec<String>,
+    /// Resolvers (data pre-fetching before navigation)
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub resolvers: Vec<ResolverRef>,
+    /// Deactivate guards (executed when leaving route)
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub can_deactivate: Vec<String>,
 }
 
 /// Guards configuration for a Routes block
