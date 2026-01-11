@@ -481,16 +481,16 @@ fn build_project(input: &PathBuf, output: &PathBuf, mode: &str) -> Result<()> {
     }
 
     // Add mount call at the end
-    // If App component exists, use it; otherwise if entry component exists, use it; otherwise if routes exist, let router handle it
-    if has_app {
+    // When routes exist, let router handle it; otherwise use App/entry component
+    if !routes.is_empty() {
+        all_output.push_str("// Mount with router\n");
+        all_output.push_str("mount(null, '#app');\n");
+    } else if has_app {
         all_output.push_str("// Mount app\n");
         all_output.push_str("mount(App, '#app');\n");
     } else if let Some(entry) = &entry_component {
         all_output.push_str("// Mount entry component\n");
         all_output.push_str(&format!("mount({}, '#app');\n", entry));
-    } else if !routes.is_empty() {
-        all_output.push_str("// Mount with router\n");
-        all_output.push_str("mount(null, '#app');\n");
     }
 
     // Minify JS for production (ssg mode)
