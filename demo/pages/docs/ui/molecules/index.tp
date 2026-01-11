@@ -1,0 +1,361 @@
+// UI Molecules showcase page
+import { DocsTemplate } from "../../template.tp"
+import { DocsSection, DocsDescription } from "@/components/molecules/docs-section.tp"
+import { Text } from "@/components/atoms/text.tp"
+import { Heading } from "@/components/atoms/heading.tp"
+import { PrimaryButton, SecondaryButton, DangerButton } from "@/components/atoms/button.tp"
+
+// Molecules
+import { Alert, SuccessAlert, DangerAlert, WarningAlert, InfoAlert } from "@/components/molecules/alert.tp"
+import { Tabs, LineTabs, PillsTabs } from "@/components/molecules/tabs.tp"
+import { Breadcrumb, SlashBreadcrumb } from "@/components/molecules/breadcrumb.tp"
+import { Pagination, SimplePagination } from "@/components/molecules/pagination.tp"
+import { Dropdown } from "@/components/molecules/dropdown.tp"
+
+Page -> DocsTemplate({ children: [MoleculesContent] })
+
+MoleculesContent -> {
+    align: vertical
+    style: "space-y-12"
+    children: [
+        PageHeader,
+        AlertSection,
+        TabsSection,
+        BreadcrumbSection,
+        PaginationSection,
+        DropdownSection,
+        ModalSection
+    ]
+}
+
+PageHeader -> DocsSection({
+    id: "molecules",
+    title: "Molecules",
+    children: [HeaderDesc]
+})
+
+HeaderDesc -> DocsDescription({
+    text: "Molecules are combinations of atoms that form functional UI components. They provide common patterns for user interaction."
+})
+
+// =============================================================================
+// Alert Section
+// =============================================================================
+
+AlertSection -> {
+    align: vertical
+    style: "space-y-6"
+    children: [
+        SectionHeading({ text: "Alert" }),
+        SectionDesc({ text: "Notification messages for success, error, warning, and info states." }),
+        AlertExamples
+    ]
+}
+
+AlertExamples -> {
+    style: "space-y-4"
+    children: [
+        SuccessAlert({
+            title: "Success!",
+            description: "Your changes have been saved successfully."
+        }),
+        DangerAlert({
+            title: "Error",
+            description: "There was a problem processing your request."
+        }),
+        WarningAlert({
+            title: "Warning",
+            description: "Please review before proceeding."
+        }),
+        InfoAlert({
+            title: "Information",
+            description: "A new version is available for download."
+        })
+    ]
+}
+
+// =============================================================================
+// Tabs Section
+// =============================================================================
+
+TabsSection -> {
+    align: vertical
+    style: "space-y-6"
+    children: [
+        SectionHeading({ text: "Tabs" }),
+        SectionDesc({ text: "Tab navigation with multiple styles: line, pills, and enclosed." }),
+        TabsExamples
+    ]
+}
+
+TabsExamples -> {
+    style: "p-6 bg-gray-50 rounded-lg space-y-8"
+    children: [
+        TabsLineExample,
+        TabsPillsExample
+    ]
+}
+
+TabsLineExample -> {
+    align: vertical
+    style: "space-y-2"
+    children: [
+        Text({ text: "Line Style", style: "text-sm font-medium text-gray-700" }),
+        TabsLineDemo
+    ]
+}
+
+TabsLineDemo -> LineTabs({
+    activeIndex: 0,
+    items: [
+        { label: "Overview", content: TabContent({ text: "Overview content goes here." }) },
+        { label: "Features", content: TabContent({ text: "Features content goes here." }) },
+        { label: "Pricing", content: TabContent({ text: "Pricing content goes here." }) }
+    ]
+})
+
+TabsPillsExample -> {
+    align: vertical
+    style: "space-y-2"
+    children: [
+        Text({ text: "Pills Style", style: "text-sm font-medium text-gray-700" }),
+        TabsPillsDemo
+    ]
+}
+
+TabsPillsDemo -> PillsTabs({
+    activeIndex: 1,
+    items: [
+        { label: "All", content: TabContent({ text: "All items" }) },
+        { label: "Active", content: TabContent({ text: "Active items" }) },
+        { label: "Completed", content: TabContent({ text: "Completed items" }) }
+    ]
+})
+
+TabContent(props) -> {
+    style: "p-4 bg-white rounded-lg border border-gray-200"
+    children: [Text({ text: props.text, style: "text-gray-600" })]
+}
+
+// =============================================================================
+// Breadcrumb Section
+// =============================================================================
+
+BreadcrumbSection -> {
+    align: vertical
+    style: "space-y-6"
+    children: [
+        SectionHeading({ text: "Breadcrumb" }),
+        SectionDesc({ text: "Navigation breadcrumbs with different separator styles." }),
+        BreadcrumbExamples
+    ]
+}
+
+BreadcrumbExamples -> {
+    style: "p-6 bg-gray-50 rounded-lg space-y-6"
+    children: [
+        BreadcrumbChevronExample,
+        BreadcrumbSlashExample,
+        BreadcrumbHomeExample
+    ]
+}
+
+BreadcrumbChevronExample -> {
+    align: vertical
+    style: "space-y-2"
+    children: [
+        Text({ text: "Chevron (Default)", style: "text-sm font-medium text-gray-700" }),
+        Breadcrumb({
+            items: [
+                { label: "Home", href: "/" },
+                { label: "Products", href: "/products" },
+                { label: "Electronics", href: "/products/electronics" },
+                { label: "Phones" }
+            ]
+        })
+    ]
+}
+
+BreadcrumbSlashExample -> {
+    align: vertical
+    style: "space-y-2"
+    children: [
+        Text({ text: "Slash Separator", style: "text-sm font-medium text-gray-700" }),
+        SlashBreadcrumb({
+            items: [
+                { label: "Dashboard", href: "/dashboard" },
+                { label: "Settings", href: "/settings" },
+                { label: "Profile" }
+            ]
+        })
+    ]
+}
+
+BreadcrumbHomeExample -> {
+    align: vertical
+    style: "space-y-2"
+    children: [
+        Text({ text: "With Home Icon", style: "text-sm font-medium text-gray-700" }),
+        Breadcrumb({
+            showHome: true,
+            items: [
+                { label: "Projects", href: "/projects" },
+                { label: "Web App" }
+            ]
+        })
+    ]
+}
+
+// =============================================================================
+// Pagination Section
+// =============================================================================
+
+PaginationSection -> {
+    align: vertical
+    style: "space-y-6"
+    children: [
+        SectionHeading({ text: "Pagination" }),
+        SectionDesc({ text: "Page navigation for lists and tables." }),
+        PaginationExamples
+    ]
+}
+
+PaginationExamples -> {
+    style: "p-6 bg-gray-50 rounded-lg space-y-8"
+    children: [
+        PaginationFullExample,
+        PaginationSimpleExample
+    ]
+}
+
+PaginationFullExample -> {
+    align: vertical
+    style: "space-y-2"
+    children: [
+        Text({ text: "Full Pagination", style: "text-sm font-medium text-gray-700" }),
+        Pagination({
+            currentPage: 3,
+            totalPages: 10
+        })
+    ]
+}
+
+PaginationSimpleExample -> {
+    align: vertical
+    style: "space-y-2"
+    children: [
+        Text({ text: "Simple Pagination", style: "text-sm font-medium text-gray-700" }),
+        SimplePagination({
+            currentPage: 5,
+            totalPages: 20
+        })
+    ]
+}
+
+// =============================================================================
+// Dropdown Section
+// =============================================================================
+
+DropdownSection -> {
+    align: vertical
+    style: "space-y-6"
+    children: [
+        SectionHeading({ text: "Dropdown" }),
+        SectionDesc({ text: "Dropdown menus for actions and navigation." }),
+        DropdownExamples
+    ]
+}
+
+DropdownExamples -> {
+    style: "p-6 bg-gray-50 rounded-lg"
+    children: [DropdownRow]
+}
+
+DropdownRow -> {
+    style: "flex items-start gap-6"
+    children: [
+        DropdownDemo
+    ]
+}
+
+DropdownDemo -> Dropdown({
+    isOpen: true,
+    trigger: DropdownTriggerButton({}),
+    items: [
+        { label: "Edit", icon: "✏️" },
+        { label: "Duplicate", icon: "📋" },
+        { type: "divider" },
+        { label: "Delete", icon: "🗑️", danger: true }
+    ]
+})
+
+DropdownTriggerButton(props) -> {
+    type: button
+    content: "Actions ▼"
+    style: "px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium hover:bg-gray-50"
+}
+
+// =============================================================================
+// Modal Section
+// =============================================================================
+
+ModalSection -> {
+    align: vertical
+    style: "space-y-6"
+    children: [
+        SectionHeading({ text: "Modal" }),
+        SectionDesc({ text: "Modal dialogs for confirmations and forms." }),
+        ModalExampleInfo
+    ]
+}
+
+ModalExampleInfo -> {
+    style: "p-6 bg-gray-50 rounded-lg"
+    children: [ModalPreview]
+}
+
+ModalPreview -> {
+    style: "border border-gray-200 rounded-xl bg-white shadow-lg max-w-md mx-auto"
+    children: [
+        ModalPreviewHeader,
+        ModalPreviewBody,
+        ModalPreviewFooter
+    ]
+}
+
+ModalPreviewHeader -> {
+    style: "flex items-center justify-between px-6 py-4 border-b border-gray-200"
+    children: [
+        Text({ text: "Confirm Action", style: "font-semibold text-gray-900" }),
+        ModalCloseIcon({})
+    ]
+}
+
+ModalCloseIcon(props) -> {
+    type: text
+    content: "✕"
+    style: "text-gray-400 hover:text-gray-600 cursor-pointer"
+}
+
+ModalPreviewBody -> {
+    style: "px-6 py-4"
+    children: [
+        Text({ text: "Are you sure you want to proceed with this action? This cannot be undone.", style: "text-gray-600" })
+    ]
+}
+
+ModalPreviewFooter -> {
+    style: "flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200"
+    children: [
+        SecondaryButton({ children: "Cancel" }),
+        PrimaryButton({ children: "Confirm" })
+    ]
+}
+
+// =============================================================================
+// Shared Components
+// =============================================================================
+
+SectionHeading(props) -> Heading({ level: 2, text: props.text, style: "text-xl font-semibold text-gray-900" })
+
+SectionDesc(props) -> Text({ text: props.text, style: "text-gray-600" })

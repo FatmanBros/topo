@@ -1,0 +1,287 @@
+// UI Atoms showcase page
+import { DocsTemplate } from "../../template.tp"
+import { DocsSection, DocsDescription } from "@/components/molecules/docs-section.tp"
+import { DocsCodeSection } from "@/components/organisms/docs-code-section.tp"
+import { Text } from "@/components/atoms/text.tp"
+import { Heading } from "@/components/atoms/heading.tp"
+
+// Atoms
+import { Divider, DividerWithLabel, DashedDivider } from "@/components/atoms/divider.tp"
+import { Tooltip, TopTooltip, BottomTooltip } from "@/components/atoms/tooltip.tp"
+import { Link, PrimaryLink, ExternalLink } from "@/components/atoms/link.tp"
+import { Image, RoundedImage, CircleImage } from "@/components/atoms/image.tp"
+import { Skeleton, TextSkeleton, AvatarSkeleton, SkeletonListItem } from "@/components/atoms/skeleton.tp"
+import { PrimaryButton, SecondaryButton } from "@/components/atoms/button.tp"
+
+Page -> DocsTemplate({ children: [AtomsContent] })
+
+AtomsContent -> {
+    align: vertical
+    style: "space-y-12"
+    children: [
+        PageHeader,
+        DividerSection,
+        TooltipSection,
+        LinkSection,
+        ImageSection,
+        SkeletonSection
+    ]
+}
+
+PageHeader -> DocsSection({
+    id: "atoms",
+    title: "Atoms",
+    children: [HeaderDesc]
+})
+
+HeaderDesc -> DocsDescription({
+    text: "Atoms are the smallest UI building blocks. These components are the foundation for building more complex molecules and organisms."
+})
+
+// =============================================================================
+// Divider Section
+// =============================================================================
+
+DividerSection -> {
+    align: vertical
+    style: "space-y-6"
+    children: [
+        SectionHeading({ text: "Divider" }),
+        SectionDesc({ text: "Horizontal and vertical separators with various styles." }),
+        DividerExamples
+    ]
+}
+
+DividerExamples -> {
+    style: "p-6 bg-gray-50 rounded-lg space-y-6"
+    children: [
+        DividerExample1,
+        DividerExample2,
+        DividerExample3
+    ]
+}
+
+DividerExample1 -> {
+    align: vertical
+    style: "space-y-2"
+    children: [
+        Text({ text: "Default Divider", style: "text-sm text-gray-500" }),
+        Divider({})
+    ]
+}
+
+DividerExample2 -> {
+    align: vertical
+    style: "space-y-2"
+    children: [
+        Text({ text: "Dashed Divider", style: "text-sm text-gray-500" }),
+        DashedDivider({})
+    ]
+}
+
+DividerExample3 -> {
+    align: vertical
+    style: "space-y-2"
+    children: [
+        Text({ text: "Divider with Label", style: "text-sm text-gray-500" }),
+        DividerWithLabel({ label: "OR" })
+    ]
+}
+
+// =============================================================================
+// Tooltip Section
+// =============================================================================
+
+TooltipSection -> {
+    align: vertical
+    style: "space-y-6"
+    children: [
+        SectionHeading({ text: "Tooltip" }),
+        SectionDesc({ text: "Hover tooltips for additional information." }),
+        TooltipExamples
+    ]
+}
+
+TooltipExamples -> {
+    style: "p-6 bg-gray-50 rounded-lg"
+    children: [TooltipRow]
+}
+
+TooltipRow -> {
+    style: "flex items-center gap-6"
+    children: [
+        TopTooltip({
+            content: "This is a top tooltip",
+            children: TooltipButton({ text: "Hover (Top)" })
+        }),
+        BottomTooltip({
+            content: "This is a bottom tooltip",
+            children: TooltipButton({ text: "Hover (Bottom)" })
+        }),
+        Tooltip({
+            content: "Primary styled",
+            variant: "primary",
+            children: TooltipButton({ text: "Primary" })
+        })
+    ]
+}
+
+TooltipButton(props) -> {
+    type: button
+    content: props.text
+    style: "px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm hover:bg-gray-50"
+}
+
+// =============================================================================
+// Link Section
+// =============================================================================
+
+LinkSection -> {
+    align: vertical
+    style: "space-y-6"
+    children: [
+        SectionHeading({ text: "Link" }),
+        SectionDesc({ text: "Styled anchor components with various variants." }),
+        LinkExamples
+    ]
+}
+
+LinkExamples -> {
+    style: "p-6 bg-gray-50 rounded-lg"
+    children: [LinkRow]
+}
+
+LinkRow -> {
+    style: "flex items-center gap-6"
+    children: [
+        PrimaryLink({ href: "#", children: LinkText({ text: "Primary Link" }) }),
+        Link({ href: "#", variant: "secondary", children: LinkText({ text: "Secondary Link" }) }),
+        Link({ href: "#", variant: "subtle", children: LinkText({ text: "Subtle Link" }) }),
+        ExternalLink({ href: "https://example.com", children: LinkText({ text: "External Link" }) })
+    ]
+}
+
+LinkText(props) -> {
+    type: text
+    content: props.text
+}
+
+// =============================================================================
+// Image Section
+// =============================================================================
+
+ImageSection -> {
+    align: vertical
+    style: "space-y-6"
+    children: [
+        SectionHeading({ text: "Image" }),
+        SectionDesc({ text: "Responsive images with various aspect ratios and shapes." }),
+        ImageExamples
+    ]
+}
+
+ImageExamples -> {
+    style: "p-6 bg-gray-50 rounded-lg"
+    children: [ImageRow]
+}
+
+ImageRow -> {
+    style: "flex items-end gap-6"
+    children: [
+        ImageBox({ label: "Rounded", child: RoundedImage({ src: "https://picsum.photos/200/200", alt: "Sample", className: "w-32 h-32" }) }),
+        ImageBox({ label: "Circle", child: CircleImage({ src: "https://picsum.photos/200/200", alt: "Sample", className: "w-24" }) }),
+        ImageBox({ label: "Default", child: Image({ src: "https://picsum.photos/200/150", alt: "Sample", className: "w-40" }) })
+    ]
+}
+
+ImageBox(props) -> {
+    align: vertical
+    style: "items-center gap-2"
+    children: [
+        props.child,
+        Text({ text: props.label, style: "text-sm text-gray-500" })
+    ]
+}
+
+// =============================================================================
+// Skeleton Section
+// =============================================================================
+
+SkeletonSection -> {
+    align: vertical
+    style: "space-y-6"
+    children: [
+        SectionHeading({ text: "Skeleton" }),
+        SectionDesc({ text: "Loading placeholders for content that is being fetched." }),
+        SkeletonExamples
+    ]
+}
+
+SkeletonExamples -> {
+    style: "p-6 bg-gray-50 rounded-lg space-y-8"
+    children: [
+        SkeletonBasicExample,
+        SkeletonListExample
+    ]
+}
+
+SkeletonBasicExample -> {
+    align: vertical
+    style: "space-y-4"
+    children: [
+        Text({ text: "Basic Skeletons", style: "text-sm font-medium text-gray-700" }),
+        SkeletonBasicRow
+    ]
+}
+
+SkeletonBasicRow -> {
+    style: "flex items-center gap-6"
+    children: [
+        SkeletonItem({ label: "Avatar", child: AvatarSkeleton({ size: "lg" }) }),
+        SkeletonItem({ label: "Text Lines", child: SkeletonTextLines({}) })
+    ]
+}
+
+SkeletonTextLines(props) -> {
+    style: "space-y-2 w-48"
+    children: [
+        TextSkeleton({}),
+        TextSkeleton({ width: "threeQuarters" }),
+        TextSkeleton({ width: "half" })
+    ]
+}
+
+SkeletonItem(props) -> {
+    align: vertical
+    style: "items-center gap-2"
+    children: [
+        props.child,
+        Text({ text: props.label, style: "text-sm text-gray-500" })
+    ]
+}
+
+SkeletonListExample -> {
+    align: vertical
+    style: "space-y-4"
+    children: [
+        Text({ text: "List Item Skeleton", style: "text-sm font-medium text-gray-700" }),
+        SkeletonListItems
+    ]
+}
+
+SkeletonListItems -> {
+    style: "space-y-4 bg-white p-4 rounded-lg border border-gray-200"
+    children: [
+        SkeletonListItem({}),
+        SkeletonListItem({}),
+        SkeletonListItem({})
+    ]
+}
+
+// =============================================================================
+// Shared Components
+// =============================================================================
+
+SectionHeading(props) -> Heading({ level: 2, text: props.text, style: "text-xl font-semibold text-gray-900" })
+
+SectionDesc(props) -> Text({ text: props.text, style: "text-gray-600" })

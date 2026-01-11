@@ -31,6 +31,13 @@ DocsSidebarNav -> {
             ]
         }),
         SidebarSection({
+            title: "UI Components",
+            items: [
+                DocsSidebarItem({ label: "Atoms", href: "/docs/ui/atoms", active: false }),
+                DocsSidebarItem({ label: "Molecules", href: "/docs/ui/molecules", active: false })
+            ]
+        }),
+        SidebarSection({
             title: "Guides",
             items: [
                 DocsSidebarItem({ label: "Styling", href: "/docs/styling", active: false }),
