@@ -5,3 +5,7 @@
  * @version 1.0.0
  */
 import { LoginPage } from "../components/templates/login-page.tp"
+
+Page -> {
+    children: LoginPage
+}

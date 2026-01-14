@@ -1,7 +1,5 @@
 // Timeline Variants - Style definitions for Timeline component
 
-import { ColorStyles, Radius } from "../tokens.tp"
-
 TimelineVariants -> {
     container: "relative",
 
@@ -28,19 +26,19 @@ TimelineVariants -> {
     // Indicator/icon
     indicator: {
         container: "relative z-10 flex items-center justify-center flex-shrink-0",
-        base: Radius.full + " flex items-center justify-center",
+        base: "rounded-full flex items-center justify-center",
         size: {
             sm: "h-6 w-6",
             md: "h-8 w-8",
             lg: "h-10 w-10"
         },
         variant: {
-            default: "bg-gray-200 " + ColorStyles.neutral.text,
-            primary: ColorStyles.primary.bg + " text-white",
-            success: ColorStyles.success.bg + " text-white",
-            warning: ColorStyles.warning.bg + " text-white",
-            danger: ColorStyles.danger.bg + " text-white",
-            info: ColorStyles.info.bg + " text-white"
+            default: "bg-gray-200 text-gray-700",
+            primary: "bg-indigo-600 text-white",
+            success: "bg-green-600 text-white",
+            warning: "bg-amber-500 text-white",
+            danger: "bg-red-600 text-white",
+            info: "bg-blue-600 text-white"
         },
         icon: "h-4 w-4"
     },
@@ -48,21 +46,21 @@ TimelineVariants -> {
     // Content
     content: {
         container: "flex-1 min-w-0",
-        title: "font-medium " + ColorStyles.neutral.text,
-        description: "text-sm " + ColorStyles.neutral.textLight + " mt-1",
-        time: "text-xs " + ColorStyles.neutral.textMuted + " mt-1",
+        title: "font-medium text-gray-700",
+        description: "text-sm text-gray-500 mt-1",
+        time: "text-xs text-gray-400 mt-1",
         // Card style content
         card: {
-            base: "p-4 bg-white border " + ColorStyles.neutral.borderLight + " " + Radius.lg,
-            title: "font-medium " + ColorStyles.neutral.text,
-            body: "text-sm " + ColorStyles.neutral.textLight + " mt-2"
+            base: "p-4 bg-white border border-gray-200 rounded-lg",
+            title: "font-medium text-gray-700",
+            body: "text-sm text-gray-500 mt-2"
         }
     },
 
     // Connector line
     connector: {
         default: "bg-gray-200",
-        completed: ColorStyles.primary.bg
+        completed: "bg-indigo-600"
     },
 
     // Size variants

@@ -79,7 +79,8 @@ LoginForm(props) -> {
 }
 
 // ─── Component定義 ───
-LoginFormCard -> {
+// Note: Store名と異なる名前を使用して無限再帰を防ぐ
+LoginFormCardView -> {
     style: "bg-white p-8 rounded-xl shadow-lg max-w-md w-full"
     align: vertical
     children: [

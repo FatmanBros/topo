@@ -1,5 +1,60 @@
-Badge(content, color) -> {
+// Badge Atom - Label/tag component with variants
+// Usage: Badge({ variant: "primary", size: "sm", children: "New" })
+
+import { BadgeVariants } from "../theme/variants/badge.tp"
+
+// =============================================================================
+// Base Badge Component
+// =============================================================================
+
+Badge(props) -> {
     type: text
-    content: content
-    style: color
+    content: props.children || props.content || props.text
+    style: BadgeVariants.base
+         + " " + BadgeVariants.variant[props.variant || "default"]
+         + " " + BadgeVariants.size[props.size || "sm"]
+         + (props.className ? " " + props.className : "")
 }
+
+// =============================================================================
+// Badge with Dot indicator
+// =============================================================================
+
+DotBadge(props) -> {
+    style: BadgeVariants.base
+         + " " + BadgeVariants.variant[props.variant || "default"]
+         + " " + BadgeVariants.size[props.size || "sm"]
+         + (props.className ? " " + props.className : "")
+    children: [
+        BadgeDot({ variant: props.variant || "default" }),
+        BadgeText({ text: props.children || props.content || props.text })
+    ]
+}
+
+BadgeDot(props) -> {
+    style: BadgeVariants.dot.base + " " + BadgeVariants.dot[props.variant]
+}
+
+BadgeText(props) -> {
+    type: text
+    content: props.text
+}
+
+// =============================================================================
+// Variant Presets
+// =============================================================================
+
+PrimaryBadge(props) -> Badge({ ...props, variant: "primary" })
+SecondaryBadge(props) -> Badge({ ...props, variant: "secondary" })
+SuccessBadge(props) -> Badge({ ...props, variant: "success" })
+DangerBadge(props) -> Badge({ ...props, variant: "danger" })
+WarningBadge(props) -> Badge({ ...props, variant: "warning" })
+InfoBadge(props) -> Badge({ ...props, variant: "info" })
+OutlineBadge(props) -> Badge({ ...props, variant: "outline" })
+
+// =============================================================================
+// Size Presets
+// =============================================================================
+
+SmallBadge(props) -> Badge({ ...props, size: "xs" })
+LargeBadge(props) -> Badge({ ...props, size: "lg" })

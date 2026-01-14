@@ -1,8 +1,8 @@
-import { LoginFormCard } from "../organisms/login-form.tp"
+import { LoginFormCardView } from "../organisms/login-form.tp"
 
 // ─── Page Template ───
 // Templatesはorganismsのコマンドにアクセス可能
 LoginPage -> {
     style: "min-h-screen bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center p-4"
-    children: [LoginFormCard]
+    children: [LoginFormCardView]
 }
