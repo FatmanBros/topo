@@ -11,7 +11,8 @@
   "paths": {
     "pages": "pages",
     "aliases": {
-      "@": "."
+      "@": ".",
+      "@packages": "../packages"
     }
   },
   "style": {

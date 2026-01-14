@@ -1,23 +1,23 @@
 // UI Molecules showcase page
 import { DocsTemplate } from "../../template.tp"
 import { DocsSection, DocsDescription } from "@/components/molecules/docs-section.tp"
-import { Text } from "@/components/atoms/text.tp"
-import { Heading } from "@/components/atoms/heading.tp"
-import { PrimaryButton, SecondaryButton, DangerButton } from "@/components/atoms/button.tp"
-import { Avatar } from "@/components/atoms/avatar.tp"
+import { Text } from "@packages/components/atoms/text.tp"
+import { Heading } from "@packages/components/atoms/heading.tp"
+import { PrimaryButton, SecondaryButton, DangerButton } from "@packages/components/atoms/button.tp"
+import { Avatar } from "@packages/components/atoms/avatar.tp"
 
 // Molecules
-import { Alert, SuccessAlert, DangerAlert, WarningAlert, InfoAlert } from "@/components/molecules/alert.tp"
-import { Tabs, LineTabs, PillsTabs } from "@/components/molecules/tabs.tp"
-import { Breadcrumb, SlashBreadcrumb } from "@/components/molecules/breadcrumb.tp"
-import { Pagination, SimplePagination } from "@/components/molecules/pagination.tp"
-import { Dropdown } from "@/components/molecules/dropdown.tp"
-import { SearchInput, LargeSearchInput } from "@/components/molecules/search-input.tp"
-import { AvatarGroup, SmallAvatarGroup } from "@/components/molecules/avatar-group.tp"
-import { EmptyState, NoDataState, NoResultsState } from "@/components/molecules/empty-state.tp"
-import { FileUpload, CompactFileUpload } from "@/components/molecules/file-upload.tp"
-import { Rating, SmallRating, LargeRating } from "@/components/molecules/rating.tp"
-import { Stepper, VerticalStepper } from "@/components/molecules/stepper.tp"
+import { Alert, SuccessAlert, DangerAlert, WarningAlert, InfoAlert } from "@packages/components/molecules/alert.tp"
+import { Tabs, LineTabs, PillsTabs } from "@packages/components/molecules/tabs.tp"
+import { Breadcrumb, SlashBreadcrumb } from "@packages/components/molecules/breadcrumb.tp"
+import { Pagination, SimplePagination } from "@packages/components/molecules/pagination.tp"
+import { Dropdown } from "@packages/components/molecules/dropdown.tp"
+import { SearchInput, LargeSearchInput } from "@packages/components/molecules/search-input.tp"
+import { AvatarGroup, SmallAvatarGroup } from "@packages/components/molecules/avatar-group.tp"
+import { EmptyState, NoDataState, NoResultsState } from "@packages/components/molecules/empty-state.tp"
+import { FileUpload, CompactFileUpload } from "@packages/components/molecules/file-upload.tp"
+import { Rating, SmallRating, LargeRating } from "@packages/components/molecules/rating.tp"
+import { Stepper, VerticalStepper } from "@packages/components/molecules/stepper.tp"
 
 Page -> DocsTemplate({ children: [MoleculesContent] })
 

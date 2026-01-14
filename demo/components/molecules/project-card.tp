@@ -1,6 +1,6 @@
 // Project Card molecule
-import { Text } from "../atoms/text.tp"
-import { ProgressBar } from "./progress-bar.tp"
+import { Text } from "@packages/components/atoms/text.tp"
+import { ProgressBar } from "@packages/components/molecules/progress-bar.tp"
 
 ProjectCard(props) -> {
     style: "bg-white rounded-xl shadow-sm border border-gray-100 p-6"

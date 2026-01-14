@@ -1,5 +1,5 @@
 // LP Features section - 4 feature cards with pastel colors
-import { Text } from "@/components/atoms/text.tp"
+import { Text } from "@packages/components/atoms/text.tp"
 import { FeatureCard } from "@/components/molecules/feature-card.tp"
 
 LPFeatures -> {

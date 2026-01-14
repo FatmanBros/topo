@@ -1,5 +1,5 @@
 // Feature card molecule - pastel colored cards for LP
-import { Icon } from "../atoms/icon.tp"
+import { Icon } from "@packages/components/atoms/icon.tp"
 
 FeatureCard(props) -> {
     style: props.bgColor + " p-6 rounded-2xl border " + props.borderColor + " hover:shadow-lg transition-shadow duration-300"

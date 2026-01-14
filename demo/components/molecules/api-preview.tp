@@ -1,5 +1,5 @@
 // API Preview - Renders a list of API endpoints
-import { Text } from "@/components/atoms/text.tp"
+import { Text } from "@packages/components/atoms/text.tp"
 
 ApiPreview(props) -> {
     align: vertical

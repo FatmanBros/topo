@@ -1,5 +1,0 @@
-Badge(content, color) -> {
-    type: text
-    content: content
-    style: color
-}

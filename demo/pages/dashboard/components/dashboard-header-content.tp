@@ -1,7 +1,7 @@
 // Dashboard header content - left and right sections
-import { Heading } from "@/components/atoms/heading.tp"
-import { Text } from "@/components/atoms/text.tp"
-import { Button } from "@/components/atoms/button.tp"
+import { Heading } from "@packages/components/atoms/heading.tp"
+import { Text } from "@packages/components/atoms/text.tp"
+import { Button } from "@packages/components/atoms/button.tp"
 
 DashboardHeaderLeft -> {
     align: vertical

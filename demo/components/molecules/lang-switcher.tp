@@ -1,4 +1,4 @@
-import { Button } from "../atoms/button.tp"
+import { Button } from "@packages/components/atoms/button.tp"
 
 LangJa -> Button("日本語", $i18n.setLocale("ja"), "px-3 py-1 text-sm rounded bg-gray-200 hover:bg-gray-300 mr-2", "button")
 

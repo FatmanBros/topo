@@ -1,22 +1,22 @@
 // UI Atoms showcase page
 import { DocsTemplate } from "../../template.tp"
 import { DocsSection, DocsDescription } from "@/components/molecules/docs-section.tp"
-import { Text } from "@/components/atoms/text.tp"
-import { Heading } from "@/components/atoms/heading.tp"
+import { Text } from "@packages/components/atoms/text.tp"
+import { Heading } from "@packages/components/atoms/heading.tp"
 
 // Atoms
-import { Button, PrimaryButton, SecondaryButton, OutlineButton, GhostButton, DangerButton } from "@/components/atoms/button.tp"
-import { Badge, PrimaryBadge, SuccessBadge, DangerBadge, WarningBadge, InfoBadge, OutlineBadge } from "@/components/atoms/badge.tp"
-import { Avatar, SmallAvatar, LargeAvatar } from "@/components/atoms/avatar.tp"
-import { Spinner, SmallSpinner, LargeSpinner } from "@/components/atoms/spinner.tp"
-import { Checkbox } from "@/components/atoms/checkbox.tp"
-import { Radio } from "@/components/atoms/radio.tp"
-import { Switch, SmallSwitch, LargeSwitch } from "@/components/atoms/switch.tp"
-import { Divider, DividerWithLabel, DashedDivider, VerticalDivider } from "@/components/atoms/divider.tp"
-import { Tooltip, TopTooltip, BottomTooltip } from "@/components/atoms/tooltip.tp"
-import { Link, PrimaryLink, ExternalLink } from "@/components/atoms/link.tp"
-import { Image, RoundedImage, CircleImage } from "@/components/atoms/image.tp"
-import { Skeleton, TextSkeleton, AvatarSkeleton, SkeletonListItem } from "@/components/atoms/skeleton.tp"
+import { Button, PrimaryButton, SecondaryButton, OutlineButton, GhostButton, DangerButton } from "@packages/components/atoms/button.tp"
+import { Badge, PrimaryBadge, SuccessBadge, DangerBadge, WarningBadge, InfoBadge, OutlineBadge } from "@packages/components/atoms/badge.tp"
+import { Avatar, SmallAvatar, LargeAvatar } from "@packages/components/atoms/avatar.tp"
+import { Spinner, SmallSpinner, LargeSpinner } from "@packages/components/atoms/spinner.tp"
+import { Checkbox } from "@packages/components/atoms/checkbox.tp"
+import { Radio } from "@packages/components/atoms/radio.tp"
+import { Switch, SmallSwitch, LargeSwitch } from "@packages/components/atoms/switch.tp"
+import { Divider, DividerWithLabel, DashedDivider, VerticalDivider } from "@packages/components/atoms/divider.tp"
+import { Tooltip, TopTooltip, BottomTooltip } from "@packages/components/atoms/tooltip.tp"
+import { Link, PrimaryLink, ExternalLink } from "@packages/components/atoms/link.tp"
+import { Image, RoundedImage, CircleImage } from "@packages/components/atoms/image.tp"
+import { Skeleton, TextSkeleton, AvatarSkeleton, SkeletonListItem } from "@packages/components/atoms/skeleton.tp"
 
 Page -> DocsTemplate({ children: [AtomsContent] })
 

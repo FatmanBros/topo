@@ -1,6 +1,6 @@
 // Recent Activity component with anonymous store
 // Store name is derived from filename: recent-activity.tp -> RecentActivity
-import { Card } from "@/components/atoms/card.tp"
+import { Card } from "@packages/components/atoms/card.tp"
 import { ActivityItem } from "@/components/molecules/activity-item.tp"
 
 | {

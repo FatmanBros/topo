@@ -1,5 +1,5 @@
 // LP Getting Started section - 3 step guide
-import { Text } from "@/components/atoms/text.tp"
+import { Text } from "@packages/components/atoms/text.tp"
 import { CTAButton } from "@/components/molecules/cta-button.tp"
 
 LPGettingStarted -> {

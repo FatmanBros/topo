@@ -1,5 +1,5 @@
 // Config Preview - Label/description list for configuration docs
-import { Text } from "@/components/atoms/text.tp"
+import { Text } from "@packages/components/atoms/text.tp"
 
 ConfigPreview(props) -> {
     align: vertical

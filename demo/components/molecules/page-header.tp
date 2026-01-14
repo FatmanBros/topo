@@ -1,6 +1,6 @@
 // Page Header molecule
-import { Text } from "../atoms/text.tp"
-import { Button } from "../atoms/button.tp"
+import { Text } from "@packages/components/atoms/text.tp"
+import { Button } from "@packages/components/atoms/button.tp"
 
 PageHeader(props) -> {
     style: "mb-8"

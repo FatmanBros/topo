@@ -1,6 +1,6 @@
 // LP Code Example section - showing topo syntax
-import { Text } from "@/components/atoms/text.tp"
-import { CheckIcon } from "@/components/atoms/icon.tp"
+import { Text } from "@packages/components/atoms/text.tp"
+import { CheckIcon } from "@packages/components/atoms/icon.tp"
 import { CodeBlock } from "@/components/molecules/code-block.tp"
 
 LPCodeExample -> {

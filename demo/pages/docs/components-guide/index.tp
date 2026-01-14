@@ -2,8 +2,8 @@
 import { DocsTemplate } from "../template.tp"
 import { DocsSection, DocsDescription } from "@/components/molecules/docs-section.tp"
 import { DocsCodeSection } from "@/components/organisms/docs-code-section.tp"
-import { Text } from "@/components/atoms/text.tp"
-import { PrimaryButton } from "@/components/atoms/button.tp"
+import { Text } from "@packages/components/atoms/text.tp"
+import { PrimaryButton } from "@packages/components/atoms/button.tp"
 
 Page -> DocsTemplate({ children: [ComponentsContent] })
 

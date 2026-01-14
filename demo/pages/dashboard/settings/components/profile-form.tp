@@ -1,5 +1,5 @@
 // Profile Form component with store
-import { FormField } from "@/components/molecules/form-field.tp"
+import { FormField } from "@packages/components/molecules/form-field.tp"
 
 ProfileSettings | {
     State {

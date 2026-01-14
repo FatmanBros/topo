@@ -1,4 +1,4 @@
-import { Text } from "../atoms/text.tp"
+import { Text } from "@packages/components/atoms/text.tp"
 
 SimpleCard(title, desc) -> {
     style: "bg-white p-6 rounded-xl shadow-sm border border-gray-100"

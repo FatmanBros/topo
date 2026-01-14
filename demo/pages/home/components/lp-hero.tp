@@ -1,5 +1,5 @@
 // LP Hero section - main hero with pastel gradient background
-import { Text } from "@/components/atoms/text.tp"
+import { Text } from "@packages/components/atoms/text.tp"
 import { PastelBadge } from "@/components/atoms/pastel-badge.tp"
 import { PinkGradientText } from "@/components/atoms/gradient-text.tp"
 import { CTAButton, SecondaryButton } from "@/components/molecules/cta-button.tp"

@@ -1,5 +1,5 @@
 // Docs section molecule - section with title and content
-import { Text } from "../atoms/text.tp"
+import { Text } from "@packages/components/atoms/text.tp"
 
 DocsSection(props) -> {
     id: props.id

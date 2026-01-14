@@ -110,7 +110,7 @@ ComponentTestSection -> DocsCodeSection({
     description: "Test components with render and query utilities:",
     filename: "button.test.tp",
     code: `
-    import { Button } from "@/components/atoms/button.tp"
+    import { Button } from "@packages/components/atoms/button.tp"
 
     test "renders button with text" {
         render: Button({ text: "Click me" })

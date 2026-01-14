@@ -3,7 +3,7 @@ import { DocsTemplate } from "../template.tp"
 import { DocsSection, DocsDescription } from "@/components/molecules/docs-section.tp"
 import { DocsCodeSection } from "@/components/organisms/docs-code-section.tp"
 import { ConfigPreview } from "@/components/molecules/config-preview.tp"
-import { Text } from "@/components/atoms/text.tp"
+import { Text } from "@packages/components/atoms/text.tp"
 
 Page -> {
     title: "Pipes"

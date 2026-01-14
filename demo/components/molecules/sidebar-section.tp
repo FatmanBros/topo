@@ -1,5 +1,5 @@
 // Sidebar section molecule - grouped navigation items
-import { Text } from "../atoms/text.tp"
+import { Text } from "@packages/components/atoms/text.tp"
 import { DocsSidebarLink } from "../atoms/nav-link.tp"
 
 SidebarSection(props) -> {

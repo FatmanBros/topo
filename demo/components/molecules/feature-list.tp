@@ -1,5 +1,5 @@
 // Feature List - Checkmark list for feature highlights
-import { Text } from "@/components/atoms/text.tp"
+import { Text } from "@packages/components/atoms/text.tp"
 
 FeatureList(props) -> {
     align: vertical

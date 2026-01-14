@@ -1,5 +1,5 @@
 // Docs search molecule
-import { Text } from "../atoms/text.tp"
+import { Text } from "@packages/components/atoms/text.tp"
 
 DocsSearch | {
     State {

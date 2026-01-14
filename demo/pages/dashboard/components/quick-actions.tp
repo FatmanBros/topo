@@ -1,6 +1,6 @@
 // Quick Actions component
-import { Card } from "@/components/atoms/card.tp"
-import { ActionButton } from "@/components/atoms/button.tp"
+import { Card } from "@packages/components/atoms/card.tp"
+import { ActionButton } from "@packages/components/atoms/button.tp"
 
 QuickActionsCard -> Card({
     title: "Quick Actions",

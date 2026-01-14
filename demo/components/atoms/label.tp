@@ -1,5 +1,0 @@
-Label(text) -> {
-    type: text
-    content: text
-    style: "block text-sm font-medium text-gray-700 mb-2"
-}

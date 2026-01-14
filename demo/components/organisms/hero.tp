@@ -1,5 +1,5 @@
-import { Text } from "../atoms/text.tp"
-import { Heading } from "../atoms/heading.tp"
+import { Text } from "@packages/components/atoms/text.tp"
+import { Heading } from "@packages/components/atoms/heading.tp"
 
 Hero -> {
     style: "mb-16"

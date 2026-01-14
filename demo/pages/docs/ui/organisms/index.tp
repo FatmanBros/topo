@@ -1,20 +1,20 @@
 // UI Organisms showcase page
 import { DocsTemplate } from "../../template.tp"
 import { DocsSection, DocsDescription } from "@/components/molecules/docs-section.tp"
-import { Text } from "@/components/atoms/text.tp"
-import { Heading } from "@/components/atoms/heading.tp"
-import { PrimaryButton, SecondaryButton } from "@/components/atoms/button.tp"
-import { Avatar } from "@/components/atoms/avatar.tp"
+import { Text } from "@packages/components/atoms/text.tp"
+import { Heading } from "@packages/components/atoms/heading.tp"
+import { PrimaryButton, SecondaryButton } from "@packages/components/atoms/button.tp"
+import { Avatar } from "@packages/components/atoms/avatar.tp"
 
 // Organisms
-import { DataTable } from "@/components/organisms/data-table.tp"
-import { Navbar, TransparentNavbar } from "@/components/organisms/navbar.tp"
-import { CardList, GridCardList } from "@/components/organisms/card-list.tp"
-import { CommentSection } from "@/components/organisms/comment-section.tp"
-import { NotificationCenter } from "@/components/organisms/notification-center.tp"
-import { UserMenu } from "@/components/organisms/user-menu.tp"
-import { FilterPanel } from "@/components/organisms/filter-panel.tp"
-import { Timeline, VerticalTimeline } from "@/components/organisms/timeline.tp"
+import { DataTable } from "@packages/components/organisms/data-table.tp"
+import { Navbar, TransparentNavbar } from "@packages/components/organisms/navbar.tp"
+import { CardList, GridCardList } from "@packages/components/organisms/card-list.tp"
+import { CommentSection } from "@packages/components/organisms/comment-section.tp"
+import { NotificationCenter } from "@packages/components/organisms/notification-center.tp"
+import { UserMenu } from "@packages/components/organisms/user-menu.tp"
+import { FilterPanel } from "@packages/components/organisms/filter-panel.tp"
+import { Timeline, VerticalTimeline } from "@packages/components/organisms/timeline.tp"
 
 Page -> DocsTemplate({ children: [OrganismsContent] })
 

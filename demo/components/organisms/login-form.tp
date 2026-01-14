@@ -1,7 +1,7 @@
 import { LangSwitcher } from "../molecules/lang-switcher.tp"
-import { SubmitButton } from "../atoms/button.tp"
-import { Heading } from "../atoms/heading.tp"
-import { Text } from "../atoms/text.tp"
+import { SubmitButton } from "@packages/components/atoms/button.tp"
+import { Heading } from "@packages/components/atoms/heading.tp"
+import { Text } from "@packages/components/atoms/text.tp"
 import { AuthorityApi } from "../../services/authority-api.tp"
 
 // ─── Store定義 ───

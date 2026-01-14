@@ -1,4 +1,4 @@
-import { Heading } from "../atoms/heading.tp"
+import { Heading } from "@packages/components/atoms/heading.tp"
 import { Step } from "../atoms/step.tp"
 
 GettingStarted -> {
