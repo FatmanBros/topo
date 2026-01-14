@@ -1,8 +1,11 @@
 import { GhostButton } from "@packages/components/atoms/button.tp"
 
-LangJa -> GhostButton({ content: "日本語", onClick: $i18n.setLocale.bind(null, "ja"), className: "px-3 py-1 text-sm rounded bg-gray-200 hover:bg-gray-300 mr-2" })
+setJa() -> $i18n.setLocale("ja")
+setEn() -> $i18n.setLocale("en")
 
-LangEn -> GhostButton({ content: "English", onClick: $i18n.setLocale.bind(null, "en"), className: "px-3 py-1 text-sm rounded bg-gray-200 hover:bg-gray-300" })
+LangJa -> GhostButton({ content: "日本語", onClick: setJa, className: "px-3 py-1 text-sm rounded bg-gray-200 hover:bg-gray-300 mr-2" })
+
+LangEn -> GhostButton({ content: "English", onClick: setEn, className: "px-3 py-1 text-sm rounded bg-gray-200 hover:bg-gray-300" })
 
 LangSwitcher -> {
     style: "flex justify-center mb-4"

@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test.beforeEach(async ({ page }) => {
-  await page.goto('/login');
+  await page.goto('/topo/login');
   await page.waitForLoadState('networkidle');
 });
 
