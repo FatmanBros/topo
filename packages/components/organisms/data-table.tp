@@ -1,0 +1,294 @@
+// DataTable Organism - Data table with sorting and selection
+// Usage: DataTable({ columns: [...], data: [...], sortable: true })
+
+import { DataTableVariants } from "../theme/variants/data-table.tp"
+import { Checkbox } from "../atoms/checkbox.tp"
+
+// =============================================================================
+// Base DataTable Component
+// =============================================================================
+
+DataTable(props) -> {
+    style: DataTableVariants.container + (props.className ? " " + props.className : "")
+    children: [
+        DataTableWrapper({
+            columns: props.columns,
+            data: props.data,
+            sortable: props.sortable,
+            selectable: props.selectable,
+            striped: props.striped,
+            hoverable: props.hoverable != false,
+            sortColumn: props.sortColumn,
+            sortDirection: props.sortDirection,
+            onSort: props.onSort,
+            selectedRows: props.selectedRows,
+            onSelectRow: props.onSelectRow,
+            onSelectAll: props.onSelectAll,
+            emptyMessage: props.emptyMessage
+        }),
+        props.pagination ? DataTablePagination({
+            currentPage: props.pagination.currentPage,
+            totalPages: props.pagination.totalPages,
+            totalItems: props.pagination.totalItems,
+            pageSize: props.pagination.pageSize,
+            onPageChange: props.pagination.onPageChange
+        }) : null
+    ]
+}
+
+// =============================================================================
+// Table Wrapper
+// =============================================================================
+
+DataTableWrapper(props) -> {
+    style: DataTableVariants.wrapper
+    children: [
+        DataTableInner({
+            columns: props.columns,
+            data: props.data,
+            sortable: props.sortable,
+            selectable: props.selectable,
+            striped: props.striped,
+            hoverable: props.hoverable,
+            sortColumn: props.sortColumn,
+            sortDirection: props.sortDirection,
+            onSort: props.onSort,
+            selectedRows: props.selectedRows,
+            onSelectRow: props.onSelectRow,
+            onSelectAll: props.onSelectAll,
+            emptyMessage: props.emptyMessage
+        })
+    ]
+}
+
+DataTableInner(props) -> {
+    type: table
+    style: DataTableVariants.table
+    children: [
+        DataTableHead({
+            columns: props.columns,
+            sortable: props.sortable,
+            selectable: props.selectable,
+            sortColumn: props.sortColumn,
+            sortDirection: props.sortDirection,
+            onSort: props.onSort,
+            onSelectAll: props.onSelectAll,
+            allSelected: props.selectedRows && props.selectedRows.length == props.data.length
+        }),
+        DataTableBody({
+            columns: props.columns,
+            data: props.data,
+            selectable: props.selectable,
+            striped: props.striped,
+            hoverable: props.hoverable,
+            selectedRows: props.selectedRows,
+            onSelectRow: props.onSelectRow,
+            emptyMessage: props.emptyMessage
+        })
+    ]
+}
+
+// =============================================================================
+// Table Head
+// =============================================================================
+
+DataTableHead(props) -> {
+    type: thead
+    style: DataTableVariants.thead
+    children: [DataTableHeadRow({
+        columns: props.columns,
+        sortable: props.sortable,
+        selectable: props.selectable,
+        sortColumn: props.sortColumn,
+        sortDirection: props.sortDirection,
+        onSort: props.onSort,
+        onSelectAll: props.onSelectAll,
+        allSelected: props.allSelected
+    })]
+}
+
+DataTableHeadRow(props) -> {
+    type: tr
+    children: [
+        props.selectable ? SelectAllCell({ checked: props.allSelected, onChange: props.onSelectAll }) : null,
+        ...props.columns.for(col => {
+            HeaderCell({
+                column: col,
+                sortable: props.sortable && col.sortable != false,
+                isSorted: props.sortColumn == col.key,
+                sortDirection: props.sortDirection,
+                onSort: props.onSort
+            })
+        })
+    ]
+}
+
+SelectAllCell(props) -> {
+    type: th
+    style: DataTableVariants.checkbox.th
+    children: [Checkbox({ checked: props.checked, onChange: props.onChange })]
+}
+
+HeaderCell(props) -> {
+    type: th
+    click: props.sortable ? props.onSort : null
+    style: DataTableVariants.th.base
+         + (props.sortable ? " " + DataTableVariants.th.sortable : "")
+         + (props.isSorted ? " " + DataTableVariants.th.sorted : "")
+    children: [
+        HeaderCellContent({ label: props.column.label, sortable: props.sortable, isSorted: props.isSorted, sortDirection: props.sortDirection })
+    ]
+}
+
+HeaderCellContent(props) -> {
+    style: "flex items-center"
+    children: [
+        HeaderLabel({ text: props.label }),
+        props.sortable ? SortIcon({ isSorted: props.isSorted, direction: props.sortDirection }) : null
+    ]
+}
+
+HeaderLabel(props) -> {
+    type: text
+    content: props.text
+}
+
+SortIcon(props) -> {
+    style: DataTableVariants.sortIcon.container
+    children: [SortIconSvg({ isSorted: props.isSorted, direction: props.direction })]
+}
+
+SortIconSvg(props) -> {
+    type: svg
+    style: DataTableVariants.sortIcon.size
+         + " " + (props.isSorted ? DataTableVariants.sortIcon.active : DataTableVariants.sortIcon.inactive)
+    viewBox: "0 0 20 20"
+    fill: "currentColor"
+    children: [SortIconPath({ direction: props.direction })]
+}
+
+SortIconPath(props) -> {
+    type: path
+    fillRule: "evenodd"
+    clipRule: "evenodd"
+    d: props.direction == "asc"
+        ? "M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L10 13.586l3.293-3.293a1 1 0 011.414 0z"
+        : "M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L10 6.414l-3.293 3.293a1 1 0 01-1.414 0z"
+}
+
+// =============================================================================
+// Table Body
+// =============================================================================
+
+DataTableBody(props) -> {
+    type: tbody
+    style: DataTableVariants.tbody
+    children: props.data.length > 0
+        ? props.data.for((row, index) => {
+            DataTableRow({
+                row: row,
+                columns: props.columns,
+                selectable: props.selectable,
+                striped: props.striped,
+                hoverable: props.hoverable,
+                isSelected: props.selectedRows && props.selectedRows.includes(row.id),
+                onSelectRow: props.onSelectRow,
+                index: index
+            })
+        })
+        : [EmptyRow({ colSpan: props.columns.length + (props.selectable ? 1 : 0), message: props.emptyMessage })]
+}
+
+DataTableRow(props) -> {
+    type: tr
+    style: DataTableVariants.tr.base
+         + (props.hoverable ? " " + DataTableVariants.tr.hover : "")
+         + (props.isSelected ? " " + DataTableVariants.tr.selected : "")
+         + (props.striped ? " " + DataTableVariants.tr.striped : "")
+    children: [
+        props.selectable ? SelectRowCell({ checked: props.isSelected, onChange: props.onSelectRow, rowId: props.row.id }) : null,
+        ...props.columns.for(col => { DataCell({ value: props.row[col.key], column: col }) })
+    ]
+}
+
+SelectRowCell(props) -> {
+    type: td
+    style: DataTableVariants.checkbox.td
+    children: [Checkbox({ checked: props.checked, onChange: props.onChange })]
+}
+
+DataCell(props) -> {
+    type: td
+    style: DataTableVariants.td.base
+         + (props.column.truncate ? " " + DataTableVariants.td.truncate : "")
+    children: [
+        props.column.render
+            ? props.column.render(props.value)
+            : CellText({ value: props.value })
+    ]
+}
+
+CellText(props) -> {
+    type: text
+    content: props.value
+}
+
+EmptyRow(props) -> {
+    type: tr
+    children: [EmptyCell({ colSpan: props.colSpan, message: props.message })]
+}
+
+EmptyCell(props) -> {
+    type: td
+    colSpan: props.colSpan
+    style: DataTableVariants.empty.cell
+    children: [EmptyText({ message: props.message })]
+}
+
+EmptyText(props) -> {
+    type: text
+    content: props.message || "No data available"
+    style: DataTableVariants.empty.text
+}
+
+// =============================================================================
+// Pagination
+// =============================================================================
+
+DataTablePagination(props) -> {
+    style: DataTableVariants.pagination.container
+    children: [
+        PaginationInfo({ currentPage: props.currentPage, pageSize: props.pageSize, totalItems: props.totalItems }),
+        PaginationControls({ currentPage: props.currentPage, totalPages: props.totalPages, onPageChange: props.onPageChange })
+    ]
+}
+
+PaginationInfo(props) -> {
+    type: text
+    content: "Showing " + ((props.currentPage - 1) * props.pageSize + 1) + " to " + Math.min(props.currentPage * props.pageSize, props.totalItems) + " of " + props.totalItems + " results"
+    style: DataTableVariants.pagination.info
+}
+
+PaginationControls(props) -> {
+    style: DataTableVariants.pagination.controls
+    children: [
+        PrevButton({ disabled: props.currentPage <= 1, onClick: props.onPageChange }),
+        NextButton({ disabled: props.currentPage >= props.totalPages, onClick: props.onPageChange })
+    ]
+}
+
+PrevButton(props) -> {
+    type: button
+    disabled: props.disabled
+    click: props.onClick
+    content: "Previous"
+    style: "px-3 py-1 text-sm border border-gray-300 rounded-md disabled:opacity-50"
+}
+
+NextButton(props) -> {
+    type: button
+    disabled: props.disabled
+    click: props.onClick
+    content: "Next"
+    style: "px-3 py-1 text-sm border border-gray-300 rounded-md disabled:opacity-50"
+}

@@ -1,0 +1,62 @@
+// Image Atom - Responsive image component
+// Usage: Image({ src: "/photo.jpg", alt: "Description", radius: "lg" })
+
+import { ImageVariants } from "../theme/variants/image.tp"
+
+// =============================================================================
+// Base Image Component
+// =============================================================================
+
+Image(props) -> {
+    type: img
+    src: props.src
+    alt: props.alt || ""
+    width: props.width
+    height: props.height
+    loading: props.loading || "lazy"
+    style: ImageVariants.base
+         + " " + ImageVariants.objectFit[props.fit || "cover"]
+         + " " + ImageVariants.objectPosition[props.position || "center"]
+         + " " + ImageVariants.radius[props.radius || "none"]
+         + (props.aspectRatio ? " " + ImageVariants.aspectRatio[props.aspectRatio] : "")
+         + (props.responsive ? " " + ImageVariants.responsive : "")
+         + (props.className ? " " + props.className : "")
+}
+
+// =============================================================================
+// Aspect Ratio Presets
+// =============================================================================
+
+SquareImage(props) -> Image({ ...props, aspectRatio: "square" })
+VideoImage(props) -> Image({ ...props, aspectRatio: "video" })
+PortraitImage(props) -> Image({ ...props, aspectRatio: "portrait" })
+WideImage(props) -> Image({ ...props, aspectRatio: "wide" })
+
+// =============================================================================
+// Rounded Presets
+// =============================================================================
+
+RoundedImage(props) -> Image({ ...props, radius: "lg" })
+CircleImage(props) -> Image({ ...props, radius: "full", aspectRatio: "square" })
+
+// =============================================================================
+// Responsive Image (full width)
+// =============================================================================
+
+ResponsiveImage(props) -> Image({ ...props, responsive: true })
+
+// =============================================================================
+// Avatar Image (circular profile image)
+// =============================================================================
+
+AvatarImage(props) -> {
+    type: img
+    src: props.src
+    alt: props.alt || ""
+    style: ImageVariants.base
+         + " " + ImageVariants.objectFit.cover
+         + " " + ImageVariants.radius.full
+         + " " + ImageVariants.aspectRatio.square
+         + " " + (props.size || "h-10 w-10")
+         + (props.className ? " " + props.className : "")
+}

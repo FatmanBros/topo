@@ -1,0 +1,211 @@
+// Stepper Molecule - Step indicator component
+// Usage: Stepper({ steps: [...], activeStep: 1, orientation: "horizontal" })
+
+import { StepperVariants } from "../theme/variants/stepper.tp"
+
+// =============================================================================
+// Base Stepper Component
+// =============================================================================
+
+Stepper(props) -> {
+    style: StepperVariants.container + (props.className ? " " + props.className : "")
+    children: [
+        props.orientation == "vertical"
+            ? VerticalStepList({ steps: props.steps, activeStep: props.activeStep, size: props.size || "md", onStepClick: props.onStepClick })
+            : HorizontalStepList({ steps: props.steps, activeStep: props.activeStep, size: props.size || "md", onStepClick: props.onStepClick })
+    ]
+}
+
+// =============================================================================
+// Horizontal Step List
+// =============================================================================
+
+HorizontalStepList(props) -> {
+    style: StepperVariants.horizontal.list
+    children: props.steps.for((step, index) => {
+        HorizontalStep({
+            step: step,
+            index: index,
+            activeStep: props.activeStep,
+            isLast: index == props.steps.length - 1,
+            size: props.size,
+            onStepClick: props.onStepClick
+        })
+    })
+}
+
+HorizontalStep(props) -> {
+    style: StepperVariants.horizontal.step
+         + (props.onStepClick ? " " + StepperVariants.clickable : "")
+    click: props.onStepClick
+    children: [
+        StepIndicator({
+            index: props.index,
+            activeStep: props.activeStep,
+            size: props.size,
+            error: props.step.error
+        }),
+        StepContent({
+            title: props.step.title,
+            description: props.step.description,
+            index: props.index,
+            activeStep: props.activeStep
+        }),
+        props.isLast ? null : HorizontalConnector({ index: props.index, activeStep: props.activeStep })
+    ]
+}
+
+HorizontalConnector(props) -> {
+    style: StepperVariants.horizontal.connector
+         + " " + (props.index < props.activeStep
+             ? StepperVariants.connector.completed
+             : StepperVariants.connector.pending)
+}
+
+// =============================================================================
+// Vertical Step List
+// =============================================================================
+
+VerticalStepList(props) -> {
+    style: StepperVariants.vertical.list
+    children: props.steps.for((step, index) => {
+        VerticalStep({
+            step: step,
+            index: index,
+            activeStep: props.activeStep,
+            isLast: index == props.steps.length - 1,
+            size: props.size,
+            onStepClick: props.onStepClick
+        })
+    })
+}
+
+VerticalStep(props) -> {
+    children: [
+        VerticalStepRow({
+            step: props.step,
+            index: props.index,
+            activeStep: props.activeStep,
+            size: props.size,
+            onStepClick: props.onStepClick
+        }),
+        props.isLast ? null : VerticalConnector({ index: props.index, activeStep: props.activeStep })
+    ]
+}
+
+VerticalStepRow(props) -> {
+    style: StepperVariants.vertical.step
+         + (props.onStepClick ? " " + StepperVariants.clickable : "")
+    click: props.onStepClick
+    children: [
+        StepIndicator({
+            index: props.index,
+            activeStep: props.activeStep,
+            size: props.size,
+            error: props.step.error
+        }),
+        StepContent({
+            title: props.step.title,
+            description: props.step.description,
+            index: props.index,
+            activeStep: props.activeStep
+        })
+    ]
+}
+
+VerticalConnector(props) -> {
+    style: StepperVariants.vertical.connector
+         + " " + (props.index < props.activeStep
+             ? StepperVariants.connector.completed
+             : StepperVariants.connector.pending)
+}
+
+// =============================================================================
+// Step Indicator
+// =============================================================================
+
+StepIndicator(props) -> {
+    style: StepperVariants.indicator.base
+         + " " + StepperVariants.indicator.size[props.size]
+         + " " + getIndicatorState(props.index, props.activeStep, props.error)
+    children: [
+        props.index < props.activeStep
+            ? CheckIcon({})
+            : props.error
+                ? ErrorIcon({})
+                : StepNumber({ number: props.index + 1 })
+    ]
+}
+
+StepNumber(props) -> {
+    type: text
+    content: props.number
+}
+
+CheckIcon(props) -> {
+    type: svg
+    style: StepperVariants.checkIcon
+    viewBox: "0 0 20 20"
+    fill: "currentColor"
+    children: [CheckPath({})]
+}
+
+CheckPath(props) -> {
+    type: path
+    fillRule: "evenodd"
+    clipRule: "evenodd"
+    d: "M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
+}
+
+ErrorIcon(props) -> {
+    type: svg
+    style: StepperVariants.checkIcon
+    viewBox: "0 0 20 20"
+    fill: "currentColor"
+    children: [ErrorPath({})]
+}
+
+ErrorPath(props) -> {
+    type: path
+    d: "M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z"
+}
+
+// =============================================================================
+// Step Content
+// =============================================================================
+
+StepContent(props) -> {
+    style: StepperVariants.content.container
+    children: [
+        StepTitle({ text: props.title, index: props.index, activeStep: props.activeStep }),
+        props.description ? StepDescription({ text: props.description }) : null
+    ]
+}
+
+StepTitle(props) -> {
+    type: text
+    content: props.text
+    style: StepperVariants.content.title.base
+         + " " + getTitleState(props.index, props.activeStep)
+}
+
+StepDescription(props) -> {
+    type: text
+    content: props.text
+    style: StepperVariants.content.description.base
+         + " " + StepperVariants.content.description.style
+}
+
+// =============================================================================
+// Orientation Presets
+// =============================================================================
+
+HorizontalStepper(props) -> Stepper({ ...props, orientation: "horizontal" })
+VerticalStepper(props) -> Stepper({ ...props, orientation: "vertical" })
+
+// =============================================================================
+// Helper Functions (implemented in runtime)
+// =============================================================================
+
+// getIndicatorState(index, activeStep, error) returns appropriate style
+// getTitleState(index, activeStep) returns appropriate title style

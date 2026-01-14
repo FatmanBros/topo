@@ -1,0 +1,49 @@
+// Pagination Variants - Style definitions for Pagination component
+
+import { ColorStyles, Radius } from "../tokens.tp"
+
+PaginationVariants -> {
+    container: "flex items-center gap-1",
+
+    // Page button styles
+    button: {
+        base: "inline-flex items-center justify-center font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 " + ColorStyles.primary.focusRing,
+        default: ColorStyles.neutral.text + " hover:bg-gray-100 " + Radius.md,
+        active: ColorStyles.primary.bg + " text-white " + Radius.md,
+        disabled: ColorStyles.neutral.textMuted + " cursor-not-allowed"
+    },
+
+    // Size variants
+    size: {
+        sm: "h-8 min-w-[32px] px-2 text-sm",
+        md: "h-10 min-w-[40px] px-3 text-base",
+        lg: "h-12 min-w-[48px] px-4 text-lg"
+    },
+
+    // Navigation arrows
+    nav: {
+        prev: "mr-2",
+        next: "ml-2"
+    },
+
+    navIcon: "h-4 w-4",
+
+    // Ellipsis
+    ellipsis: ColorStyles.neutral.textMuted + " px-2",
+
+    // Info text (e.g., "Page 1 of 10")
+    info: ColorStyles.neutral.textLight + " text-sm",
+
+    // Per page selector
+    perPage: {
+        container: "flex items-center gap-2 ml-4",
+        label: ColorStyles.neutral.textLight + " text-sm",
+        select: "border " + ColorStyles.neutral.borderLight + " rounded-md px-2 py-1 text-sm"
+    },
+
+    // Compact style (just numbers)
+    compact: {
+        container: "inline-flex items-center rounded-lg border " + ColorStyles.neutral.borderLight + " overflow-hidden",
+        button: "px-3 py-2 border-r last:border-r-0 " + ColorStyles.neutral.borderLight
+    }
+}

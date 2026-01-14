@@ -1,0 +1,46 @@
+// Breadcrumb Variants - Style definitions for Breadcrumb component
+
+import { ColorStyles } from "../tokens.tp"
+
+BreadcrumbVariants -> {
+    nav: "flex",
+
+    list: "flex items-center flex-wrap gap-1",
+
+    item: "flex items-center gap-1",
+
+    link: {
+        base: "text-sm transition-colors",
+        default: ColorStyles.neutral.textLight + " " + ColorStyles.neutral.textHover,
+        current: ColorStyles.neutral.text + " font-medium cursor-default"
+    },
+
+    separator: {
+        base: ColorStyles.neutral.textMuted + " text-sm select-none",
+        icon: "h-4 w-4"
+    },
+
+    // Different separator styles
+    separatorStyle: {
+        slash: "/",
+        chevron: "›",
+        arrow: "→",
+        dot: "•"
+    },
+
+    // Truncation for long breadcrumbs
+    truncate: {
+        item: "max-w-[150px] truncate",
+        ellipsis: ColorStyles.neutral.textMuted + " text-sm px-1"
+    },
+
+    // Size variants
+    size: {
+        sm: "text-xs",
+        md: "text-sm",
+        lg: "text-base"
+    },
+
+    // Home icon
+    homeIcon: "h-4 w-4"
+}

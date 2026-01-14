@@ -1,0 +1,77 @@
+// Avatar Atom - User avatar with image or initials
+// Usage: Avatar({ src: "url", name: "John Doe", size: "md" })
+
+import { AvatarVariants } from "../theme/variants/avatar.tp"
+
+// =============================================================================
+// Helper Functions
+// =============================================================================
+
+// Get initials from a name (first letter of first name)
+getInitials(name) -> name ? name[0] : "?"
+
+// Get size classes for status indicator
+getStatusSize(size) -> size == "xs" ? "h-1.5 w-1.5"
+    : size == "sm" ? "h-2 w-2"
+    : size == "lg" ? "h-3.5 w-3.5"
+    : size == "xl" ? "h-4 w-4"
+    : "h-2.5 w-2.5"
+
+// =============================================================================
+// Base Avatar Component
+// =============================================================================
+
+Avatar(props) -> {
+    style: AvatarVariants.base
+         + " " + AvatarVariants.shape[props.shape || "circle"]
+         + " " + AvatarVariants.size[props.size || "md"]
+         + (props.className ? " " + props.className : "")
+    children: props.src
+        ? [AvatarImage({ src: props.src, alt: props.name || props.alt })]
+        : [AvatarInitials({ name: props.name })]
+}
+
+// Avatar with image
+AvatarImage(props) -> {
+    type: image
+    src: props.src
+    alt: props.alt || ""
+    style: "h-full w-full object-cover"
+}
+
+// Avatar with initials (fallback)
+// Shows first letter of name, or "?" if no name
+AvatarInitials(props) -> {
+    type: text
+    content: getInitials(props.name)
+    style: "select-none uppercase"
+}
+
+// =============================================================================
+// Avatar with Status Indicator
+// =============================================================================
+
+AvatarWithStatus(props) -> {
+    style: "relative inline-block"
+    children: [
+        Avatar(props),
+        StatusIndicator({
+            status: props.status,
+            size: props.size || "md"
+        })
+    ]
+}
+
+StatusIndicator(props) -> {
+    style: "absolute bottom-0 right-0 block rounded-full ring-2 ring-white"
+         + " " + AvatarVariants.status[props.status || "offline"]
+         + " " + getStatusSize(props.size)
+}
+
+// =============================================================================
+// Size Presets
+// =============================================================================
+
+SmallAvatar(props) -> Avatar({ ...props, size: "sm" })
+LargeAvatar(props) -> Avatar({ ...props, size: "lg" })
+XLargeAvatar(props) -> Avatar({ ...props, size: "xl" })

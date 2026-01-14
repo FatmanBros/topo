@@ -1,0 +1,51 @@
+// SearchInput Variants - Style definitions for SearchInput component
+
+import { ColorStyles, Radius } from "../tokens.tp"
+
+SearchInputVariants -> {
+    container: "relative",
+
+    input: {
+        base: "w-full border transition-colors focus:outline-none focus:ring-2 focus:ring-offset-0",
+        default: ColorStyles.neutral.borderLight + " bg-white " + ColorStyles.neutral.text + " placeholder:text-gray-400 " + ColorStyles.primary.focusRing,
+        filled: "bg-gray-100 border-transparent " + ColorStyles.neutral.text + " placeholder:text-gray-500 focus:bg-white focus:border-gray-300 " + ColorStyles.primary.focusRing
+    },
+
+    size: {
+        sm: "h-8 pl-8 pr-3 text-sm " + Radius.md,
+        md: "h-10 pl-10 pr-4 text-base " + Radius.lg,
+        lg: "h-12 pl-12 pr-5 text-lg " + Radius.lg
+    },
+
+    icon: {
+        container: "absolute inset-y-0 left-0 flex items-center pointer-events-none",
+        size: {
+            sm: "pl-2.5",
+            md: "pl-3",
+            lg: "pl-4"
+        },
+        style: ColorStyles.neutral.textMuted
+    },
+
+    iconSize: {
+        sm: "h-4 w-4",
+        md: "h-5 w-5",
+        lg: "h-6 w-6"
+    },
+
+    clearButton: {
+        container: "absolute inset-y-0 right-0 flex items-center",
+        size: {
+            sm: "pr-2",
+            md: "pr-3",
+            lg: "pr-4"
+        },
+        button: "p-1 rounded-full hover:bg-gray-100 " + ColorStyles.neutral.textMuted + " hover:text-gray-600 transition-colors"
+    },
+
+    clearIcon: {
+        sm: "h-3 w-3",
+        md: "h-4 w-4",
+        lg: "h-5 w-5"
+    }
+}

@@ -1,0 +1,168 @@
+// Navbar Organism - Navigation bar component
+// Usage: Navbar({ brand: { logo, text }, links: [...], actions: [...] })
+
+import { NavbarVariants } from "../theme/variants/navbar.tp"
+
+// =============================================================================
+// Base Navbar Component
+// =============================================================================
+
+Navbar(props) -> {
+    type: nav
+    style: NavbarVariants.container.base
+         + " " + NavbarVariants.container[props.position || "sticky"]
+         + " " + NavbarVariants.variant[props.variant || "light"]
+         + " " + NavbarVariants.shadow[props.shadow || "sm"]
+         + (props.className ? " " + props.className : "")
+    children: [
+        NavbarInner({
+            brand: props.brand,
+            links: props.links,
+            actions: props.actions,
+            size: props.size || "md",
+            variant: props.variant || "light",
+            mobileMenuOpen: props.mobileMenuOpen,
+            onMobileMenuToggle: props.onMobileMenuToggle
+        }),
+        props.mobileMenuOpen ? MobileMenu({
+            links: props.links,
+            variant: props.variant || "light"
+        }) : null
+    ]
+}
+
+NavbarInner(props) -> {
+    style: NavbarVariants.inner.base + " " + NavbarVariants.inner.height[props.size]
+    children: [
+        NavbarBrand({ brand: props.brand }),
+        NavbarNav({ links: props.links, variant: props.variant }),
+        NavbarActions({ actions: props.actions, variant: props.variant }),
+        MobileMenuButton({ onClick: props.onMobileMenuToggle, isOpen: props.mobileMenuOpen })
+    ]
+}
+
+// =============================================================================
+// Brand Section
+// =============================================================================
+
+NavbarBrand(props) -> {
+    style: NavbarVariants.brand.container
+    children: [
+        props.brand.logo ? BrandLogo({ src: props.brand.logo }) : null,
+        props.brand.text ? BrandText({ text: props.brand.text }) : null
+    ]
+}
+
+BrandLogo(props) -> {
+    type: img
+    src: props.src
+    alt: "Logo"
+    style: NavbarVariants.brand.logo
+}
+
+BrandText(props) -> {
+    type: text
+    content: props.text
+    style: NavbarVariants.brand.text
+}
+
+// =============================================================================
+// Navigation Links
+// =============================================================================
+
+NavbarNav(props) -> {
+    style: NavbarVariants.nav.container
+    children: props.links.for(link => {
+        NavItem({
+            label: link.label,
+            href: link.href,
+            active: link.active,
+            variant: props.variant
+        })
+    })
+}
+
+NavItem(props) -> {
+    type: a
+    href: props.href
+    style: NavbarVariants.nav.item.base
+         + " " + (props.active
+             ? NavbarVariants.nav.item.active[props.variant == "dark" ? "dark" : "light"]
+             : NavbarVariants.nav.item[props.variant == "dark" ? "dark" : "light"])
+    content: props.label
+}
+
+// =============================================================================
+// Actions Section
+// =============================================================================
+
+NavbarActions(props) -> {
+    style: NavbarVariants.actions.container
+    children: props.actions
+}
+
+// =============================================================================
+// Mobile Menu Button
+// =============================================================================
+
+MobileMenuButton(props) -> {
+    style: NavbarVariants.menuButton.container
+    children: [MobileMenuButtonInner({ onClick: props.onClick, isOpen: props.isOpen })]
+}
+
+MobileMenuButtonInner(props) -> {
+    type: button
+    click: props.onClick
+    ariaLabel: "Toggle menu"
+    style: NavbarVariants.menuButton.button
+    children: [MenuIcon({ isOpen: props.isOpen })]
+}
+
+MenuIcon(props) -> {
+    type: svg
+    style: "h-6 w-6"
+    viewBox: "0 0 24 24"
+    fill: "none"
+    stroke: "currentColor"
+    strokeWidth: "2"
+    children: [MenuIconPath({ isOpen: props.isOpen })]
+}
+
+MenuIconPath(props) -> {
+    type: path
+    strokeLinecap: "round"
+    strokeLinejoin: "round"
+    d: props.isOpen
+        ? "M6 18L18 6M6 6l12 12"
+        : "M4 6h16M4 12h16M4 18h16"
+}
+
+// =============================================================================
+// Mobile Menu
+// =============================================================================
+
+MobileMenu(props) -> {
+    style: NavbarVariants.mobileMenu.container
+    children: [MobileMenuInner({ links: props.links })]
+}
+
+MobileMenuInner(props) -> {
+    style: NavbarVariants.mobileMenu.inner
+    children: props.links.for(link => { MobileNavItem({ label: link.label, href: link.href }) })
+}
+
+MobileNavItem(props) -> {
+    type: a
+    href: props.href
+    style: NavbarVariants.mobileMenu.item
+    content: props.label
+}
+
+// =============================================================================
+// Variant Presets
+// =============================================================================
+
+LightNavbar(props) -> Navbar({ ...props, variant: "light" })
+DarkNavbar(props) -> Navbar({ ...props, variant: "dark" })
+TransparentNavbar(props) -> Navbar({ ...props, variant: "transparent" })
+BlurNavbar(props) -> Navbar({ ...props, variant: "blur" })

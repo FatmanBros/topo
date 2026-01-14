@@ -1,0 +1,29 @@
+{
+  "name": "@topo-ui/components",
+  "version": "0.1.0",
+  "description": "Atomic Design component library for topo-ui",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/FatmanBros/topo.git",
+    "directory": "packages/components"
+  },
+  "homepage": "https://github.com/FatmanBros/topo",
+  "keywords": [
+    "topo",
+    "ui",
+    "components",
+    "atomic-design",
+    "tailwind"
+  ],
+  "files": [
+    "atoms",
+    "molecules",
+    "organisms",
+    "theme",
+    "index.tp"
+  ],
+  "peerDependencies": {
+    "topo-ui": ">=0.1.0"
+  }
+}
