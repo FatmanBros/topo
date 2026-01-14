@@ -1,0 +1,14 @@
+{
+  "name": "@topo-ui/linux-x64",
+  "version": "0.1.0",
+  "description": "Linux x64 binary for topo-ui",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/FatmanBros/topo.git"
+  },
+  "os": ["linux"],
+  "cpu": ["x64"],
+  "files": ["bin"],
+  "preferUnplugged": true
+}

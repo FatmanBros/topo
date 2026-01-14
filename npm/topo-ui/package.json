@@ -1,0 +1,37 @@
+{
+  "name": "topo-ui",
+  "version": "0.1.0",
+  "description": "A UI framework that eliminates nesting hell",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/FatmanBros/topo.git"
+  },
+  "homepage": "https://github.com/FatmanBros/topo",
+  "bugs": {
+    "url": "https://github.com/FatmanBros/topo/issues"
+  },
+  "keywords": [
+    "ui",
+    "framework",
+    "dsl",
+    "components",
+    "tailwind",
+    "declarative"
+  ],
+  "bin": {
+    "topo": "bin/topo.js"
+  },
+  "files": [
+    "bin"
+  ],
+  "optionalDependencies": {
+    "@topo-ui/linux-x64": "0.1.0",
+    "@topo-ui/darwin-arm64": "0.1.0",
+    "@topo-ui/darwin-x64": "0.1.0",
+    "@topo-ui/win32-x64": "0.1.0"
+  },
+  "engines": {
+    "node": ">=16"
+  }
+}

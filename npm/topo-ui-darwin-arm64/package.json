@@ -1,0 +1,14 @@
+{
+  "name": "@topo-ui/darwin-arm64",
+  "version": "0.1.0",
+  "description": "macOS ARM64 binary for topo-ui",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/FatmanBros/topo.git"
+  },
+  "os": ["darwin"],
+  "cpu": ["arm64"],
+  "files": ["bin"],
+  "preferUnplugged": true
+}
