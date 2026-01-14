@@ -537,7 +537,7 @@ fn build_project(input: &PathBuf, output: &PathBuf, mode: &str, target: &str) ->
         let setup_source = fs::read_to_string(&http_setup_path)?;
         all_output.push_str("\n// HTTP Setup\n");
         all_output.push_str(&setup_source);
-        all_output.push_str("\n");
+        all_output.push('\n');
     }
 
     // Load routes.tp if exists (for type-safe route definitions)
@@ -554,7 +554,7 @@ fn build_project(input: &PathBuf, output: &PathBuf, mode: &str, target: &str) ->
                         all_output.push_str("\n// Routes Definition\n");
                         let routes_js = codegen.generate(&program);
                         all_output.push_str(&routes_js);
-                        all_output.push_str("\n");
+                        all_output.push('\n');
                     }
                     Err(e) => {
                         eprintln!("Error parsing routes.tp: {}", e);
@@ -607,7 +607,7 @@ fn build_project(input: &PathBuf, output: &PathBuf, mode: &str, target: &str) ->
             all_output.push_str(&format!("registerRoute('{}', {});\n", pattern, component));
             all_output.push_str(&format!("registerComponent('{}', {});\n", component, component));
         }
-        all_output.push_str("\n");
+        all_output.push('\n');
     }
 
     // Add mount call at the end
@@ -755,7 +755,7 @@ fn build_project_dev(input: &PathBuf, output: &PathBuf, _mode: &str, ws_port: u1
         let setup_source = fs::read_to_string(&http_setup_path)?;
         all_output.push_str("\n// HTTP Setup\n");
         all_output.push_str(&setup_source);
-        all_output.push_str("\n");
+        all_output.push('\n');
     }
 
     // Generate file-based routes (registration happens after component definitions)
@@ -790,7 +790,7 @@ fn build_project_dev(input: &PathBuf, output: &PathBuf, _mode: &str, ws_port: u1
             all_output.push_str(&format!("registerRoute('{}', {});\n", pattern, component));
             all_output.push_str(&format!("registerComponent('{}', {});\n", component, component));
         }
-        all_output.push_str("\n");
+        all_output.push('\n');
     }
 
     // Add mount call at the end
@@ -885,7 +885,7 @@ fn resolve_import_path(
     import_path: &str,
     file_dir: &std::path::Path,
     base_dir: &PathBuf,
-    project_root: &PathBuf,
+    project_root: &Path,
     aliases: &HashMap<String, String>,
 ) -> Result<PathBuf> {
     // Check for alias prefix (e.g., "@/", "~/", etc.)
@@ -895,7 +895,7 @@ fn resolve_import_path(
             let alias_path = &import_path[alias_prefix.len()..];
             // Resolve target relative to project root (where topo.config.json is)
             let target_dir = if target == "." {
-                project_root.clone()
+                project_root.to_path_buf()
             } else {
                 project_root.join(target)
             };
@@ -2149,7 +2149,7 @@ fn safe_resolve_path(base: &PathBuf, url_path: &str) -> Option<PathBuf> {
     }
 }
 
-fn get_content_type(path: &PathBuf) -> String {
+fn get_content_type(path: &Path) -> String {
     match path.extension().and_then(|e| e.to_str()) {
         Some("html") => "text/html",
         Some("js") => "application/javascript",
@@ -2217,28 +2217,26 @@ fn start_dev_server(port: u16, config: &Config) -> Result<()> {
             }
         };
 
-        for stream in listener.incoming() {
-            if let Ok(stream) = stream {
-                let ws_clients = Arc::clone(&ws_clients_clone);
-                std::thread::spawn(move || {
-                    if let Ok(mut websocket) = accept(stream.try_clone().unwrap()) {
-                        // Add to clients list
-                        if let Ok(mut clients) = ws_clients.lock() {
-                            clients.push(stream);
-                        }
-                        // Keep connection alive
-                        loop {
-                            match websocket.read() {
-                                Ok(Message::Close(_)) | Err(_) => break,
-                                Ok(Message::Ping(data)) => {
-                                    let _ = websocket.send(Message::Pong(data));
-                                }
-                                _ => {}
+        for stream in listener.incoming().flatten() {
+            let ws_clients = Arc::clone(&ws_clients_clone);
+            std::thread::spawn(move || {
+                if let Ok(mut websocket) = accept(stream.try_clone().unwrap()) {
+                    // Add to clients list
+                    if let Ok(mut clients) = ws_clients.lock() {
+                        clients.push(stream);
+                    }
+                    // Keep connection alive
+                    loop {
+                        match websocket.read() {
+                            Ok(Message::Close(_)) | Err(_) => break,
+                            Ok(Message::Ping(data)) => {
+                                let _ = websocket.send(Message::Pong(data));
                             }
+                            _ => {}
                         }
                     }
-                });
-            }
+                }
+            });
         }
     });
 
@@ -2504,12 +2502,10 @@ fn compile_test_files() -> Result<()> {
     // Find all .test.tp files only
     let mut test_files = Vec::new();
 
-    for entry in glob("**/*.test.tp")? {
-        if let Ok(path) = entry {
-            // Skip node_modules
-            if !path.to_string_lossy().contains("node_modules") {
-                test_files.push(path);
-            }
+    for path in glob("**/*.test.tp")?.flatten() {
+        // Skip node_modules
+        if !path.to_string_lossy().contains("node_modules") {
+            test_files.push(path);
         }
     }
 
@@ -2763,7 +2759,7 @@ fn expression_to_string(expr: &topo::ast::Expression) -> String {
         Expression::Boolean { value } => value.to_string(),
         Expression::Null => "null".to_string(),
         Expression::Array { elements } => {
-            let elems: Vec<String> = elements.iter().map(|e| expression_to_string(e)).collect();
+            let elems: Vec<String> = elements.iter().map(expression_to_string).collect();
             format!("[{}]", elems.join(", "))
         }
         Expression::Object { members } => {
@@ -3164,11 +3160,11 @@ fn show_info_list(pages_only: bool, apis_only: bool) -> Result<()> {
 
 /// Find project root by looking for topo.config.json
 /// Searches from input directory upwards, falls back to input's parent
-fn find_project_root(input: &PathBuf) -> Result<PathBuf> {
+fn find_project_root(input: &Path) -> Result<PathBuf> {
     let start_dir = if input.is_file() {
         input.parent().unwrap_or(input).to_path_buf()
     } else {
-        input.clone()
+        input.to_path_buf()
     };
 
     // Search upwards for topo.config.json
@@ -3191,7 +3187,7 @@ fn find_tp_files(dir: &PathBuf) -> Result<Vec<PathBuf>> {
     let mut files = Vec::new();
 
     if dir.is_file() {
-        if dir.extension().map_or(false, |ext| ext == "tp") {
+        if dir.extension().is_some_and(|ext| ext == "tp") {
             files.push(dir.clone());
         }
         return Ok(files);
@@ -3207,9 +3203,9 @@ fn find_tp_files(dir: &PathBuf) -> Result<Vec<PathBuf>> {
 
         if path.is_dir() {
             files.extend(find_tp_files(&path)?);
-        } else if path.extension().map_or(false, |ext| ext == "tp") {
+        } else if path.extension().is_some_and(|ext| ext == "tp") {
             // Skip http.setup.tp (raw JavaScript file, not topo component)
-            if path.file_name().map_or(false, |name| name == "http.setup.tp") {
+            if path.file_name().is_some_and(|name| name == "http.setup.tp") {
                 continue;
             }
             files.push(path);
@@ -3281,14 +3277,14 @@ fn generate_i18n_runtime(config: &I18nConfig) -> String {
 /// pages/about.tp -> /about
 /// pages/users/index.tp -> /users
 /// pages/users/[id].tp -> /users/[id]
-fn generate_routes(files: &[PathBuf], base_dir: &PathBuf) -> Result<Vec<(String, String)>> {
+fn generate_routes(files: &[PathBuf], base_dir: &Path) -> Result<Vec<(String, String)>> {
     let mut routes = Vec::new();
 
     // Look for pages directory
     let pages_dir = if base_dir.join("pages").exists() {
         base_dir.join("pages")
     } else if base_dir.ends_with("pages") {
-        base_dir.clone()
+        base_dir.to_path_buf()
     } else {
         // No pages directory, no file-based routing
         return Ok(routes);
@@ -3336,7 +3332,7 @@ fn generate_routes(files: &[PathBuf], base_dir: &PathBuf) -> Result<Vec<(String,
                         .parent()
                         .and_then(|p| p.file_name())
                         .and_then(|s| s.to_str())
-                        .map(|s| capitalize(s))
+                        .map(capitalize)
                         .unwrap_or_else(|| "App".to_string())
                 } else if s.starts_with('[') && s.ends_with(']') {
                     // Dynamic route like [id] -> use parent directory name + "Detail"
@@ -3384,8 +3380,8 @@ fn file_path_to_route(path: &str) -> String {
     // Handle index files
     let path = if path == "index" {
         "/"
-    } else if path.ends_with("/index") {
-        &path[..path.len() - 6]
+    } else if let Some(stripped) = path.strip_suffix("/index") {
+        stripped
     } else {
         path
     };
@@ -3403,7 +3399,7 @@ fn file_path_to_route(path: &str) -> String {
 /// Convert to PascalCase (handles hyphens and underscores)
 /// e.g., "quick-start" -> "QuickStart", "my_component" -> "MyComponent"
 fn capitalize(s: &str) -> String {
-    s.split(|c: char| c == '-' || c == '_')
+    s.split(['-', '_'])
         .map(|word| {
             let mut chars = word.chars();
             match chars.next() {
@@ -3415,7 +3411,7 @@ fn capitalize(s: &str) -> String {
 }
 
 /// Generate SSR output files for the specified target
-fn generate_ssr_output(output: &PathBuf, routes: &[(String, String)], config: &Config, target: &str) -> Result<()> {
+fn generate_ssr_output(output: &Path, routes: &[(String, String)], config: &Config, target: &str) -> Result<()> {
     match target {
         "cloudflare" => generate_cloudflare_worker(output, routes, config),
         "rust" => {
@@ -3430,7 +3426,7 @@ fn generate_ssr_output(output: &PathBuf, routes: &[(String, String)], config: &C
 }
 
 /// Generate Cloudflare Workers code for SSR
-fn generate_cloudflare_worker(output: &PathBuf, routes: &[(String, String)], config: &Config) -> Result<()> {
+fn generate_cloudflare_worker(output: &Path, routes: &[(String, String)], config: &Config) -> Result<()> {
     let base_path = config
         .build
         .as_ref()

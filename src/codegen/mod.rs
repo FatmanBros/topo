@@ -6,6 +6,7 @@ use crate::ast::*;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
+#[derive(Default)]
 pub struct JsCodegen {
     output: String,
     indent: usize,
@@ -266,7 +267,7 @@ impl JsCodegen {
     fn resolve_store_name(&self, store: &StoreDef, file_path: Option<&str>) -> String {
         store.name.clone().unwrap_or_else(|| {
             file_path
-                .map(|p| Self::filename_to_pascal_case(p))
+                .map(Self::filename_to_pascal_case)
                 .unwrap_or_else(|| "AnonymousStore".to_string())
         })
     }
@@ -301,7 +302,7 @@ impl JsCodegen {
         // Convert to PascalCase and append "Page"
         // e.g., "forms" -> "FormsPage", "quick-start" -> "QuickStartPage"
         let pascal_case = parent_name
-            .split(|c: char| c == '-' || c == '_')
+            .split(['-', '_'])
             .map(|word| {
                 let mut chars = word.chars();
                 match chars.next() {
@@ -326,7 +327,7 @@ impl JsCodegen {
         self.current_file_store_fields.clear();
 
         // Check if this is a page file (pages/.../index.tp) that needs IIFE wrapping
-        let is_page_file = file_path.map_or(false, |p| {
+        let is_page_file = file_path.is_some_and(|p| {
             p.contains("/pages/") && p.ends_with("/index.tp")
         });
 
@@ -2271,6 +2272,7 @@ impl JsCodegen {
         self.generate_statement_impl(store, store_name, stmt, true)
     }
 
+    #[allow(clippy::only_used_in_recursion)]
     fn generate_statement_impl(&mut self, store: &StoreDef, store_name: &str, stmt: &Statement, track_locals: bool) {
         match stmt {
             Statement::Assignment { name, value } => {
@@ -2671,6 +2673,7 @@ impl JsCodegen {
     }
 
     /// Format TypeAnnotation for JSDoc
+    #[allow(clippy::only_used_in_recursion)]
     fn format_type_annotation_for_jsdoc(&self, type_ann: &TypeAnnotation) -> String {
         match type_ann {
             TypeAnnotation::Primitive { name } => name.clone(),
@@ -3192,28 +3195,6 @@ fn capitalize_first(s: &str) -> String {
     }
 }
 
-impl Default for JsCodegen {
-    fn default() -> Self {
-        Self {
-            output: String::new(),
-            indent: 0,
-            state_fields: HashSet::new(),
-            local_params: HashSet::new(),
-            current_property_key: None,
-            api_service_names: HashSet::new(),
-            theme_colors: HashSet::new(),
-            theme_values: Vec::new(),
-            component_params: HashMap::new(),
-            stores_with_components: HashSet::new(),
-            store_state_fields: HashMap::new(),
-            current_file_path: None,
-            current_file_store_name: None,
-            current_file_store_actions: HashSet::new(),
-            current_file_store_fields: HashSet::new(),
-            generated_routes_names: HashMap::new(),
-        }
-    }
-}
 
 // ============================================================================
 // TypeScript Type Generation
@@ -3420,6 +3401,7 @@ impl TsCodegen {
         self.emit_line("}");
     }
 
+    #[allow(clippy::only_used_in_recursion)]
     fn type_to_string(&self, ty: &TypeAnnotation) -> String {
         match ty {
             TypeAnnotation::Primitive { name } => {
@@ -3456,6 +3438,7 @@ impl TsCodegen {
         }
     }
 
+    #[allow(clippy::only_used_in_recursion)]
     fn infer_type_from_expr(&self, expr: &Expression) -> String {
         match expr {
             Expression::String { .. } => "string".to_string(),

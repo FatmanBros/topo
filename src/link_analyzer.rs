@@ -195,8 +195,10 @@ impl LinkAnalyzer {
         let end_pos = trimmed.find("*/")?;
         let comment_content = &trimmed[3..end_pos]; // Skip "/**"
 
-        let mut doc = DocComment::default();
-        doc.raw = Some(comment_content.trim().to_string());
+        let mut doc = DocComment {
+            raw: Some(comment_content.trim().to_string()),
+            ..Default::default()
+        };
 
         // Parse each line for @tags
         for line in comment_content.lines() {
@@ -230,7 +232,7 @@ impl LinkAnalyzer {
     }
 
     /// Recursively collect .tp files, excluding node_modules, target, .git
-    #[allow(dead_code)]
+    #[allow(dead_code, clippy::only_used_in_recursion)]
     fn collect_tp_files_recursive(&self, dir: &Path, files: &mut Vec<PathBuf>) -> Result<()> {
         if !dir.is_dir() {
             return Ok(());
@@ -406,13 +408,9 @@ impl LinkAnalyzer {
         for link in links {
             if let Some(target) = &link.target {
                 // Skip external links and anchors (except for component IDs)
-                if !target.starts_with('@') {
-                    if target.starts_with("http://")
-                        || target.starts_with("https://")
-                        || target.starts_with('#')
-                    {
-                        continue;
-                    }
+                if !target.starts_with('@') && (target.starts_with("http://")
+                        || target.starts_with("https://") || target.starts_with('#')) {
+                    continue;
                 }
 
                 // Normalize the target path
@@ -472,6 +470,7 @@ impl LinkAnalyzer {
     /// Find API services by following imports from pages/components
     /// Returns (api_services, edges) where edges is (source_route, api_endpoint_id)
     /// api_endpoint_id format: @api/servicename/methodname
+    #[allow(clippy::type_complexity)]
     fn find_api_services(&self, page_files: &[PathBuf], component_files: &[PathBuf]) -> Result<(Vec<ApiServiceNode>, Vec<(String, String)>)> {
         use crate::ast::Declaration;
         use regex::Regex;
@@ -678,6 +677,7 @@ impl LinkAnalyzer {
         Ok(files)
     }
 
+    #[allow(clippy::only_used_in_recursion)]
     fn collect_page_files(&self, dir: &Path, files: &mut Vec<PathBuf>) -> Result<()> {
         if !dir.exists() {
             return Ok(());
@@ -715,6 +715,7 @@ impl LinkAnalyzer {
         Ok(files)
     }
 
+    #[allow(clippy::only_used_in_recursion)]
     fn collect_component_files(&self, dir: &Path, files: &mut Vec<PathBuf>) -> Result<()> {
         if !dir.exists() {
             return Ok(());
@@ -824,7 +825,7 @@ impl LinkAnalyzer {
     }
 
     fn to_pascal_case(&self, s: &str) -> String {
-        s.split(|c: char| c == '-' || c == '_')
+        s.split(['-', '_'])
             .map(|word| {
                 let mut chars = word.chars();
                 match chars.next() {
@@ -881,11 +882,8 @@ impl LinkAnalyzer {
         source_file: &str,
         links: &mut Vec<PageLink>,
     ) {
-        match decl {
-            Declaration::Component(comp) => {
-                self.extract_links_from_component(comp, source_route, source_file, links);
-            }
-            _ => {}
+        if let Declaration::Component(comp) = decl {
+            self.extract_links_from_component(comp, source_route, source_file, links);
         }
     }
 
@@ -999,6 +997,7 @@ impl LinkAnalyzer {
     }
 
     /// Extract link target from an expression
+    #[allow(clippy::only_used_in_recursion)]
     fn extract_link_target(&self, expr: &Expression) -> Option<(String, bool)> {
         match expr {
             Expression::String { value } => Some((value.clone(), false)),

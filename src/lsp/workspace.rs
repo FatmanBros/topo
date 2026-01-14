@@ -57,7 +57,7 @@ impl WorkspaceManager {
         for entry in WalkDir::new(dir)
             .into_iter()
             .filter_map(|e| e.ok())
-            .filter(|e| e.path().extension().map_or(false, |ext| ext == "tp"))
+            .filter(|e| e.path().extension().is_some_and(|ext| ext == "tp"))
         {
             if let Ok(content) = std::fs::read_to_string(entry.path()) {
                 self.update_file(entry.path(), &content);

@@ -212,9 +212,8 @@ impl FormattingProvider {
         let mut result = Vec::new();
         result.push(format!("{}{}({{", base_indent, name));
 
-        for (i, (key, value)) in props.iter().enumerate() {
-            let comma = if i < props.len() - 1 { "" } else { "" };
-            result.push(format!("{}{}: {}{}", inner_indent, key, value, comma));
+        for (key, value) in props.iter() {
+            result.push(format!("{}{}: {}", inner_indent, key, value));
         }
 
         result.push(format!("{}}}){}",base_indent, trailing));

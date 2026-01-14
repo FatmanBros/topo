@@ -1387,7 +1387,7 @@ impl Parser {
         }
 
         // Uppercase identifiers followed by '=' or '[]' or '?' or '|' are types
-        if name.chars().next().map_or(false, |c| c.is_uppercase()) {
+        if name.chars().next().is_some_and(|c| c.is_uppercase()) {
             return matches!(
                 next_token.kind,
                 TokenKind::Eq | TokenKind::LBracket | TokenKind::Question | TokenKind::Pipe

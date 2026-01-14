@@ -152,6 +152,7 @@ impl DiagnosticsProvider {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn check_single_component(
         &self,
         name: &str,
@@ -281,6 +282,7 @@ impl DiagnosticsProvider {
         }
     }
 
+    #[allow(clippy::ptr_arg)]
     fn check_common_mistakes(&self, _line: &str, _line_num: u32, _diagnostics: &mut Vec<Diagnostic>) {
         // Disabled for now to avoid false positives
         // TODO: Implement more accurate checks using the actual parser

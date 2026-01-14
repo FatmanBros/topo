@@ -463,6 +463,7 @@ impl TypeChecker {
     }
 
     /// Check if two types are compatible
+    #[allow(clippy::only_used_in_recursion)]
     fn types_compatible(&self, expected: &TypeAnnotation, actual: &TypeAnnotation) -> bool {
         // 'any' is compatible with everything
         if matches!(expected, TypeAnnotation::Primitive { name } if name == "any") {
@@ -516,6 +517,7 @@ impl TypeChecker {
     }
 
     /// Convert type to string for error messages
+    #[allow(clippy::only_used_in_recursion)]
     fn type_to_string(&self, ty: &TypeAnnotation) -> String {
         match ty {
             TypeAnnotation::Primitive { name } => name.clone(),

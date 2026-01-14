@@ -55,10 +55,8 @@ impl CompletionProvider {
         }
 
         // Import completions
-        if trimmed.starts_with("import") {
-            if !trimmed.contains("from") {
-                return self.import_name_completions(workspace);
-            }
+        if trimmed.starts_with("import") && !trimmed.contains("from") {
+            return self.import_name_completions(workspace);
         }
 
         // Property key completions (inside component body)
@@ -214,7 +212,7 @@ impl CompletionProvider {
                 }));
                 item.label_details = Some(CompletionItemLabelDetails {
                     detail: None,
-                    description: Some(format!("(auto import)")),
+                    description: Some("(auto import)".to_string()),
                 });
             }
 
@@ -496,11 +494,10 @@ impl CompletionProvider {
     fn get_store_before_dot(&self, prefix: &str) -> Option<String> {
         // Check for pattern: StoreName.
         let trimmed = prefix.trim();
-        if trimmed.ends_with('.') {
-            let before_dot = &trimmed[..trimmed.len() - 1];
+        if let Some(before_dot) = trimmed.strip_suffix('.') {
             let words: Vec<&str> = before_dot.split_whitespace().collect();
             if let Some(last) = words.last() {
-                if last.chars().next().map_or(false, |c| c.is_uppercase()) {
+                if last.chars().next().is_some_and(|c| c.is_uppercase()) {
                     return Some(last.to_string());
                 }
             }
