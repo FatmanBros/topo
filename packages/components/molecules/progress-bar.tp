@@ -1,0 +1,24 @@
+// Progress Bar molecule
+import { Text } from "../atoms/text.tp"
+
+ProgressBar(props) -> {
+    style: "mt-4"
+    children: [
+        ProgressBarTrack({ progress: props.progress }),
+        ProgressBarText({ progress: props.progress })
+    ]
+}
+
+ProgressBarTrack(progress) -> {
+    style: "w-full bg-gray-200 rounded-full h-2"
+    children: [ProgressBarFill({ progress: progress })]
+}
+
+ProgressBarFill(progress) -> {
+    style: "bg-indigo-600 h-2 rounded-full"
+}
+
+ProgressBarText(progress) -> Text({
+    text: progress + "% complete",
+    style: "text-sm text-gray-500 mt-2"
+})

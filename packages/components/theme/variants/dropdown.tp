@@ -1,0 +1,40 @@
+// Dropdown Variants - Style definitions for Dropdown component
+
+import { ColorStyles, Shadows, Radius } from "../tokens.tp"
+
+DropdownVariants -> {
+    wrapper: "relative inline-block",
+
+    trigger: "inline-flex items-center gap-2",
+
+    menu: "absolute z-50 mt-1 py-1 bg-white " + Radius.lg + " " + Shadows.lg + " border " + ColorStyles.neutral.borderLight + " min-w-[160px]",
+
+    position: {
+        bottomLeft: "top-full left-0",
+        bottomRight: "top-full right-0",
+        topLeft: "bottom-full left-0 mb-1",
+        topRight: "bottom-full right-0 mb-1"
+    },
+
+    item: {
+        base: "flex items-center gap-2 w-full px-3 py-2 text-sm text-left transition-colors",
+        default: ColorStyles.neutral.text + " hover:bg-gray-50",
+        active: ColorStyles.primary.bgLight + " " + ColorStyles.primary.text,
+        disabled: ColorStyles.neutral.textMuted + " cursor-not-allowed",
+        danger: ColorStyles.danger.text + " hover:bg-red-50"
+    },
+
+    itemIcon: "h-4 w-4 flex-shrink-0",
+
+    itemLabel: "flex-1",
+
+    itemShortcut: ColorStyles.neutral.textMuted + " text-xs",
+
+    divider: "my-1 border-t " + ColorStyles.neutral.borderLight,
+
+    header: "px-3 py-2 text-xs font-semibold " + ColorStyles.neutral.textMuted + " uppercase tracking-wider",
+
+    chevron: "h-4 w-4 " + ColorStyles.neutral.textMuted + " transition-transform",
+
+    chevronOpen: "rotate-180"
+}

@@ -1,0 +1,59 @@
+// Divider Variants - Style definitions for Divider component
+
+import { ColorStyles } from "../tokens.tp"
+
+DividerVariants -> {
+    base: "shrink-0",
+
+    orientation: {
+        horizontal: "w-full border-t",
+        vertical: "h-full border-l self-stretch"
+    },
+
+    variant: {
+        solid: "border-solid",
+        dashed: "border-dashed",
+        dotted: "border-dotted"
+    },
+
+    color: {
+        default: ColorStyles.neutral.borderLight,
+        light: "border-gray-100",
+        dark: ColorStyles.neutral.border,
+        primary: ColorStyles.primary.borderLight,
+        danger: ColorStyles.danger.borderLight,
+        success: ColorStyles.success.borderLight
+    },
+
+    thickness: {
+        thin: "",
+        medium: "border-2",
+        thick: "border-4"
+    },
+
+    spacing: {
+        none: "",
+        sm: {
+            horizontal: "my-2",
+            vertical: "mx-2"
+        },
+        md: {
+            horizontal: "my-4",
+            vertical: "mx-4"
+        },
+        lg: {
+            horizontal: "my-6",
+            vertical: "mx-6"
+        },
+        xl: {
+            horizontal: "my-8",
+            vertical: "mx-8"
+        }
+    },
+
+    withLabel: {
+        container: "flex items-center gap-3",
+        label: ColorStyles.neutral.textLight + " text-sm whitespace-nowrap",
+        line: "flex-1 border-t " + ColorStyles.neutral.borderLight
+    }
+}

@@ -1,0 +1,83 @@
+// Timeline Variants - Style definitions for Timeline component
+
+import { ColorStyles, Radius } from "../tokens.tp"
+
+TimelineVariants -> {
+    container: "relative",
+
+    // Orientation
+    orientation: {
+        vertical: "space-y-0",
+        horizontal: "flex items-start overflow-x-auto"
+    },
+
+    // Timeline item
+    item: {
+        vertical: {
+            container: "relative flex gap-4 pb-8 last:pb-0",
+            line: "absolute left-4 top-8 bottom-0 w-0.5 -ml-px bg-gray-200",
+            lineLast: "hidden"
+        },
+        horizontal: {
+            container: "relative flex flex-col items-center px-8 min-w-[200px]",
+            line: "absolute left-full top-4 w-8 h-0.5 bg-gray-200",
+            lineLast: "hidden"
+        }
+    },
+
+    // Indicator/icon
+    indicator: {
+        container: "relative z-10 flex items-center justify-center flex-shrink-0",
+        base: Radius.full + " flex items-center justify-center",
+        size: {
+            sm: "h-6 w-6",
+            md: "h-8 w-8",
+            lg: "h-10 w-10"
+        },
+        variant: {
+            default: "bg-gray-200 " + ColorStyles.neutral.text,
+            primary: ColorStyles.primary.bg + " text-white",
+            success: ColorStyles.success.bg + " text-white",
+            warning: ColorStyles.warning.bg + " text-white",
+            danger: ColorStyles.danger.bg + " text-white",
+            info: ColorStyles.info.bg + " text-white"
+        },
+        icon: "h-4 w-4"
+    },
+
+    // Content
+    content: {
+        container: "flex-1 min-w-0",
+        title: "font-medium " + ColorStyles.neutral.text,
+        description: "text-sm " + ColorStyles.neutral.textLight + " mt-1",
+        time: "text-xs " + ColorStyles.neutral.textMuted + " mt-1",
+        // Card style content
+        card: {
+            base: "p-4 bg-white border " + ColorStyles.neutral.borderLight + " " + Radius.lg,
+            title: "font-medium " + ColorStyles.neutral.text,
+            body: "text-sm " + ColorStyles.neutral.textLight + " mt-2"
+        }
+    },
+
+    // Connector line
+    connector: {
+        default: "bg-gray-200",
+        completed: ColorStyles.primary.bg
+    },
+
+    // Size variants
+    size: {
+        sm: {
+            gap: "gap-3",
+            text: "text-sm"
+        },
+        md: {
+            gap: "gap-4",
+            text: "text-base"
+        },
+        lg: {
+            gap: "gap-6",
+            text: "text-lg"
+        }
+    }
+}

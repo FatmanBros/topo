@@ -1,0 +1,60 @@
+// CommentSection Variants - Style definitions for CommentSection component
+
+import { ColorStyles, Radius } from "../tokens.tp"
+
+CommentSectionVariants -> {
+    container: "space-y-6",
+
+    // Comment form
+    form: {
+        container: "flex gap-3",
+        avatar: "flex-shrink-0",
+        input: {
+            container: "flex-1",
+            textarea: "w-full px-4 py-3 border " + ColorStyles.neutral.borderLight + " " + Radius.lg + " resize-none focus:outline-none focus:ring-2 " + ColorStyles.primary.focusRing,
+            actions: "flex items-center justify-between mt-2"
+        }
+    },
+
+    // Comment list
+    list: {
+        container: "space-y-4"
+    },
+
+    // Individual comment
+    comment: {
+        container: "flex gap-3",
+        avatar: "flex-shrink-0",
+        content: "flex-1 min-w-0",
+
+        header: "flex items-center gap-2",
+        author: "font-medium text-sm " + ColorStyles.neutral.text,
+        time: "text-xs " + ColorStyles.neutral.textMuted,
+
+        body: "mt-1 text-sm " + ColorStyles.neutral.text,
+
+        actions: {
+            container: "flex items-center gap-4 mt-2",
+            button: "text-xs " + ColorStyles.neutral.textMuted + " hover:" + ColorStyles.neutral.text + " transition-colors",
+            active: ColorStyles.primary.text
+        },
+
+        // Nested replies
+        replies: {
+            container: "ml-10 mt-4 space-y-4 pl-4 border-l-2 " + ColorStyles.neutral.borderLight
+        }
+    },
+
+    // Like button
+    like: {
+        container: "flex items-center gap-1",
+        icon: "h-4 w-4",
+        count: "text-xs"
+    },
+
+    // Load more
+    loadMore: {
+        container: "text-center mt-4",
+        button: "text-sm " + ColorStyles.primary.text + " hover:underline"
+    }
+}

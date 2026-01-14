@@ -1,0 +1,61 @@
+// Tooltip Variants - Style definitions for Tooltip component
+
+import { ColorStyles } from "../tokens.tp"
+
+TooltipVariants -> {
+    wrapper: "relative inline-block",
+
+    content: "absolute z-50 px-2 py-1 text-xs font-medium rounded shadow-lg whitespace-nowrap pointer-events-none opacity-0 transition-opacity duration-200 group-hover:opacity-100",
+
+    arrow: "absolute w-2 h-2 rotate-45",
+
+    position: {
+        top: {
+            content: "bottom-full left-1/2 -translate-x-1/2 mb-2",
+            arrow: "top-full left-1/2 -translate-x-1/2 -mt-1"
+        },
+        bottom: {
+            content: "top-full left-1/2 -translate-x-1/2 mt-2",
+            arrow: "bottom-full left-1/2 -translate-x-1/2 -mb-1"
+        },
+        left: {
+            content: "right-full top-1/2 -translate-y-1/2 mr-2",
+            arrow: "left-full top-1/2 -translate-y-1/2 -ml-1"
+        },
+        right: {
+            content: "left-full top-1/2 -translate-y-1/2 ml-2",
+            arrow: "right-full top-1/2 -translate-y-1/2 -mr-1"
+        }
+    },
+
+    variant: {
+        dark: {
+            bg: ColorStyles.neutral.bgDark,
+            text: ColorStyles.neutral.textInverse
+        },
+        light: {
+            bg: "bg-white border " + ColorStyles.neutral.borderLight,
+            text: ColorStyles.neutral.text
+        },
+        primary: {
+            bg: ColorStyles.primary.bg,
+            text: ColorStyles.neutral.textInverse
+        },
+        danger: {
+            bg: ColorStyles.danger.bg,
+            text: ColorStyles.neutral.textInverse
+        },
+        success: {
+            bg: ColorStyles.success.bg,
+            text: ColorStyles.neutral.textInverse
+        },
+        warning: {
+            bg: ColorStyles.warning.bg,
+            text: ColorStyles.neutral.textInverse
+        },
+        info: {
+            bg: ColorStyles.info.bg,
+            text: ColorStyles.neutral.textInverse
+        }
+    }
+}

@@ -1,0 +1,78 @@
+// Spinner Atom - Loading indicator
+// Usage: Spinner({ size: "md", variant: "primary" })
+
+import { SpinnerVariants } from "../theme/variants/spinner.tp"
+
+// =============================================================================
+// Base Spinner Component
+// =============================================================================
+
+Spinner(props) -> {
+    role: "status"
+    ariaLabel: props.label || "Loading"
+    style: SpinnerVariants.base
+         + " " + SpinnerVariants.variant[props.variant || "primary"]
+         + " " + SpinnerVariants.size[props.size || "md"]
+         + (props.className ? " " + props.className : "")
+}
+
+// =============================================================================
+// Spinner with Label
+// =============================================================================
+
+SpinnerWithLabel(props) -> {
+    style: "inline-flex items-center gap-2"
+         + (props.className ? " " + props.className : "")
+    children: [
+        Spinner({ size: props.size, variant: props.variant }),
+        SpinnerLabel({ text: props.label || "Loading..." })
+    ]
+}
+
+SpinnerLabel(props) -> {
+    type: text
+    content: props.text
+    style: "text-sm text-gray-600"
+}
+
+// =============================================================================
+// Full Screen Spinner Overlay
+// =============================================================================
+
+SpinnerOverlay(props) -> {
+    style: "fixed inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm"
+    children: [
+        SpinnerWithLabel({
+            size: props.size || "lg",
+            variant: props.variant || "primary",
+            label: props.label
+        })
+    ]
+}
+
+// =============================================================================
+// Inline Loading State
+// =============================================================================
+
+InlineSpinner(props) -> {
+    style: "inline-flex items-center gap-1"
+    children: [
+        Spinner({ size: "xs", variant: props.variant || "current" }),
+        props.label ? SpinnerLabel({ text: props.label }) : null
+    ]
+}
+
+// =============================================================================
+// Variant Presets
+// =============================================================================
+
+PrimarySpinner(props) -> Spinner({ ...props, variant: "primary" })
+SecondarySpinner(props) -> Spinner({ ...props, variant: "secondary" })
+WhiteSpinner(props) -> Spinner({ ...props, variant: "white" })
+
+// =============================================================================
+// Size Presets
+// =============================================================================
+
+SmallSpinner(props) -> Spinner({ ...props, size: "sm" })
+LargeSpinner(props) -> Spinner({ ...props, size: "lg" })

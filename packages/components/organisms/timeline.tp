@@ -1,0 +1,191 @@
+// Timeline Organism - Timeline/activity display
+// Usage: Timeline({ items: [...], orientation: "vertical" })
+
+import { TimelineVariants } from "../theme/variants/timeline.tp"
+
+// =============================================================================
+// Base Timeline Component
+// =============================================================================
+
+Timeline(props) -> {
+    style: TimelineVariants.container
+         + " " + TimelineVariants.orientation[props.orientation || "vertical"]
+         + (props.className ? " " + props.className : "")
+    children: props.items.for((item, index) => {
+        props.orientation == "horizontal"
+            ? HorizontalTimelineItem({
+                item: item,
+                index: index,
+                isLast: index == props.items.length - 1,
+                size: props.size || "md"
+            })
+            : VerticalTimelineItem({
+                item: item,
+                index: index,
+                isLast: index == props.items.length - 1,
+                size: props.size || "md"
+            })
+    })
+}
+
+// =============================================================================
+// Vertical Timeline Item
+// =============================================================================
+
+VerticalTimelineItem(props) -> {
+    style: TimelineVariants.item.vertical.container
+    children: [
+        TimelineIndicator({
+            icon: props.item.icon,
+            variant: props.item.variant || "default",
+            size: props.size
+        }),
+        TimelineContent({
+            item: props.item,
+            size: props.size,
+            cardStyle: props.item.cardStyle
+        }),
+        props.isLast
+            ? null
+            : VerticalConnector({ completed: props.item.completed })
+    ]
+}
+
+VerticalConnector(props) -> {
+    style: TimelineVariants.item.vertical.line
+         + " " + (props.completed
+             ? TimelineVariants.connector.completed
+             : TimelineVariants.connector.default)
+}
+
+// =============================================================================
+// Horizontal Timeline Item
+// =============================================================================
+
+HorizontalTimelineItem(props) -> {
+    style: TimelineVariants.item.horizontal.container
+    children: [
+        TimelineIndicator({
+            icon: props.item.icon,
+            variant: props.item.variant || "default",
+            size: props.size
+        }),
+        TimelineContent({
+            item: props.item,
+            size: props.size,
+            cardStyle: props.item.cardStyle
+        }),
+        props.isLast
+            ? null
+            : HorizontalConnector({ completed: props.item.completed })
+    ]
+}
+
+HorizontalConnector(props) -> {
+    style: TimelineVariants.item.horizontal.line
+         + " " + (props.completed
+             ? TimelineVariants.connector.completed
+             : TimelineVariants.connector.default)
+}
+
+// =============================================================================
+// Timeline Indicator
+// =============================================================================
+
+TimelineIndicator(props) -> {
+    style: TimelineVariants.indicator.container
+    children: [IndicatorCircle({ icon: props.icon, variant: props.variant, size: props.size })]
+}
+
+IndicatorCircle(props) -> {
+    style: TimelineVariants.indicator.base
+         + " " + TimelineVariants.indicator.size[props.size]
+         + " " + TimelineVariants.indicator.variant[props.variant]
+    children: [
+        props.icon ? IndicatorIcon({ icon: props.icon }) : IndicatorDot({})
+    ]
+}
+
+IndicatorIcon(props) -> {
+    type: text
+    content: props.icon
+    style: TimelineVariants.indicator.icon
+}
+
+IndicatorDot(props) -> {
+    style: "h-2 w-2 rounded-full bg-current"
+}
+
+// =============================================================================
+// Timeline Content
+// =============================================================================
+
+TimelineContent(props) -> {
+    style: TimelineVariants.content.container
+    children: [
+        props.cardStyle
+            ? TimelineCard({ item: props.item })
+            : TimelineText({ item: props.item })
+    ]
+}
+
+TimelineText(props) -> {
+    children: [
+        ContentTitle({ text: props.item.title }),
+        props.item.description ? ContentDescription({ text: props.item.description }) : null,
+        props.item.time ? ContentTime({ text: props.item.time }) : null
+    ]
+}
+
+TimelineCard(props) -> {
+    style: TimelineVariants.content.card.base
+    children: [
+        CardTitle({ text: props.item.title }),
+        props.item.description ? CardBody({ text: props.item.description }) : null,
+        props.item.time ? ContentTime({ text: props.item.time }) : null
+    ]
+}
+
+ContentTitle(props) -> {
+    type: text
+    content: props.text
+    style: TimelineVariants.content.title
+}
+
+ContentDescription(props) -> {
+    type: text
+    content: props.text
+    style: TimelineVariants.content.description
+}
+
+ContentTime(props) -> {
+    type: text
+    content: props.text
+    style: TimelineVariants.content.time
+}
+
+CardTitle(props) -> {
+    type: text
+    content: props.text
+    style: TimelineVariants.content.card.title
+}
+
+CardBody(props) -> {
+    type: text
+    content: props.text
+    style: TimelineVariants.content.card.body
+}
+
+// =============================================================================
+// Orientation Presets
+// =============================================================================
+
+VerticalTimeline(props) -> Timeline({ ...props, orientation: "vertical" })
+HorizontalTimeline(props) -> Timeline({ ...props, orientation: "horizontal" })
+
+// =============================================================================
+// Size Presets
+// =============================================================================
+
+SmallTimeline(props) -> Timeline({ ...props, size: "sm" })
+LargeTimeline(props) -> Timeline({ ...props, size: "lg" })

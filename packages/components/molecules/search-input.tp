@@ -1,0 +1,111 @@
+// SearchInput Molecule - Search input with icon
+// Usage: SearchInput({ placeholder: "Search...", value: "", onChange: handler })
+
+import { SearchInputVariants } from "../theme/variants/search-input.tp"
+
+// =============================================================================
+// Base SearchInput Component
+// =============================================================================
+
+SearchInput(props) -> {
+    style: SearchInputVariants.container + (props.className ? " " + props.className : "")
+    children: [
+        SearchIcon({ size: props.size || "md" }),
+        SearchInputField({
+            value: props.value,
+            placeholder: props.placeholder || "Search...",
+            onChange: props.onChange,
+            onClear: props.onClear,
+            size: props.size || "md",
+            variant: props.variant || "default",
+            disabled: props.disabled
+        }),
+        props.value && props.onClear ? ClearButton({
+            onClick: props.onClear,
+            size: props.size || "md"
+        }) : null
+    ]
+}
+
+// =============================================================================
+// Search Icon
+// =============================================================================
+
+SearchIcon(props) -> {
+    style: SearchInputVariants.icon.container + " " + SearchInputVariants.icon.size[props.size]
+    children: [SearchIconSvg({ size: props.size })]
+}
+
+SearchIconSvg(props) -> {
+    type: svg
+    style: SearchInputVariants.iconSize[props.size] + " " + SearchInputVariants.icon.style
+    viewBox: "0 0 20 20"
+    fill: "currentColor"
+    children: [SearchIconPath({})]
+}
+
+SearchIconPath(props) -> {
+    type: path
+    fillRule: "evenodd"
+    clipRule: "evenodd"
+    d: "M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z"
+}
+
+// =============================================================================
+// Input Field
+// =============================================================================
+
+SearchInputField(props) -> {
+    type: input
+    inputType: "search"
+    value: props.value
+    placeholder: props.placeholder
+    change: props.onChange
+    disabled: props.disabled
+    style: SearchInputVariants.input.base
+         + " " + SearchInputVariants.input[props.variant]
+         + " " + SearchInputVariants.size[props.size]
+}
+
+// =============================================================================
+// Clear Button
+// =============================================================================
+
+ClearButton(props) -> {
+    style: SearchInputVariants.clearButton.container + " " + SearchInputVariants.clearButton.size[props.size]
+    children: [ClearButtonInner({ onClick: props.onClick, size: props.size })]
+}
+
+ClearButtonInner(props) -> {
+    type: button
+    click: props.onClick
+    ariaLabel: "Clear search"
+    style: SearchInputVariants.clearButton.button
+    children: [ClearIcon({ size: props.size })]
+}
+
+ClearIcon(props) -> {
+    type: svg
+    style: SearchInputVariants.clearIcon[props.size]
+    viewBox: "0 0 20 20"
+    fill: "currentColor"
+    children: [ClearIconPath({})]
+}
+
+ClearIconPath(props) -> {
+    type: path
+    d: "M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z"
+}
+
+// =============================================================================
+// Size Presets
+// =============================================================================
+
+SmallSearchInput(props) -> SearchInput({ ...props, size: "sm" })
+LargeSearchInput(props) -> SearchInput({ ...props, size: "lg" })
+
+// =============================================================================
+// Variant Presets
+// =============================================================================
+
+FilledSearchInput(props) -> SearchInput({ ...props, variant: "filled" })
