@@ -130,10 +130,8 @@ pub fn build_project(input: &PathBuf, output: &PathBuf, mode: &str, target: &str
                     if comp.name == "App" {
                         has_app = true;
                         entry_component = Some("App".to_string());
-                    } else if comp.name == "AppPage" || comp.name == "Page" {
-                        if entry_component.is_none() {
-                            entry_component = Some(comp.name.clone());
-                        }
+                    } else if (comp.name == "AppPage" || comp.name == "Page") && entry_component.is_none() {
+                        entry_component = Some(comp.name.clone());
                     }
                 }
             }

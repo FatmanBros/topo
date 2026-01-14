@@ -148,17 +148,16 @@ pub fn minify_js(js: &str) -> String {
             if !last_was_space && !result.is_empty() {
                 // Check if space is needed between tokens
                 let last_result_char = result.chars().last().unwrap_or(' ');
-                if last_result_char.is_alphanumeric()
+                if (last_result_char.is_alphanumeric()
                     || last_result_char == '_'
-                    || last_result_char == '$'
+                    || last_result_char == '$')
+                    && i + 1 < len
                 {
-                    if i + 1 < len {
-                        let next_non_space = chars[i + 1..].iter().find(|&&ch| ch != ' ' && ch != '\t' && ch != '\n' && ch != '\r');
-                        if let Some(&nc) = next_non_space {
-                            if nc.is_alphanumeric() || nc == '_' || nc == '$' {
-                                result.push(' ');
-                                last_was_space = true;
-                            }
+                    let next_non_space = chars[i + 1..].iter().find(|&&ch| ch != ' ' && ch != '\t' && ch != '\n' && ch != '\r');
+                    if let Some(&nc) = next_non_space {
+                        if nc.is_alphanumeric() || nc == '_' || nc == '$' {
+                            result.push(' ');
+                            last_was_space = true;
                         }
                     }
                 }
