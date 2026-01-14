@@ -1,0 +1,459 @@
+//! Expression parsing
+//!
+//! Parses expressions from token stream into AST nodes.
+
+use crate::ast::*;
+use crate::lexer::TokenKind;
+use super::{Parser, ParseError};
+
+impl Parser {
+    pub(super) fn expression(&mut self) -> Result<Expression, ParseError> {
+        self.ternary()
+    }
+
+    fn ternary(&mut self) -> Result<Expression, ParseError> {
+        let condition = self.pipe_expression()?;
+
+        if self.check(TokenKind::Question) {
+            self.advance();
+            let then_branch = self.expression()?;
+            self.expect(TokenKind::Colon)?;
+            let else_branch = self.expression()?;
+            return Ok(Expression::Conditional {
+                condition: Box::new(condition),
+                then_branch: Box::new(then_branch),
+                else_branch: Box::new(else_branch),
+            });
+        }
+
+        Ok(condition)
+    }
+
+    /// Parse pipe expressions: `value | pipeName` or `value | pipeName(arg1, arg2)`
+    /// Pipes can be chained: `value | pipe1 | pipe2(arg)`
+    fn pipe_expression(&mut self) -> Result<Expression, ParseError> {
+        let mut left = self.or_expression()?;
+
+        while self.check(TokenKind::Pipe) {
+            self.advance();
+            // Parse pipe name (identifier)
+            let pipe_name = self.expect_identifier()?;
+
+            // Parse optional arguments: pipeName(arg1, arg2)
+            let args = if self.check(TokenKind::LParen) {
+                self.advance();
+                let mut args = Vec::new();
+                while !self.check(TokenKind::RParen) && !self.is_at_end() {
+                    args.push(self.expression()?);
+                    if !self.check(TokenKind::RParen) {
+                        self.expect(TokenKind::Comma)?;
+                    }
+                }
+                self.expect(TokenKind::RParen)?;
+                args
+            } else {
+                Vec::new()
+            };
+
+            left = Expression::Pipe {
+                value: Box::new(left),
+                pipe_name,
+                args,
+            };
+        }
+
+        Ok(left)
+    }
+
+    fn or_expression(&mut self) -> Result<Expression, ParseError> {
+        let mut left = self.and_expression()?;
+
+        while self.check(TokenKind::PipePipe) {
+            self.advance();
+            let right = self.and_expression()?;
+            left = Expression::BinaryOp {
+                left: Box::new(left),
+                op: BinaryOperator::Or,
+                right: Box::new(right),
+            };
+        }
+
+        Ok(left)
+    }
+
+    fn and_expression(&mut self) -> Result<Expression, ParseError> {
+        let mut left = self.equality()?;
+
+        while self.check(TokenKind::AmpAmp) {
+            self.advance();
+            let right = self.equality()?;
+            left = Expression::BinaryOp {
+                left: Box::new(left),
+                op: BinaryOperator::And,
+                right: Box::new(right),
+            };
+        }
+
+        Ok(left)
+    }
+
+    fn equality(&mut self) -> Result<Expression, ParseError> {
+        let mut left = self.comparison()?;
+
+        loop {
+            let op = if self.check(TokenKind::EqEq) {
+                self.advance();
+                BinaryOperator::Eq
+            } else if self.check(TokenKind::BangEq) {
+                self.advance();
+                BinaryOperator::Ne
+            } else {
+                break;
+            };
+
+            let right = self.comparison()?;
+            left = Expression::BinaryOp {
+                left: Box::new(left),
+                op,
+                right: Box::new(right),
+            };
+        }
+
+        Ok(left)
+    }
+
+    fn comparison(&mut self) -> Result<Expression, ParseError> {
+        let mut left = self.term()?;
+
+        loop {
+            let op = if self.check(TokenKind::Lt) {
+                self.advance();
+                BinaryOperator::Lt
+            } else if self.check(TokenKind::LtEq) {
+                self.advance();
+                BinaryOperator::Le
+            } else if self.check(TokenKind::Gt) {
+                self.advance();
+                BinaryOperator::Gt
+            } else if self.check(TokenKind::GtEq) {
+                self.advance();
+                BinaryOperator::Ge
+            } else {
+                break;
+            };
+
+            let right = self.term()?;
+            left = Expression::BinaryOp {
+                left: Box::new(left),
+                op,
+                right: Box::new(right),
+            };
+        }
+
+        Ok(left)
+    }
+
+    fn term(&mut self) -> Result<Expression, ParseError> {
+        let mut left = self.factor()?;
+
+        loop {
+            let op = if self.check(TokenKind::Plus) {
+                self.advance();
+                BinaryOperator::Add
+            } else if self.check(TokenKind::Minus) {
+                self.advance();
+                BinaryOperator::Sub
+            } else {
+                break;
+            };
+
+            let right = self.factor()?;
+            left = Expression::BinaryOp {
+                left: Box::new(left),
+                op,
+                right: Box::new(right),
+            };
+        }
+
+        Ok(left)
+    }
+
+    fn factor(&mut self) -> Result<Expression, ParseError> {
+        let mut left = self.unary()?;
+
+        loop {
+            let op = if self.check(TokenKind::Star) {
+                self.advance();
+                BinaryOperator::Mul
+            } else if self.check(TokenKind::Slash) {
+                self.advance();
+                BinaryOperator::Div
+            } else if self.check(TokenKind::Percent) {
+                self.advance();
+                BinaryOperator::Mod
+            } else {
+                break;
+            };
+
+            let right = self.unary()?;
+            left = Expression::BinaryOp {
+                left: Box::new(left),
+                op,
+                right: Box::new(right),
+            };
+        }
+
+        Ok(left)
+    }
+
+    fn unary(&mut self) -> Result<Expression, ParseError> {
+        if self.check(TokenKind::Bang) {
+            self.advance();
+            let operand = self.unary()?;
+            return Ok(Expression::UnaryOp {
+                op: UnaryOperator::Not,
+                operand: Box::new(operand),
+            });
+        }
+
+        if self.check(TokenKind::Minus) {
+            self.advance();
+            let operand = self.unary()?;
+            return Ok(Expression::UnaryOp {
+                op: UnaryOperator::Neg,
+                operand: Box::new(operand),
+            });
+        }
+
+        if self.check(TokenKind::Await) {
+            self.advance();
+            let expr = self.unary()?;
+            return Ok(Expression::Await {
+                expr: Box::new(expr),
+            });
+        }
+
+        self.call()
+    }
+
+    fn call(&mut self) -> Result<Expression, ParseError> {
+        let mut expr = self.primary()?;
+
+        loop {
+            if self.check(TokenKind::LParen) {
+                self.advance();
+                let mut args = Vec::new();
+                while !self.check(TokenKind::RParen) && !self.is_at_end() {
+                    args.push(self.expression()?);
+                    if !self.check(TokenKind::RParen) {
+                        let _ = self.match_token(TokenKind::Comma);
+                    }
+                }
+                self.expect(TokenKind::RParen)?;
+                expr = Expression::Call {
+                    callee: Box::new(expr),
+                    args,
+                };
+            } else if self.check(TokenKind::LBracket) {
+                // Index access: obj[key]
+                self.advance();
+                let index = self.expression()?;
+                self.expect(TokenKind::RBracket)?;
+                expr = Expression::IndexAccess {
+                    object: Box::new(expr),
+                    index: Box::new(index),
+                };
+            } else if self.check(TokenKind::Dot) {
+                self.advance();
+                let property = self.expect_identifier_or_keyword()?;
+
+                // Check for .for() method - items.for(item => { body }) or items.for((item, index) => { body })
+                if property == "for" && self.check(TokenKind::LParen) {
+                    self.advance(); // consume '('
+
+                    let (item, index) = if self.check(TokenKind::LParen) {
+                        // (item, index) form
+                        self.advance(); // consume inner '('
+                        let item = self.expect_identifier()?;
+                        let index = if self.match_token(TokenKind::Comma) {
+                            Some(self.expect_identifier()?)
+                        } else {
+                            None
+                        };
+                        self.expect(TokenKind::RParen)?; // consume inner ')'
+                        (item, index)
+                    } else {
+                        // item form (single identifier)
+                        let item = self.expect_identifier()?;
+                        (item, None)
+                    };
+
+                    self.expect(TokenKind::FatArrow)?; // consume '=>'
+                    self.expect(TokenKind::LBrace)?;
+                    let body = self.expression()?;
+                    self.expect(TokenKind::RBrace)?;
+                    self.expect(TokenKind::RParen)?; // consume outer ')'
+
+                    expr = Expression::ForIn {
+                        item,
+                        index,
+                        items: Box::new(expr),
+                        body: Box::new(body),
+                    };
+                } else {
+                    expr = Expression::MemberAccess {
+                        object: Box::new(expr),
+                        property,
+                    };
+                }
+            } else {
+                break;
+            }
+        }
+
+        Ok(expr)
+    }
+
+    pub(super) fn primary(&mut self) -> Result<Expression, ParseError> {
+        let token = self.peek().clone();
+
+        match token.kind {
+            TokenKind::String => {
+                self.advance();
+                // Remove quotes from the lexeme
+                let value = token.lexeme[1..token.lexeme.len() - 1].to_string();
+                Ok(Expression::String { value })
+            }
+            TokenKind::Number => {
+                self.advance();
+                let value: f64 = token.lexeme.parse().unwrap_or(0.0);
+                Ok(Expression::Number { value })
+            }
+            TokenKind::True => {
+                self.advance();
+                Ok(Expression::Boolean { value: true })
+            }
+            TokenKind::False => {
+                self.advance();
+                Ok(Expression::Boolean { value: false })
+            }
+            TokenKind::Null => {
+                self.advance();
+                Ok(Expression::Null)
+            }
+            TokenKind::For => {
+                // for item in items { body }
+                self.advance();
+                let item = self.expect_identifier_or_keyword()?;
+                // Expect 'in' - we'll use Identifier for now
+                let in_token = self.peek().clone();
+                if in_token.lexeme != "in" {
+                    return Err(ParseError::UnexpectedToken {
+                        expected: "in".to_string(),
+                        found: in_token.lexeme,
+                        line: in_token.line,
+                        column: in_token.column,
+                    });
+                }
+                self.advance();
+                let items = self.expression()?;
+                self.expect(TokenKind::LBrace)?;
+                let body = self.expression()?;
+                self.expect(TokenKind::RBrace)?;
+                Ok(Expression::ForIn {
+                    item,
+                    index: None,
+                    items: Box::new(items),
+                    body: Box::new(body),
+                })
+            }
+            TokenKind::Identifier
+            | TokenKind::Type
+            | TokenKind::Button
+            | TokenKind::Submit
+            | TokenKind::Text => {
+                self.advance();
+                Ok(Expression::Identifier {
+                    name: token.lexeme.clone(),
+                })
+            }
+            TokenKind::Dollar => {
+                self.advance();
+                self.reference()
+            }
+            TokenKind::LBracket => {
+                self.advance();
+                let mut elements = Vec::new();
+                while !self.check(TokenKind::RBracket) && !self.is_at_end() {
+                    // Check for spread operator
+                    if self.check(TokenKind::DotDotDot) {
+                        self.advance();
+                        let expr = self.expression()?;
+                        elements.push(Expression::Spread { expr: Box::new(expr) });
+                    } else {
+                        elements.push(self.expression()?);
+                    }
+                    if !self.check(TokenKind::RBracket) {
+                        let _ = self.match_token(TokenKind::Comma);
+                    }
+                }
+                self.expect(TokenKind::RBracket)?;
+                Ok(Expression::Array { elements })
+            }
+            TokenKind::LBrace => {
+                self.advance();
+                let mut members = Vec::new();
+                while !self.check(TokenKind::RBrace) && !self.is_at_end() {
+                    // Check for spread operator: ...expr
+                    if self.check(TokenKind::DotDotDot) {
+                        self.advance();
+                        let expr = self.expression()?;
+                        members.push(ObjectMember::Spread { expr });
+                    } else {
+                        members.push(ObjectMember::Property(self.property()?));
+                    }
+                    // Handle optional comma between members
+                    if !self.check(TokenKind::RBrace) {
+                        let _ = self.match_token(TokenKind::Comma);
+                    }
+                }
+                self.expect(TokenKind::RBrace)?;
+                Ok(Expression::Object { members })
+            }
+            TokenKind::LParen => {
+                self.advance();
+                let expr = self.expression()?;
+                self.expect(TokenKind::RParen)?;
+                Ok(expr)
+            }
+            TokenKind::Dot => {
+                // Route reference: .home, .docs.installation
+                self.advance();
+                let mut path = vec![self.expect_identifier()?];
+                while self.check(TokenKind::Dot) {
+                    self.advance();
+                    path.push(self.expect_identifier()?);
+                }
+                Ok(Expression::RouteRef { path })
+            }
+            _ => Err(ParseError::UnexpectedToken {
+                expected: "expression".to_string(),
+                found: token.lexeme.clone(),
+                line: token.line,
+                column: token.column,
+            }),
+        }
+    }
+
+    fn reference(&mut self) -> Result<Expression, ParseError> {
+        let store = self.expect_identifier()?;
+        let mut path = Vec::new();
+
+        while self.check(TokenKind::Dot) {
+            self.advance();
+            path.push(self.expect_identifier()?);
+        }
+
+        Ok(Expression::Reference { store, path })
+    }
+}
