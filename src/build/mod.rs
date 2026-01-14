@@ -33,49 +33,77 @@ pub fn copy_dir_contents(src: &Path, dst: &Path) -> Result<()> {
     Ok(())
 }
 
-/// Deduplicate function definitions in generated JS code
+/// Deduplicate function definitions in generated JS code by renaming duplicates
 pub fn deduplicate_functions(js: &str, defined_names: &mut HashSet<String>) -> String {
-    let mut result = String::new();
-    let mut skip_until_closing_brace = false;
-    let mut brace_count = 0;
+    use regex::Regex;
+    use std::collections::HashMap;
 
-    for line in js.lines() {
-        // Check if this is a function definition
-        if line.trim_start().starts_with("function ") {
-            // Extract function name
-            if let Some(name_start) = line.find("function ").map(|i| i + 9) {
-                if let Some(name_end) = line[name_start..].find('(') {
-                    let name = line[name_start..name_start + name_end].trim().to_string();
-                    if defined_names.contains(&name) {
-                        // Skip this function definition
-                        skip_until_closing_brace = true;
-                        brace_count = 0;
-                        continue;
-                    } else {
-                        defined_names.insert(name);
-                    }
-                }
+    // Find all function declarations: "function Name(" or "function Name ("
+    let func_regex = Regex::new(r"function\s+([A-Z][a-zA-Z0-9_]*)\s*\(").unwrap();
+    // Find all const declarations: "const Name =" or "const Name="
+    let const_regex = Regex::new(r"const\s+([A-Z][a-zA-Z0-9_]*)\s*=").unwrap();
+
+    // First pass: find all names defined in this chunk
+    let mut local_functions: Vec<String> = Vec::new();
+    for cap in func_regex.captures_iter(js) {
+        if let Some(name_match) = cap.get(1) {
+            let name = name_match.as_str().to_string();
+            if !local_functions.contains(&name) {
+                local_functions.push(name);
             }
         }
-
-        if skip_until_closing_brace {
-            // Count braces to find the end of the function
-            for c in line.chars() {
-                if c == '{' {
-                    brace_count += 1;
-                } else if c == '}' {
-                    brace_count -= 1;
-                    if brace_count == 0 {
-                        skip_until_closing_brace = false;
-                        break;
-                    }
-                }
+    }
+    for cap in const_regex.captures_iter(js) {
+        if let Some(name_match) = cap.get(1) {
+            let name = name_match.as_str().to_string();
+            if !local_functions.contains(&name) {
+                local_functions.push(name);
             }
-            continue;
         }
+    }
 
-        result.push_str(line);
-        result.push('\n');
+    // Build rename map for duplicates
+    let mut rename_map: HashMap<String, String> = HashMap::new();
+    for name in &local_functions {
+        if defined_names.contains(name) {
+            // Find a unique suffix
+            let mut suffix = 1;
+            loop {
+                let new_name = format!("{}_{}", name, suffix);
+                if !defined_names.contains(&new_name) {
+                    rename_map.insert(name.clone(), new_name.clone());
+                    defined_names.insert(new_name);
+                    break;
+                }
+                suffix += 1;
+            }
+        } else {
+            defined_names.insert(name.clone());
+        }
+    }
+
+    // If no renames needed, return as-is
+    if rename_map.is_empty() {
+        return js.to_string();
+    }
+
+    // Apply renames - replace function/const declarations and references
+    let mut result = js.to_string();
+    for (old_name, new_name) in &rename_map {
+        // Replace function declaration: "function OldName(" -> "function NewName("
+        let decl_pattern = format!(r"function\s+{}\s*\(", regex::escape(old_name));
+        let decl_regex = Regex::new(&decl_pattern).unwrap();
+        result = decl_regex.replace_all(&result, format!("function {}(", new_name)).to_string();
+
+        // Replace const declaration: "const OldName =" -> "const NewName ="
+        let const_pattern = format!(r"const\s+{}\s*=", regex::escape(old_name));
+        let const_regex = Regex::new(&const_pattern).unwrap();
+        result = const_regex.replace_all(&result, format!("const {} =", new_name)).to_string();
+
+        // Replace references using word boundaries
+        let ref_pattern = format!(r"\b{}\b", regex::escape(old_name));
+        let ref_regex = Regex::new(&ref_pattern).unwrap();
+        result = ref_regex.replace_all(&result, new_name.as_str()).to_string();
     }
 
     result
@@ -84,92 +112,26 @@ pub fn deduplicate_functions(js: &str, defined_names: &mut HashSet<String>) -> S
 /// Minify JavaScript code for production builds
 pub fn minify_js(js: &str) -> String {
     let mut result = String::new();
-    let mut in_string = false;
-    let mut string_char = ' ';
-    let mut prev_char = ' ';
-    let mut in_line_comment = false;
-    let mut in_block_comment = false;
-    let mut last_was_space = false;
 
-    let chars: Vec<char> = js.chars().collect();
-    let len = chars.len();
-    let mut i = 0;
+    for line in js.lines() {
+        let trimmed = line.trim();
 
-    while i < len {
-        let c = chars[i];
-        let next_char = if i + 1 < len { chars[i + 1] } else { ' ' };
-
-        // Handle comments
-        if !in_string {
-            if c == '/' && next_char == '/' && !in_block_comment {
-                in_line_comment = true;
-                i += 1;
-                continue;
-            }
-            if c == '/' && next_char == '*' && !in_line_comment {
-                in_block_comment = true;
-                i += 2;
-                continue;
-            }
-            if in_line_comment {
-                if c == '\n' {
-                    in_line_comment = false;
-                    if !last_was_space {
-                        result.push(' ');
-                        last_was_space = true;
-                    }
-                }
-                i += 1;
-                continue;
-            }
-            if in_block_comment {
-                if c == '*' && next_char == '/' {
-                    in_block_comment = false;
-                    i += 2;
-                    continue;
-                }
-                i += 1;
-                continue;
-            }
-        }
-
-        // Handle strings
-        if (c == '"' || c == '\'' || c == '`') && prev_char != '\\' {
-            if in_string && c == string_char {
-                in_string = false;
-            } else if !in_string {
-                in_string = true;
-                string_char = c;
-            }
-        }
-
-        // Handle whitespace
-        if !in_string && (c == ' ' || c == '\t' || c == '\n' || c == '\r') {
-            if !last_was_space && !result.is_empty() {
-                // Check if space is needed between tokens
-                let last_result_char = result.chars().last().unwrap_or(' ');
-                if (last_result_char.is_alphanumeric()
-                    || last_result_char == '_'
-                    || last_result_char == '$')
-                    && i + 1 < len
-                {
-                    let next_non_space = chars[i + 1..].iter().find(|&&ch| ch != ' ' && ch != '\t' && ch != '\n' && ch != '\r');
-                    if let Some(&nc) = next_non_space {
-                        if nc.is_alphanumeric() || nc == '_' || nc == '$' {
-                            result.push(' ');
-                            last_was_space = true;
-                        }
-                    }
-                }
-            }
-            i += 1;
+        // Skip empty lines
+        if trimmed.is_empty() {
             continue;
         }
 
-        result.push(c);
-        last_was_space = false;
-        prev_char = c;
-        i += 1;
+        // Skip lines that are only single-line comments
+        if trimmed.starts_with("//") {
+            continue;
+        }
+
+        // For other lines, just collapse leading/trailing whitespace
+        // but preserve internal whitespace and content
+        if !result.is_empty() && !result.ends_with('\n') {
+            result.push('\n');
+        }
+        result.push_str(trimmed);
     }
 
     result
@@ -274,38 +236,57 @@ fn collect_tp_files_recursive(dir: &Path, files: &mut Vec<PathBuf>) -> Result<()
 
 /// Generate i18n runtime code
 pub fn generate_i18n_runtime(config: &topo::config::I18nConfig) -> String {
-    let mut runtime = String::new();
-    runtime.push_str("\n// i18n Runtime\n");
-    runtime.push_str("const __i18n = {\n");
-    runtime.push_str(&format!("  defaultLocale: '{}',\n", config.default_locale));
-    runtime.push_str(&format!("  locales: {:?},\n", config.locales));
-    runtime.push_str("  translations: {},\n");
-    runtime.push_str("  currentLocale: null,\n");
-    runtime.push_str("  async loadTranslations(locale) {\n");
-    runtime.push_str("    if (!this.translations[locale]) {\n");
-    runtime.push_str(&format!(
-        "      const response = await fetch('{}/' + locale + '.json');\n",
-        config.translations_dir.as_deref().unwrap_or("locales")
-    ));
-    runtime.push_str("      this.translations[locale] = await response.json();\n");
-    runtime.push_str("    }\n");
-    runtime.push_str("    this.currentLocale = locale;\n");
-    runtime.push_str("    return this.translations[locale];\n");
-    runtime.push_str("  },\n");
-    runtime.push_str("  t(key, params = {}) {\n");
-    runtime.push_str("    const locale = this.currentLocale || this.defaultLocale;\n");
-    runtime.push_str("    const translations = this.translations[locale] || {};\n");
-    runtime.push_str("    let text = key.split('.').reduce((obj, k) => obj?.[k], translations) || key;\n");
-    runtime.push_str("    Object.entries(params).forEach(([k, v]) => {\n");
-    runtime.push_str("      text = text.replace(new RegExp(`{${k}}`, 'g'), v);\n");
-    runtime.push_str("    });\n");
-    runtime.push_str("    return text;\n");
-    runtime.push_str("  }\n");
-    runtime.push_str("};\n");
-    runtime.push_str("const t = (key, params) => __i18n.t(key, params);\n");
-    runtime.push_str(&format!(
-        "__i18n.loadTranslations('{}');\n\n",
-        config.default_locale
-    ));
-    runtime
+    let mut output = String::new();
+    output.push_str("\n// i18n Internationalization\n");
+
+    // Generate translations object
+    output.push_str("const __i18n = {\n");
+    output.push_str(&format!("  locale: '{}',\n", config.default_locale));
+    output.push_str(&format!("  locales: {:?},\n", config.locales));
+    output.push_str("  translations: {\n");
+
+    if let Some(translations) = &config.translations {
+        for (key, locales) in translations {
+            output.push_str(&format!("    '{}': {{\n", key));
+            for (locale, value) in locales {
+                // Escape single quotes in value
+                let escaped_value = value.replace('\'', "\\'");
+                output.push_str(&format!("      '{}': '{}',\n", locale, escaped_value));
+            }
+            output.push_str("    },\n");
+        }
+    }
+
+    output.push_str("  },\n");
+    output.push_str("  subscribers: [],\n");
+    output.push_str("};\n\n");
+
+    // Generate t() function for translations
+    output.push_str("function t(key, params = {}) {\n");
+    output.push_str("  const translation = __i18n.translations[key];\n");
+    output.push_str("  if (!translation) return key;\n");
+    output.push_str("  let text = translation[__i18n.locale] || translation[Object.keys(translation)[0]] || key;\n");
+    output.push_str("  // Replace {{param}} placeholders\n");
+    output.push_str("  for (const [k, v] of Object.entries(params)) {\n");
+    output.push_str("    text = text.replace(new RegExp(`{{${k}}}`, 'g'), v);\n");
+    output.push_str("  }\n");
+    output.push_str("  return text;\n");
+    output.push_str("}\n\n");
+
+    // Generate $i18n store
+    output.push_str("const $i18n = {\n");
+    output.push_str("  get locale() { return __i18n.locale; },\n");
+    output.push_str("  get locales() { return __i18n.locales; },\n");
+    output.push_str("  setLocale(locale) {\n");
+    output.push_str("    if (__i18n.locales.includes(locale)) {\n");
+    output.push_str("      __i18n.locale = locale;\n");
+    output.push_str("      __i18n.subscribers.forEach(fn => fn());\n");
+    output.push_str("      __rerender();\n");
+    output.push_str("    }\n");
+    output.push_str("  },\n");
+    output.push_str("  subscribe(fn) { __i18n.subscribers.push(fn); },\n");
+    output.push_str("};\n");
+    output.push_str("stores.set('i18n', $i18n);\n\n");
+
+    output
 }
