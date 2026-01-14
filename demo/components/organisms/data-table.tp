@@ -111,13 +111,15 @@ DataTableHeadRow(props) -> {
     type: tr
     children: [
         props.selectable ? SelectAllCell({ checked: props.allSelected, onChange: props.onSelectAll }) : null,
-        ...props.columns.map(col => HeaderCell({
-            column: col,
-            sortable: props.sortable && col.sortable != false,
-            isSorted: props.sortColumn == col.key,
-            sortDirection: props.sortDirection,
-            onSort: props.onSort
-        }))
+        ...props.columns.for(col => {
+            HeaderCell({
+                column: col,
+                sortable: props.sortable && col.sortable != false,
+                isSorted: props.sortColumn == col.key,
+                sortDirection: props.sortDirection,
+                onSort: props.onSort
+            })
+        })
     ]
 }
 
@@ -182,16 +184,18 @@ DataTableBody(props) -> {
     type: tbody
     style: DataTableVariants.tbody
     children: props.data.length > 0
-        ? props.data.map((row, index) => DataTableRow({
-            row: row,
-            columns: props.columns,
-            selectable: props.selectable,
-            striped: props.striped,
-            hoverable: props.hoverable,
-            isSelected: props.selectedRows && props.selectedRows.includes(row.id),
-            onSelectRow: props.onSelectRow,
-            index: index
-        }))
+        ? props.data.for((row, index) => {
+            DataTableRow({
+                row: row,
+                columns: props.columns,
+                selectable: props.selectable,
+                striped: props.striped,
+                hoverable: props.hoverable,
+                isSelected: props.selectedRows && props.selectedRows.includes(row.id),
+                onSelectRow: props.onSelectRow,
+                index: index
+            })
+        })
         : [EmptyRow({ colSpan: props.columns.length + (props.selectable ? 1 : 0), message: props.emptyMessage })]
 }
 
@@ -203,7 +207,7 @@ DataTableRow(props) -> {
          + (props.striped ? " " + DataTableVariants.tr.striped : "")
     children: [
         props.selectable ? SelectRowCell({ checked: props.isSelected, onChange: props.onSelectRow, rowId: props.row.id }) : null,
-        ...props.columns.map(col => DataCell({ value: props.row[col.key], column: col }))
+        ...props.columns.for(col => { DataCell({ value: props.row[col.key], column: col }) })
     ]
 }
 

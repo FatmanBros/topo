@@ -19,11 +19,9 @@ Rating(props) -> {
 // Star Component
 // =============================================================================
 
-Star(props) -> {
-    when: props.onClick && !props.readonly
-    then: InteractiveStar({ filled: props.filled, size: props.size, onClick: props.onClick, index: props.index })
-    else: StaticStar({ filled: props.filled, size: props.size })
-}
+Star(props) -> props.onClick && !props.readonly
+    ? InteractiveStar({ filled: props.filled, size: props.size, onClick: props.onClick, index: props.index })
+    : StaticStar({ filled: props.filled, size: props.size })
 
 InteractiveStar(props) -> {
     type: button

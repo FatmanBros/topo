@@ -42,14 +42,13 @@ DropdownMenu(props) -> {
     style: DropdownVariants.menu + " " + DropdownVariants.position[props.position]
     children: [
         props.header ? DropdownHeader({ text: props.header }) : null,
-        ...props.items.map(item => DropdownItemWrapper({ item: item, onSelect: props.onSelect }))
+        ...props.items.for(item => { DropdownItemWrapper({ item: item, onSelect: props.onSelect }) })
     ]
 }
 
-DropdownItemWrapper(props) -> {
-    when: props.item.type == "divider"
-    then: DropdownDivider({})
-    else: DropdownItem({
+DropdownItemWrapper(props) -> props.item.type == "divider"
+    ? DropdownDivider({})
+    : DropdownItem({
         label: props.item.label,
         icon: props.item.icon,
         shortcut: props.item.shortcut,
@@ -59,7 +58,6 @@ DropdownItemWrapper(props) -> {
         danger: props.item.danger,
         value: props.item.value
     })
-}
 
 // =============================================================================
 // Dropdown Item

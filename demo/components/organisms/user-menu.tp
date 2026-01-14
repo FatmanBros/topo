@@ -127,7 +127,7 @@ StatusText(props) -> {
 
 UserMenuItems(props) -> {
     style: UserMenuVariants.panel.menu
-    children: props.items.map(item =>
+    children: props.items.for(item => {
         item.type == "divider"
             ? MenuDivider({})
             : item.type == "label"
@@ -136,7 +136,7 @@ UserMenuItems(props) -> {
                     item: item,
                     onClick: props.onItemClick
                 })
-    )
+    })
 }
 
 MenuItem(props) -> {

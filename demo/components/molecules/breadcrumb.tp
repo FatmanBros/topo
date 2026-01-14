@@ -30,11 +30,13 @@ BreadcrumbList(props) -> {
     style: BreadcrumbVariants.list + " " + BreadcrumbVariants.size[props.size]
     children: [
         props.showHome ? BreadcrumbHomeItem({ href: "/", separator: props.separator }) : null,
-        ...props.items.map((item, index) => BreadcrumbItemWrapper({
-            item: item,
-            isLast: index == props.items.length - 1,
-            separator: props.separator
-        }))
+        ...props.items.for((item, index) => {
+            BreadcrumbItemWrapper({
+                item: item,
+                isLast: index == props.items.length - 1,
+                separator: props.separator
+            })
+        })
     ]
 }
 
@@ -55,11 +57,9 @@ BreadcrumbItemWrapper(props) -> {
     ]
 }
 
-BreadcrumbLink(props) -> {
-    when: props.isCurrent
-    then: BreadcrumbCurrentText({ text: props.label })
-    else: BreadcrumbAnchor({ href: props.href, text: props.label })
-}
+BreadcrumbLink(props) -> props.isCurrent
+    ? BreadcrumbCurrentText({ text: props.label })
+    : BreadcrumbAnchor({ href: props.href, text: props.label })
 
 BreadcrumbAnchor(props) -> {
     type: a

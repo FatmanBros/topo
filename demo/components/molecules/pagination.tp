@@ -120,7 +120,7 @@ PaginationLabel(props) -> {
 
 PaginationPages(props) -> {
     style: "flex items-center gap-1"
-    children: generatePageNumbers(props.currentPage, props.totalPages, props.siblingCount).map(page =>
+    children: generatePageNumbers(props.currentPage, props.totalPages, props.siblingCount).for(page => {
         page == "ellipsis"
             ? PaginationEllipsis({})
             : PageButton({
@@ -129,7 +129,7 @@ PaginationPages(props) -> {
                 onClick: props.onChange,
                 size: props.size
             })
-    )
+    })
 }
 
 PageButton(props) -> {

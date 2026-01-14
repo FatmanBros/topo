@@ -79,11 +79,13 @@ FormActionsLeft(props) -> {
 CommentList(props) -> {
     style: CommentSectionVariants.list.container
     children: [
-        ...props.comments.map(comment => Comment({
-            comment: comment,
-            onReply: props.onReply,
-            onLike: props.onLike
-        })),
+        ...props.comments.for(comment => {
+            Comment({
+                comment: comment,
+                onReply: props.onReply,
+                onLike: props.onLike
+            })
+        }),
         props.hasMore ? LoadMoreButton({ onClick: props.onLoadMore }) : null
     ]
 }
@@ -208,11 +210,13 @@ ReplyButton(props) -> {
 
 CommentReplies(props) -> {
     style: CommentSectionVariants.comment.replies.container
-    children: props.replies.map(reply => Comment({
-        comment: reply,
-        onReply: props.onReply,
-        onLike: props.onLike
-    }))
+    children: props.replies.for(reply => {
+        Comment({
+            comment: reply,
+            onReply: props.onReply,
+            onLike: props.onLike
+        })
+    })
 }
 
 // =============================================================================

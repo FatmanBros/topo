@@ -55,7 +55,7 @@ ClearAllButton(props) -> {
 
 ActiveFilters(props) -> {
     style: FilterPanelVariants.activeFilters.container
-    children: props.filters.map(filter => FilterChip({ filter: filter, onRemove: props.onRemove }))
+    children: props.filters.for(filter => { FilterChip({ filter: filter, onRemove: props.onRemove }) })
 }
 
 FilterChip(props) -> {
@@ -97,10 +97,12 @@ RemoveIconPath(props) -> {
 // =============================================================================
 
 FilterSections(props) -> {
-    children: props.sections.map(section => FilterSection({
-        section: section,
-        onFilterChange: props.onFilterChange
-    }))
+    children: props.sections.for(section => {
+        FilterSection({
+            section: section,
+            onFilterChange: props.onFilterChange
+        })
+    })
 }
 
 FilterSection(props) -> {
@@ -147,16 +149,20 @@ ChevronDownPath(props) -> {
 SectionContent(props) -> {
     style: FilterPanelVariants.section.content
     children: props.section.type == "checkbox"
-        ? props.section.options.map(option => CheckboxFilter({
-            option: option,
-            onChange: props.onFilterChange
-        }))
-        : props.section.type == "radio"
-            ? props.section.options.map(option => RadioFilter({
+        ? props.section.options.for(option => {
+            CheckboxFilter({
                 option: option,
-                name: props.section.name,
                 onChange: props.onFilterChange
-            }))
+            })
+        })
+        : props.section.type == "radio"
+            ? props.section.options.for(option => {
+                RadioFilter({
+                    option: option,
+                    name: props.section.name,
+                    onChange: props.onFilterChange
+                })
+            })
             : props.section.type == "range"
                 ? [RangeFilter({ section: props.section, onChange: props.onFilterChange })]
                 : []

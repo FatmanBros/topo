@@ -90,7 +90,7 @@ ListIconPath(props) -> {
 
 GridView(props) -> {
     style: CardListVariants.grid.container + " " + CardListVariants.grid.cols[props.columns]
-    children: props.items.map(item => GridCard({ item: item, onClick: props.onItemClick }))
+    children: props.items.for(item => { GridCard({ item: item, onClick: props.onItemClick }) })
 }
 
 GridCard(props) -> {
@@ -132,7 +132,7 @@ GridCardDescription(props) -> {
 
 GridCardMeta(props) -> {
     style: CardListVariants.card.grid.meta
-    children: props.meta.map(m => MetaItem({ text: m }))
+    children: props.meta.for(m => { MetaItem({ text: m }) })
 }
 
 MetaItem(props) -> {
@@ -146,7 +146,7 @@ MetaItem(props) -> {
 
 ListView(props) -> {
     style: CardListVariants.list.container
-    children: props.items.map(item => ListCard({ item: item, onClick: props.onItemClick }))
+    children: props.items.for(item => { ListCard({ item: item, onClick: props.onItemClick }) })
 }
 
 ListCard(props) -> {
@@ -188,7 +188,7 @@ ListCardDescription(props) -> {
 
 ListCardMeta(props) -> {
     style: CardListVariants.card.list.meta
-    children: props.meta.map(m => MetaItem({ text: m }))
+    children: props.meta.for(m => { MetaItem({ text: m }) })
 }
 
 // =============================================================================

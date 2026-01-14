@@ -22,14 +22,16 @@ Stepper(props) -> {
 
 HorizontalStepList(props) -> {
     style: StepperVariants.horizontal.list
-    children: props.steps.map((step, index) => HorizontalStep({
-        step: step,
-        index: index,
-        activeStep: props.activeStep,
-        isLast: index == props.steps.length - 1,
-        size: props.size,
-        onStepClick: props.onStepClick
-    }))
+    children: props.steps.for((step, index) => {
+        HorizontalStep({
+            step: step,
+            index: index,
+            activeStep: props.activeStep,
+            isLast: index == props.steps.length - 1,
+            size: props.size,
+            onStepClick: props.onStepClick
+        })
+    })
 }
 
 HorizontalStep(props) -> {
@@ -66,14 +68,16 @@ HorizontalConnector(props) -> {
 
 VerticalStepList(props) -> {
     style: StepperVariants.vertical.list
-    children: props.steps.map((step, index) => VerticalStep({
-        step: step,
-        index: index,
-        activeStep: props.activeStep,
-        isLast: index == props.steps.length - 1,
-        size: props.size,
-        onStepClick: props.onStepClick
-    }))
+    children: props.steps.for((step, index) => {
+        VerticalStep({
+            step: step,
+            index: index,
+            activeStep: props.activeStep,
+            isLast: index == props.steps.length - 1,
+            size: props.size,
+            onStepClick: props.onStepClick
+        })
+    })
 }
 
 VerticalStep(props) -> {

@@ -134,11 +134,13 @@ FileUploadError(props) -> {
 
 FileList(props) -> {
     style: FileUploadVariants.fileList.container
-    children: props.files.map((file, index) => FileListItem({
-        file: file,
-        onRemove: props.onRemove,
-        index: index
-    }))
+    children: props.files.for((file, index) => {
+        FileListItem({
+            file: file,
+            onRemove: props.onRemove,
+            index: index
+        })
+    })
 }
 
 FileListItem(props) -> {

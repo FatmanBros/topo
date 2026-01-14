@@ -30,13 +30,15 @@ AvatarGroup(props) -> {
 // =============================================================================
 
 AvatarGroupItems(props) -> {
-    children: props.avatars.slice(0, props.max).map((avatar, index) => GroupAvatar({
-        src: avatar.src,
-        alt: avatar.alt || avatar.name,
-        name: avatar.name,
-        size: props.size,
-        index: index
-    }))
+    children: props.avatars.slice(0, props.max).for((avatar, index) => {
+        GroupAvatar({
+            src: avatar.src,
+            alt: avatar.alt || avatar.name,
+            name: avatar.name,
+            size: props.size,
+            index: index
+        })
+    })
 }
 
 GroupAvatar(props) -> {

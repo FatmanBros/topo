@@ -72,12 +72,14 @@ BrandText(props) -> {
 
 NavbarNav(props) -> {
     style: NavbarVariants.nav.container
-    children: props.links.map(link => NavItem({
-        label: link.label,
-        href: link.href,
-        active: link.active,
-        variant: props.variant
-    }))
+    children: props.links.for(link => {
+        NavItem({
+            label: link.label,
+            href: link.href,
+            active: link.active,
+            variant: props.variant
+        })
+    })
 }
 
 NavItem(props) -> {
@@ -146,7 +148,7 @@ MobileMenu(props) -> {
 
 MobileMenuInner(props) -> {
     style: NavbarVariants.mobileMenu.inner
-    children: props.links.map(link => MobileNavItem({ label: link.label, href: link.href }))
+    children: props.links.for(link => { MobileNavItem({ label: link.label, href: link.href }) })
 }
 
 MobileNavItem(props) -> {

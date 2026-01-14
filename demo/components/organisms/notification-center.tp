@@ -107,10 +107,12 @@ MarkAllReadButton(props) -> {
 NotificationList(props) -> {
     style: NotificationCenterVariants.panel.list
     children: props.notifications.length > 0
-        ? props.notifications.map(notification => NotificationItem({
-            notification: notification,
-            onClick: props.onClick
-        }))
+        ? props.notifications.for(notification => {
+            NotificationItem({
+                notification: notification,
+                onClick: props.onClick
+            })
+        })
         : [EmptyNotifications({})]
 }
 

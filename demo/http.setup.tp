@@ -2,10 +2,10 @@
 // This file is loaded before any components
 
 // Base URL for all API requests
-http.defaults.baseURL = '/api';
+http.defaults.baseURL = "/api"
 
 // Default headers
-http.defaults.headers['Content-Type'] = 'application/json';
+http.defaults.headers["Content-Type"] = "application/json"
 
 // Request interceptor: Add auth token
 http.interceptors.request.push(config => {

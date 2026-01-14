@@ -31,17 +31,19 @@ Tabs(props) -> {
 TabList(props) -> {
     role: "tablist"
     style: TabsVariants.list.base + " " + TabsVariants.list[props.variant]
-    children: props.items.map((item, index) => Tab({
-        label: item.label,
-        icon: item.icon,
-        badge: item.badge,
-        disabled: item.disabled,
-        isActive: index == props.activeIndex,
-        onClick: props.onChange,
-        index: index,
-        variant: props.variant,
-        size: props.size
-    }))
+    children: props.items.for((item, index) => {
+        Tab({
+            label: item.label,
+            icon: item.icon,
+            badge: item.badge,
+            disabled: item.disabled,
+            isActive: index == props.activeIndex,
+            onClick: props.onChange,
+            index: index,
+            variant: props.variant,
+            size: props.size
+        })
+    })
 }
 
 // =============================================================================
@@ -89,11 +91,13 @@ TabBadge(props) -> {
 // =============================================================================
 
 TabPanels(props) -> {
-    children: props.items.map((item, index) => TabPanel({
-        content: item.content,
-        isActive: index == props.activeIndex,
-        index: index
-    }))
+    children: props.items.for((item, index) => {
+        TabPanel({
+            content: item.content,
+            isActive: index == props.activeIndex,
+            index: index
+        })
+    })
 }
 
 TabPanel(props) -> {
