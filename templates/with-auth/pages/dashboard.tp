@@ -1,0 +1,102 @@
+// Dashboard page (protected)
+import { AuthStore } from "../stores/auth.tp"
+
+Page -> {
+    guard: AuthStore.isAuthenticated
+    guardRedirect: "/login"
+    style: "min-h-screen bg-gray-100"
+    children: [Header, MainContent]
+}
+
+// =============================================================================
+// Header
+// =============================================================================
+
+Header -> {
+    style: "bg-white shadow"
+    children: HeaderContent
+}
+
+HeaderContent -> {
+    style: "max-w-7xl mx-auto px-4 py-4 flex justify-between items-center"
+    children: [HeaderTitle, UserMenu]
+}
+
+HeaderTitle -> {
+    type: text
+    content: "Dashboard"
+    style: "text-xl font-bold text-gray-900"
+}
+
+UserMenu -> {
+    style: "flex items-center gap-4"
+    children: [UserEmail, LogoutButton]
+}
+
+UserEmail -> {
+    type: text
+    content: AuthStore.user.email
+    style: "text-sm text-gray-600"
+}
+
+LogoutButton -> {
+    type: button
+    content: "Logout"
+    click: AuthStore.Logout
+    style: "px-4 py-2 text-sm text-red-600 hover:text-red-700 font-medium"
+}
+
+// =============================================================================
+// Main Content
+// =============================================================================
+
+MainContent -> {
+    style: "max-w-7xl mx-auto px-4 py-8"
+    children: [WelcomeCard, StatsGrid]
+}
+
+WelcomeCard -> {
+    style: "bg-white rounded-xl shadow p-6 mb-8"
+    children: [WelcomeTitle, WelcomeText]
+}
+
+WelcomeTitle -> {
+    type: text
+    content: "Welcome back!"
+    style: "text-2xl font-bold text-gray-900"
+}
+
+WelcomeText -> {
+    type: text
+    content: "You're now logged in. This is a protected dashboard page."
+    style: "text-gray-600 mt-2"
+}
+
+StatsGrid -> {
+    style: "grid grid-cols-1 md:grid-cols-3 gap-6"
+    children: [
+        StatCard({ title: "Total Users", value: "1,234", icon: "users" }),
+        StatCard({ title: "Revenue", value: "$12,345", icon: "dollar" }),
+        StatCard({ title: "Orders", value: "567", icon: "cart" })
+    ]
+}
+
+StatCard(props) -> {
+    style: "bg-white rounded-xl shadow p-6"
+    children: [
+        StatTitle({ text: props.title }),
+        StatValue({ text: props.value })
+    ]
+}
+
+StatTitle(props) -> {
+    type: text
+    content: props.text
+    style: "text-sm font-medium text-gray-500"
+}
+
+StatValue(props) -> {
+    type: text
+    content: props.text
+    style: "text-3xl font-bold text-gray-900 mt-2"
+}

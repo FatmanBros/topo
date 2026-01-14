@@ -35,6 +35,21 @@ enum Commands {
         name: String,
     },
 
+    /// Create a new app from template
+    #[command(name = "create-app")]
+    CreateApp {
+        /// Project name
+        name: String,
+
+        /// Template to use (starter, with-auth)
+        #[arg(short, long, default_value = "starter")]
+        template: String,
+
+        /// List available templates
+        #[arg(long)]
+        list: bool,
+    },
+
     /// Initialize topo in current directory
     Init,
 
@@ -147,6 +162,13 @@ fn main() -> Result<()> {
     match cli.command {
         Commands::New { name } => {
             create_project(&name)?;
+        }
+        Commands::CreateApp { name, template, list } => {
+            if list {
+                list_templates();
+            } else {
+                create_app(&name, &template)?;
+            }
         }
         Commands::Init => {
             init_project()?;
@@ -305,6 +327,97 @@ node_modules/
     println!();
     println!("  cd {}", name);
     println!("  topo dev");
+
+    Ok(())
+}
+
+// =============================================================================
+// Templates (embedded)
+// =============================================================================
+
+mod templates {
+    // Starter template
+    pub const STARTER_CONFIG: &str = include_str!("../templates/starter/topo.config.json");
+    pub const STARTER_INDEX: &str = include_str!("../templates/starter/pages/index.tp");
+    pub const STARTER_GITIGNORE: &str = include_str!("../templates/starter/.gitignore");
+
+    // With-auth template
+    pub const WITH_AUTH_CONFIG: &str = include_str!("../templates/with-auth/topo.config.json");
+    pub const WITH_AUTH_INDEX: &str = include_str!("../templates/with-auth/pages/index.tp");
+    pub const WITH_AUTH_LOGIN: &str = include_str!("../templates/with-auth/pages/login.tp");
+    pub const WITH_AUTH_DASHBOARD: &str = include_str!("../templates/with-auth/pages/dashboard.tp");
+    pub const WITH_AUTH_AUTH_STORE: &str = include_str!("../templates/with-auth/stores/auth.tp");
+    pub const WITH_AUTH_GITIGNORE: &str = include_str!("../templates/with-auth/.gitignore");
+}
+
+fn list_templates() {
+    println!("Available templates:");
+    println!();
+    println!("  starter     - Minimal starter template (default)");
+    println!("  with-auth   - Template with login page and authentication");
+    println!();
+    println!("Usage: topo create-app my-app --template <template>");
+}
+
+fn create_app(name: &str, template: &str) -> Result<()> {
+    match template {
+        "starter" => create_starter_app(name),
+        "with-auth" => create_with_auth_app(name),
+        _ => {
+            println!("✗ Unknown template: {}", template);
+            println!();
+            list_templates();
+            Ok(())
+        }
+    }
+}
+
+fn create_starter_app(name: &str) -> Result<()> {
+    println!("Creating new topo app: {} (template: starter)", name);
+
+    // Create directory structure
+    fs::create_dir_all(format!("{}/pages", name))?;
+    fs::create_dir_all(format!("{}/components", name))?;
+
+    // Write files with project name substitution
+    let config = templates::STARTER_CONFIG.replace("{{PROJECT_NAME}}", name);
+    fs::write(format!("{}/topo.config.json", name), config)?;
+    fs::write(format!("{}/pages/index.tp", name), templates::STARTER_INDEX)?;
+    fs::write(format!("{}/.gitignore", name), templates::STARTER_GITIGNORE)?;
+
+    println!("✓ App created successfully!");
+    println!();
+    println!("  cd {}", name);
+    println!("  topo dev");
+
+    Ok(())
+}
+
+fn create_with_auth_app(name: &str) -> Result<()> {
+    println!("Creating new topo app: {} (template: with-auth)", name);
+
+    // Create directory structure
+    fs::create_dir_all(format!("{}/pages", name))?;
+    fs::create_dir_all(format!("{}/components", name))?;
+    fs::create_dir_all(format!("{}/stores", name))?;
+
+    // Write files with project name substitution
+    let config = templates::WITH_AUTH_CONFIG.replace("{{PROJECT_NAME}}", name);
+    fs::write(format!("{}/topo.config.json", name), config)?;
+    fs::write(format!("{}/pages/index.tp", name), templates::WITH_AUTH_INDEX)?;
+    fs::write(format!("{}/pages/login.tp", name), templates::WITH_AUTH_LOGIN)?;
+    fs::write(format!("{}/pages/dashboard.tp", name), templates::WITH_AUTH_DASHBOARD)?;
+    fs::write(format!("{}/stores/auth.tp", name), templates::WITH_AUTH_AUTH_STORE)?;
+    fs::write(format!("{}/.gitignore", name), templates::WITH_AUTH_GITIGNORE)?;
+
+    println!("✓ App created successfully!");
+    println!();
+    println!("  cd {}", name);
+    println!("  topo dev");
+    println!();
+    println!("Demo credentials:");
+    println!("  Email: demo@example.com");
+    println!("  Password: password");
 
     Ok(())
 }

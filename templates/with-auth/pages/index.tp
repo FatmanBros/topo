@@ -1,0 +1,17 @@
+// Home page - redirects to login or dashboard based on auth state
+import { AuthStore } from "../stores/auth.tp"
+
+Page -> {
+    init: AuthStore.CheckAuth
+    children: AuthStore.isAuthenticated
+        ? DashboardRedirect
+        : LoginRedirect
+}
+
+LoginRedirect -> {
+    navigate: "/login"
+}
+
+DashboardRedirect -> {
+    navigate: "/dashboard"
+}

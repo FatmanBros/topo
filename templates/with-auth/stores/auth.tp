@@ -1,0 +1,56 @@
+// Authentication Store
+
+AuthStore | {
+    State {
+        isAuthenticated: false
+        user: null
+        isLoading: true
+    }
+
+    Actions {
+        SetAuth(isAuthenticated, user)
+        SetLoading(value)
+    }
+
+    Commands {
+        CheckAuth
+        Login(credentials)
+        Logout
+    }
+
+    Reducers {
+        on SetAuth(isAuthenticated, user) {
+            isAuthenticated: isAuthenticated
+            user: user
+            isLoading: false
+        }
+        on SetLoading(value) {
+            isLoading: value
+        }
+    }
+
+    Effects {
+        on CheckAuth {
+            // Check localStorage for existing session
+            storedUser: localStorage.getItem("user")
+            if (storedUser) {
+                user: JSON.parse(storedUser)
+                dispatch: SetAuth(true, user)
+            } else {
+                dispatch: SetAuth(false, null)
+            }
+        }
+
+        on Login(credentials) {
+            user: { email: credentials.email }
+            localStorage.setItem("user", JSON.stringify(user))
+            dispatch: SetAuth(true, user)
+        }
+
+        on Logout {
+            localStorage.removeItem("user")
+            dispatch: SetAuth(false, null)
+            navigate: "/login"
+        }
+    }
+}

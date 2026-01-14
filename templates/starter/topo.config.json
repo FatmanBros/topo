@@ -1,0 +1,20 @@
+{
+  "$schema": "https://raw.githubusercontent.com/FatmanBros/topo/main/topo.schema.json",
+  "project": {
+    "name": "{{PROJECT_NAME}}",
+    "version": "0.1.0"
+  },
+  "build": {
+    "mode": "spa",
+    "output": "dist",
+    "minify": true
+  },
+  "dev": {
+    "port": 3000,
+    "open": true
+  },
+  "paths": {
+    "pages": "pages",
+    "components": "components"
+  }
+}

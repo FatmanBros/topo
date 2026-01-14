@@ -1,0 +1,144 @@
+// Login page
+import { AuthStore } from "../stores/auth.tp"
+
+// =============================================================================
+// Login Form Store
+// =============================================================================
+
+LoginForm | {
+    State {
+        @key("email")
+        @required
+        @email
+        email: ""
+
+        @key("password")
+        @required
+        @minLength(6)
+        password: ""
+
+        error: ""
+        isLoading: false
+    }
+
+    Actions {
+        SetError(message)
+        SetLoading(value)
+    }
+
+    Commands {
+        Submit
+    }
+
+    Reducers {
+        on SetError(message) { error: message }
+        on SetLoading(value) { isLoading: value }
+    }
+
+    Effects {
+        on Submit {
+            dispatch: SetLoading(true)
+            dispatch: SetError("")
+            try {
+                // Simulate API call
+                await delay(1000)
+                if ($email == "demo@example.com" && $password == "password") {
+                    dispatch: AuthStore.Login({ email: $email })
+                    navigate: "/dashboard"
+                } else {
+                    dispatch: SetError("Invalid email or password")
+                }
+            } catch(e) {
+                dispatch: SetError(e.message)
+            }
+            dispatch: SetLoading(false)
+        }
+    }
+}
+
+// =============================================================================
+// Components
+// =============================================================================
+
+Page -> {
+    style: "min-h-screen flex items-center justify-center bg-gray-100"
+    children: LoginCard
+}
+
+LoginCard -> {
+    style: "bg-white p-8 rounded-xl shadow-lg w-full max-w-md"
+    children: [
+        Logo,
+        Title,
+        ErrorMessage,
+        Form,
+        DemoCredentials
+    ]
+}
+
+Logo -> {
+    style: "flex justify-center mb-6"
+    children: LogoIcon
+}
+
+LogoIcon -> {
+    type: text
+    content: "Topo"
+    style: "text-3xl font-bold text-blue-600"
+}
+
+Title -> {
+    type: text
+    content: "Sign in to your account"
+    style: "text-xl font-semibold text-gray-900 text-center mb-6"
+}
+
+ErrorMessage -> LoginForm.error
+    ? ErrorText({ message: LoginForm.error })
+    : null
+
+ErrorText(props) -> {
+    type: text
+    content: props.message
+    style: "text-red-500 text-sm text-center mb-4 p-3 bg-red-50 rounded-lg"
+}
+
+Form -> {
+    type: form
+    onSubmit: LoginForm.Submit
+    style: "space-y-4"
+    children: [
+        ...LoginForm.Fields,
+        SubmitButton
+    ]
+}
+
+SubmitButton -> {
+    type: button
+    content: LoginForm.isLoading ? "Signing in..." : "Sign in"
+    disabled: LoginForm.isLoading
+    style: "w-full py-3 px-4 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+}
+
+DemoCredentials -> {
+    style: "mt-6 p-4 bg-gray-50 rounded-lg"
+    children: [DemoTitle, DemoEmail, DemoPassword]
+}
+
+DemoTitle -> {
+    type: text
+    content: "Demo credentials:"
+    style: "text-sm font-medium text-gray-700 mb-2"
+}
+
+DemoEmail -> {
+    type: text
+    content: "Email: demo@example.com"
+    style: "text-sm text-gray-600"
+}
+
+DemoPassword -> {
+    type: text
+    content: "Password: password"
+    style: "text-sm text-gray-600"
+}
