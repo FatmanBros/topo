@@ -8,7 +8,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   use: {
-    baseURL: 'http://localhost:3000',
+    baseURL: 'http://localhost:3333',
     trace: 'on-first-retry',
   },
   projects: [
@@ -18,9 +18,9 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'topo start --port 3000 --no-open',
-    url: 'http://localhost:3000',
-    reuseExistingServer: !process.env.CI,
+    command: 'topo start --port 3333 --no-open',
+    url: 'http://localhost:3333',
+    reuseExistingServer: false,
     timeout: 120 * 1000,
   },
 });

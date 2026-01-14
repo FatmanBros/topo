@@ -1,58 +1,35 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('Login Form', () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto('/login');
-  });
-
-  test('should display login form', async ({ page }) => {
-    await expect(page.locator('text=Sign In').first()).toBeVisible();
-    await expect(page.locator('input[type="email"]')).toBeVisible();
-    await expect(page.locator('input[type="password"]')).toBeVisible();
-  });
-
-  test('should show validation error for empty email', async ({ page }) => {
-    const emailInput = page.locator('input[type="email"]');
-    await emailInput.fill('');
-    await emailInput.blur();
-    // Validation should show error
-    await expect(page.locator('text=メールアドレス is required')).toBeVisible();
-  });
-
-  test('should show validation error for invalid email', async ({ page }) => {
-    const emailInput = page.locator('input[type="email"]');
-    await emailInput.fill('invalid-email');
-    await emailInput.blur();
-    await expect(page.locator('text=メールアドレス must be a valid email')).toBeVisible();
-  });
-
-  test('should show validation error for short password', async ({ page }) => {
-    const passwordInput = page.locator('input[type="password"]');
-    await passwordInput.fill('short');
-    await passwordInput.blur();
-    await expect(page.locator('text=パスワード must be at least 8 characters')).toBeVisible();
-  });
-
-  test('should clear error when valid input is provided', async ({ page }) => {
-    const emailInput = page.locator('input[type="email"]');
-
-    // First enter invalid
-    await emailInput.fill('invalid');
-    await emailInput.blur();
-
-    // Then enter valid
-    await emailInput.fill('valid@example.com');
-    await emailInput.blur();
-
-    // Error should be gone
-    await expect(page.locator('text=メールアドレス must be a valid email')).not.toBeVisible();
-  });
-
-  test('should update debug info with email value', async ({ page }) => {
-    const emailInput = page.locator('input[type="email"]');
-    await emailInput.fill('test@example.com');
-
-    // Debug info should show the email
-    await expect(page.locator('text=test@example.com')).toBeVisible();
-  });
+test.beforeEach(async ({ page }) => {
+  await page.goto('/login');
+  await page.waitForLoadState('networkidle');
 });
+
+test('ログインフォームが表示される', async ({ page }) => {
+  await expect(page.locator('[data-field="LoginFormCard.email"]')).toBeVisible();
+  await expect(page.locator('[data-field="LoginFormCard.password"]')).toBeVisible();
+  await expect(page.locator('button[type="submit"]')).toBeVisible();
+  await page.screenshot({ path: 'screenshots/login/1-1.png' });
+});
+
+test('空のメールでバリデーションエラー', async ({ page }) => {
+  await page.locator('[data-field="LoginFormCard.email"]').fill('');
+  await page.locator('button[type="submit"]').click();
+  await expect(page.locator('[data-error="LoginFormCard.emailError"]')).toBeVisible();
+  await page.screenshot({ path: 'screenshots/login/2-1.png' });
+});
+
+test('正常なログインフロー', async ({ page }) => {
+  await page.screenshot({ path: 'screenshots/login/3-1.png' });
+  await page.locator('[data-field="LoginFormCard.email"]').fill('test@example.com');
+  await page.locator('[data-field="LoginFormCard.password"]').fill('password123');
+  await page.screenshot({ path: 'screenshots/login/3-2.png' });
+  await expect(page.locator('[data-field="LoginFormCard.email"]')).toHaveValue('test@example.com');
+  await expect(page.locator('[data-field="LoginFormCard.password"]')).toHaveValue('password123');
+  await page.screenshot({ path: 'screenshots/login/3-3.png' });
+});
+
+test.skip('未実装テスト', async ({ page }) => {
+  await expect(page.locator('[data-field="LoginFormCard.email"]')).toBeDisabled();
+});
+

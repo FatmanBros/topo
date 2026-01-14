@@ -208,8 +208,15 @@ fn main() -> Result<()> {
             // Build first
             build_project(&input, &output, &mode, target)?;
 
+            // Get base_path from config
+            let base_path = config
+                .build
+                .as_ref()
+                .and_then(|b| b.base_path.clone())
+                .unwrap_or_default();
+
             // Then start server
-            start_server(port, &output, !no_open && dev_config.open)?;
+            start_server(port, &output, !no_open && dev_config.open, &base_path)?;
         }
         Commands::Dev { port } => {
             let config = Config::load_or_default();
@@ -2012,7 +2019,7 @@ fn generate_html_dev(config: &Config, ws_port: u16) -> String {
     )
 }
 
-fn start_server(port: u16, output_dir: &PathBuf, open_browser: bool) -> Result<()> {
+fn start_server(port: u16, output_dir: &PathBuf, open_browser: bool, base_path: &str) -> Result<()> {
     let addr = format!("0.0.0.0:{}", port);
     let server = Server::http(&addr).map_err(|e| {
         let err_str = e.to_string();
@@ -2047,7 +2054,21 @@ fn start_server(port: u16, output_dir: &PathBuf, open_browser: bool) -> Result<(
 
     // Serve files
     for request in server.incoming_requests() {
-        let url_path = request.url().trim_start_matches('/');
+        let raw_url_path = request.url().trim_start_matches('/');
+
+        // Strip base_path prefix if present
+        let url_path = if !base_path.is_empty() {
+            let bp = base_path.trim_start_matches('/');
+            if raw_url_path.starts_with(bp) {
+                raw_url_path.strip_prefix(bp)
+                    .unwrap_or(raw_url_path)
+                    .trim_start_matches('/')
+            } else {
+                raw_url_path
+            }
+        } else {
+            raw_url_path
+        };
 
         // Safely resolve the file path to prevent path traversal attacks
         let file_path = if url_path.is_empty() || url_path == "/" {
@@ -2541,20 +2562,24 @@ fn generate_playwright_test(ast: &Program, test_file_name: &str) -> Result<Strin
             match stmt {
                 TestStatement::Goto { path } => {
                     output.push_str(&format!("  await page.goto('{}');\n", path));
+                    output.push_str("  await page.waitForLoadState('networkidle');\n");
                 }
                 TestStatement::Click { target } => {
                     let selector = target_to_selector(target);
-                    output.push_str(&format!("  await page.locator('{}').click();\n", selector));
+                    let locator = locator_with_first(&selector);
+                    output.push_str(&format!("  await {}.click();\n", locator));
                 }
                 TestStatement::Fill { target, value } => {
                     let selector = target_to_selector(target);
+                    let locator = locator_with_first(&selector);
                     let val = expression_to_string(value);
-                    output.push_str(&format!("  await page.locator('{}').fill({});\n", selector, val));
+                    output.push_str(&format!("  await {}.fill({});\n", locator, val));
                 }
                 TestStatement::Type { target, value } => {
                     let selector = target_to_selector(target);
+                    let locator = locator_with_first(&selector);
                     let val = expression_to_string(value);
-                    output.push_str(&format!("  await page.locator('{}').type({});\n", selector, val));
+                    output.push_str(&format!("  await {}.type({});\n", locator, val));
                 }
                 TestStatement::Expect { target, assertion } => {
                     match target {
@@ -2576,30 +2601,31 @@ fn generate_playwright_test(ast: &Program, test_file_name: &str) -> Result<Strin
                         }
                         _ => {
                             let selector = target_to_selector(target);
+                            let locator = locator_with_first(&selector);
                             match assertion {
                                 TestAssertion::Visible => {
-                                    output.push_str(&format!("  await expect(page.locator('{}')).toBeVisible();\n", selector));
+                                    output.push_str(&format!("  await expect({}).toBeVisible();\n", locator));
                                 }
                                 TestAssertion::Hidden => {
-                                    output.push_str(&format!("  await expect(page.locator('{}')).toBeHidden();\n", selector));
+                                    output.push_str(&format!("  await expect({}).toBeHidden();\n", locator));
                                 }
                                 TestAssertion::Disabled => {
-                                    output.push_str(&format!("  await expect(page.locator('{}')).toBeDisabled();\n", selector));
+                                    output.push_str(&format!("  await expect({}).toBeDisabled();\n", locator));
                                 }
                                 TestAssertion::Empty => {
-                                    output.push_str(&format!("  await expect(page.locator('{}')).toBeEmpty();\n", selector));
+                                    output.push_str(&format!("  await expect({}).toBeEmpty();\n", locator));
                                 }
                                 TestAssertion::HasText { value } => {
-                                    output.push_str(&format!("  await expect(page.locator('{}')).toHaveText('{}');\n", selector, value));
+                                    output.push_str(&format!("  await expect({}).toHaveText('{}');\n", locator, value));
                                 }
                                 TestAssertion::Value { value } => {
-                                    output.push_str(&format!("  await expect(page.locator('{}')).toHaveValue('{}');\n", selector, value));
+                                    output.push_str(&format!("  await expect({}).toHaveValue('{}');\n", locator, value));
                                 }
                                 TestAssertion::Equals { value } => {
-                                    output.push_str(&format!("  await expect(page.locator('{}')).toHaveText('{}');\n", selector, value));
+                                    output.push_str(&format!("  await expect({}).toHaveText('{}');\n", locator, value));
                                 }
                                 TestAssertion::Contains { value } => {
-                                    output.push_str(&format!("  await expect(page.locator('{}')).toContainText('{}');\n", selector, value));
+                                    output.push_str(&format!("  await expect({}).toContainText('{}');\n", locator, value));
                                 }
                             }
                         }
@@ -2719,6 +2745,15 @@ fn target_to_selector(target: &topo::ast::TestTarget) -> String {
     }
 }
 
+// Generate locator with .first() for text selectors to avoid strict mode violations
+fn locator_with_first(selector: &str) -> String {
+    if selector.starts_with("text=") {
+        format!("page.locator('{}').first()", selector)
+    } else {
+        format!("page.locator('{}')", selector)
+    }
+}
+
 fn expression_to_string(expr: &topo::ast::Expression) -> String {
     use topo::ast::Expression;
 
@@ -2764,6 +2799,24 @@ fn create_test_setup() -> Result<()> {
 
     // Create playwright.config.ts
     let playwright_config = r#"import { defineConfig, devices } from '@playwright/test';
+import { readFileSync, existsSync } from 'fs';
+
+// Read basePath from topo.config.json
+function getBasePath(): string {
+  const configPath = './topo.config.json';
+  if (existsSync(configPath)) {
+    try {
+      const config = JSON.parse(readFileSync(configPath, 'utf-8'));
+      return config.build?.basePath || '';
+    } catch {
+      return '';
+    }
+  }
+  return '';
+}
+
+const basePath = getBasePath();
+const port = 3333;
 
 export default defineConfig({
   testDir: './tests',
@@ -2773,7 +2826,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   use: {
-    baseURL: 'http://localhost:3000',
+    baseURL: `http://localhost:${port}`,
     trace: 'on-first-retry',
   },
   projects: [
@@ -2783,9 +2836,9 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'topo start --port 3000 --no-open',
-    url: 'http://localhost:3000',
-    reuseExistingServer: !process.env.CI,
+    command: `topo start --port ${port} --no-open`,
+    url: `http://localhost:${port}${basePath || '/'}`,
+    reuseExistingServer: false,
     timeout: 120 * 1000,
   },
 });

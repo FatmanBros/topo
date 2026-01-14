@@ -1,4 +1,22 @@
 import { defineConfig, devices } from '@playwright/test';
+import { readFileSync, existsSync } from 'fs';
+
+// Read basePath from topo.config.json
+function getBasePath(): string {
+  const configPath = './topo.config.json';
+  if (existsSync(configPath)) {
+    try {
+      const config = JSON.parse(readFileSync(configPath, 'utf-8'));
+      return config.build?.basePath || '';
+    } catch {
+      return '';
+    }
+  }
+  return '';
+}
+
+const basePath = getBasePath();
+const port = 3333;
 
 export default defineConfig({
   testDir: './tests',
@@ -8,7 +26,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   use: {
-    baseURL: 'http://localhost:3000',
+    baseURL: `http://localhost:${port}`,
     trace: 'on-first-retry',
   },
   projects: [
@@ -18,9 +36,9 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'topo start --port 3000 --no-open',
-    url: 'http://localhost:3000',
-    reuseExistingServer: !process.env.CI,
+    command: `topo start --port ${port} --no-open`,
+    url: `http://localhost:${port}${basePath || '/'}`,
+    reuseExistingServer: false,
     timeout: 120 * 1000,
   },
 });

@@ -9,7 +9,7 @@ import { Avatar } from "@packages/components/atoms/avatar.tp"
 // Organisms
 import { DataTable } from "@packages/components/organisms/data-table.tp"
 import { Navbar, TransparentNavbar } from "@packages/components/organisms/navbar.tp"
-import { CardList, GridCardList } from "@packages/components/organisms/card-list.tp"
+import { CardList, ThreeColumnCardList } from "@packages/components/organisms/card-list.tp"
 import { CommentSection } from "@packages/components/organisms/comment-section.tp"
 import { NotificationCenter } from "@packages/components/organisms/notification-center.tp"
 import { UserMenu } from "@packages/components/organisms/user-menu.tp"
@@ -99,8 +99,8 @@ NavbarExample -> {
 }
 
 NavbarDemo -> Navbar({
-    logo: NavbarLogoText({}),
-    items: [
+    brand: { text: "Brand" },
+    links: [
         { label: "Home", href: "/", active: true },
         { label: "Products", href: "/products" },
         { label: "About", href: "/about" },
@@ -108,12 +108,6 @@ NavbarDemo -> Navbar({
     ],
     actions: [NavbarActionButton({})]
 })
-
-NavbarLogoText(props) -> {
-    type: text
-    content: "Brand"
-    style: "text-xl font-bold text-indigo-600"
-}
 
 NavbarActionButton(props) -> PrimaryButton({ children: "Sign Up", size: "sm" })
 
@@ -136,7 +130,7 @@ CardListExample -> {
     children: [CardListDemo]
 }
 
-CardListDemo -> GridCardList({
+CardListDemo -> ThreeColumnCardList({
     items: [
         {
             title: "Project Alpha",

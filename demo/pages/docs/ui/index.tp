@@ -1,0 +1,360 @@
+// UI Components - Overview page with all component categories
+import { DocsTemplate } from "../template.tp"
+import { DocsSection, DocsDescription } from "@/components/molecules/docs-section.tp"
+import { Text } from "@packages/components/atoms/text.tp"
+import { Heading } from "@packages/components/atoms/heading.tp"
+import { Link } from "@packages/components/atoms/link.tp"
+import { Badge, PrimaryBadge, SuccessBadge, InfoBadge } from "@packages/components/atoms/badge.tp"
+import { Card } from "@packages/components/atoms/card.tp"
+
+Page -> DocsTemplate({ children: [UIOverviewContent] })
+
+UIOverviewContent -> {
+    align: vertical
+    style: "space-y-12"
+    children: [
+        PageHeader,
+        ComponentCategoriesSection,
+        QuickReferenceSection
+    ]
+}
+
+PageHeader -> DocsSection({
+    id: "ui-components",
+    title: "UI Components",
+    children: [HeaderDesc]
+})
+
+HeaderDesc -> DocsDescription({
+    text: "A comprehensive collection of reusable UI components built with Atomic Design principles. Components are organized into Atoms, Molecules, and Organisms for maximum reusability and consistency."
+})
+
+// =============================================================================
+// Component Categories Section
+// =============================================================================
+
+ComponentCategoriesSection -> {
+    align: vertical
+    style: "space-y-6"
+    children: [
+        SectionHeading({ text: "Component Categories" }),
+        CategoryCardsGrid
+    ]
+}
+
+CategoryCardsGrid -> {
+    style: "grid grid-cols-1 md:grid-cols-3 gap-6"
+    children: [
+        AtomsCard,
+        MoleculesCard,
+        OrganismsCard
+    ]
+}
+
+AtomsCard -> {
+    style: "bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-6 border border-blue-200 hover:shadow-lg transition-shadow"
+    children: [
+        AtomsCardHeader,
+        AtomsCardDesc,
+        AtomsCardComponents,
+        AtomsCardLink
+    ]
+}
+
+AtomsCardHeader -> {
+    style: "flex items-center gap-3 mb-3"
+    children: [
+        AtomsIcon({}),
+        Heading({ level: 3, text: "Atoms", style: "text-lg font-semibold text-blue-900" })
+    ]
+}
+
+AtomsIcon(props) -> {
+    type: text
+    content: "⚛️"
+    style: "text-2xl"
+}
+
+AtomsCardDesc -> Text({
+    text: "The smallest UI building blocks: buttons, inputs, badges, and more.",
+    style: "text-blue-700 mb-4"
+})
+
+AtomsCardComponents -> {
+    style: "flex flex-wrap gap-2 mb-4"
+    children: [
+        ComponentBadge({ name: "Button" }),
+        ComponentBadge({ name: "Input" }),
+        ComponentBadge({ name: "Badge" }),
+        ComponentBadge({ name: "Avatar" }),
+        ComponentBadge({ name: "+16 more" })
+    ]
+}
+
+AtomsCardLink -> Link({
+    href: "/docs/ui/atoms",
+    children: AtomsLinkText({})
+})
+
+AtomsLinkText(props) -> {
+    type: text
+    content: "View all Atoms →"
+    style: "text-blue-600 font-medium hover:text-blue-800"
+}
+
+MoleculesCard -> {
+    style: "bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-6 border border-purple-200 hover:shadow-lg transition-shadow"
+    children: [
+        MoleculesCardHeader,
+        MoleculesCardDesc,
+        MoleculesCardComponents,
+        MoleculesCardLink
+    ]
+}
+
+MoleculesCardHeader -> {
+    style: "flex items-center gap-3 mb-3"
+    children: [
+        MoleculesIcon({}),
+        Heading({ level: 3, text: "Molecules", style: "text-lg font-semibold text-purple-900" })
+    ]
+}
+
+MoleculesIcon(props) -> {
+    type: text
+    content: "🧬"
+    style: "text-2xl"
+}
+
+MoleculesCardDesc -> Text({
+    text: "Combinations of atoms forming functional UI patterns.",
+    style: "text-purple-700 mb-4"
+})
+
+MoleculesCardComponents -> {
+    style: "flex flex-wrap gap-2 mb-4"
+    children: [
+        MoleculeBadge({ name: "Alert" }),
+        MoleculeBadge({ name: "Tabs" }),
+        MoleculeBadge({ name: "Modal" }),
+        MoleculeBadge({ name: "Dropdown" }),
+        MoleculeBadge({ name: "+10 more" })
+    ]
+}
+
+MoleculesCardLink -> Link({
+    href: "/docs/ui/molecules",
+    children: MoleculesLinkText({})
+})
+
+MoleculesLinkText(props) -> {
+    type: text
+    content: "View all Molecules →"
+    style: "text-purple-600 font-medium hover:text-purple-800"
+}
+
+OrganismsCard -> {
+    style: "bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-6 border border-green-200 hover:shadow-lg transition-shadow"
+    children: [
+        OrganismsCardHeader,
+        OrganismsCardDesc,
+        OrganismsCardComponents,
+        OrganismsCardLink
+    ]
+}
+
+OrganismsCardHeader -> {
+    style: "flex items-center gap-3 mb-3"
+    children: [
+        OrganismsIcon({}),
+        Heading({ level: 3, text: "Organisms", style: "text-lg font-semibold text-green-900" })
+    ]
+}
+
+OrganismsIcon(props) -> {
+    type: text
+    content: "🏗️"
+    style: "text-2xl"
+}
+
+OrganismsCardDesc -> Text({
+    text: "Complex components that form distinct sections of an interface.",
+    style: "text-green-700 mb-4"
+})
+
+OrganismsCardComponents -> {
+    style: "flex flex-wrap gap-2 mb-4"
+    children: [
+        OrganismBadge({ name: "DataTable" }),
+        OrganismBadge({ name: "Navbar" }),
+        OrganismBadge({ name: "Timeline" }),
+        OrganismBadge({ name: "FilterPanel" }),
+        OrganismBadge({ name: "+4 more" })
+    ]
+}
+
+OrganismsCardLink -> Link({
+    href: "/docs/ui/organisms",
+    children: OrganismsLinkText({})
+})
+
+OrganismsLinkText(props) -> {
+    type: text
+    content: "View all Organisms →"
+    style: "text-green-600 font-medium hover:text-green-800"
+}
+
+// =============================================================================
+// Quick Reference Section
+// =============================================================================
+
+QuickReferenceSection -> {
+    align: vertical
+    style: "space-y-6"
+    children: [
+        SectionHeading({ text: "Quick Reference" }),
+        QuickReferenceGrid
+    ]
+}
+
+QuickReferenceGrid -> {
+    style: "bg-gray-50 rounded-xl p-6"
+    children: [
+        QuickRefTable
+    ]
+}
+
+QuickRefTable -> {
+    style: "w-full"
+    children: [
+        QuickRefHeader,
+        QuickRefAtoms,
+        QuickRefMolecules,
+        QuickRefOrganisms
+    ]
+}
+
+QuickRefHeader -> {
+    style: "grid grid-cols-3 gap-4 pb-4 border-b border-gray-200 mb-4"
+    children: [
+        QuickRefHeaderCell({ text: "Atoms (20)" }),
+        QuickRefHeaderCell({ text: "Molecules (14)" }),
+        QuickRefHeaderCell({ text: "Organisms (8)" })
+    ]
+}
+
+QuickRefHeaderCell(props) -> Text({
+    text: props.text,
+    style: "font-semibold text-gray-900"
+})
+
+QuickRefAtoms -> {
+    style: "grid grid-cols-3 gap-4"
+    children: [
+        AtomsList,
+        MoleculesList,
+        OrganismsList
+    ]
+}
+
+AtomsList -> {
+    align: vertical
+    style: "space-y-1"
+    children: [
+        ComponentItem({ name: "Avatar" }),
+        ComponentItem({ name: "Badge" }),
+        ComponentItem({ name: "Button" }),
+        ComponentItem({ name: "Card" }),
+        ComponentItem({ name: "Checkbox" }),
+        ComponentItem({ name: "Divider" }),
+        ComponentItem({ name: "Heading" }),
+        ComponentItem({ name: "Icon" }),
+        ComponentItem({ name: "Image" }),
+        ComponentItem({ name: "Input" }),
+        ComponentItem({ name: "Label" }),
+        ComponentItem({ name: "Link" }),
+        ComponentItem({ name: "Radio" }),
+        ComponentItem({ name: "Select" }),
+        ComponentItem({ name: "Skeleton" }),
+        ComponentItem({ name: "Spinner" }),
+        ComponentItem({ name: "Switch" }),
+        ComponentItem({ name: "Text" }),
+        ComponentItem({ name: "Textarea" }),
+        ComponentItem({ name: "Tooltip" })
+    ]
+}
+
+MoleculesList -> {
+    align: vertical
+    style: "space-y-1"
+    children: [
+        ComponentItem({ name: "Alert" }),
+        ComponentItem({ name: "AvatarGroup" }),
+        ComponentItem({ name: "Breadcrumb" }),
+        ComponentItem({ name: "Dropdown" }),
+        ComponentItem({ name: "EmptyState" }),
+        ComponentItem({ name: "FileUpload" }),
+        ComponentItem({ name: "FormField" }),
+        ComponentItem({ name: "Modal" }),
+        ComponentItem({ name: "Pagination" }),
+        ComponentItem({ name: "ProgressBar" }),
+        ComponentItem({ name: "Rating" }),
+        ComponentItem({ name: "SearchInput" }),
+        ComponentItem({ name: "Stepper" }),
+        ComponentItem({ name: "Tabs" })
+    ]
+}
+
+OrganismsList -> {
+    align: vertical
+    style: "space-y-1"
+    children: [
+        ComponentItem({ name: "CardList" }),
+        ComponentItem({ name: "CommentSection" }),
+        ComponentItem({ name: "DataTable" }),
+        ComponentItem({ name: "FilterPanel" }),
+        ComponentItem({ name: "Navbar" }),
+        ComponentItem({ name: "NotificationCenter" }),
+        ComponentItem({ name: "Timeline" }),
+        ComponentItem({ name: "UserMenu" })
+    ]
+}
+
+QuickRefMolecules -> {
+    style: "hidden"
+    children: []
+}
+
+QuickRefOrganisms -> {
+    style: "hidden"
+    children: []
+}
+
+// =============================================================================
+// Shared Components
+// =============================================================================
+
+SectionHeading(props) -> Heading({ level: 2, text: props.text, style: "text-xl font-semibold text-gray-900" })
+
+ComponentBadge(props) -> {
+    type: text
+    content: props.name
+    style: "px-2 py-1 bg-blue-200 text-blue-800 rounded text-xs font-medium"
+}
+
+MoleculeBadge(props) -> {
+    type: text
+    content: props.name
+    style: "px-2 py-1 bg-purple-200 text-purple-800 rounded text-xs font-medium"
+}
+
+OrganismBadge(props) -> {
+    type: text
+    content: props.name
+    style: "px-2 py-1 bg-green-200 text-green-800 rounded text-xs font-medium"
+}
+
+ComponentItem(props) -> Text({
+    text: props.name,
+    style: "text-sm text-gray-600 hover:text-gray-900"
+})

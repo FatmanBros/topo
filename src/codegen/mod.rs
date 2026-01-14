@@ -2892,24 +2892,28 @@ impl JsCodegen {
             }
             Expression::MemberAccess { object, property } => {
                 // In event handler context, treat Store.Action as ActionRef
+                // Only apply to simple Store.Action patterns (not nested member accesses like ColorStyles.neutral.borderLight)
                 if self.is_event_handler() {
                     if let Expression::Identifier { name: store } = object.as_ref() {
-                        // For input handlers, use dispatchField for efficient updates
-                        if self.is_input_event_handler() {
-                            // Extract field name from action (e.g., SetEmail -> email)
-                            let field_name = if property.starts_with("Set") && property.len() > 3 {
-                                let name = &property[3..];
-                                let mut chars = name.chars();
-                                match chars.next() {
-                                    Some(c) => format!("{}{}", c.to_lowercase(), chars.collect::<String>()),
-                                    None => name.to_string(),
-                                }
+                        // Check if this is a known store - don't wrap arbitrary identifiers
+                        if self.store_state_fields.contains_key(store) || self.stores_with_components.contains(store) {
+                            // For input handlers, use dispatchField for efficient updates
+                            if self.is_input_event_handler() {
+                                // Extract field name from action (e.g., SetEmail -> email)
+                                let field_name = if property.starts_with("Set") && property.len() > 3 {
+                                    let name = &property[3..];
+                                    let mut chars = name.chars();
+                                    match chars.next() {
+                                        Some(c) => format!("{}{}", c.to_lowercase(), chars.collect::<String>()),
+                                        None => name.to_string(),
+                                    }
+                                } else {
+                                    property.clone()
+                                };
+                                return format!("(value) => dispatchField('{}', '{}', value, '{}')", store, property, field_name);
                             } else {
-                                property.clone()
-                            };
-                            return format!("(value) => dispatchField('{}', '{}', value, '{}')", store, property, field_name);
-                        } else {
-                            return format!("() => dispatch('{}', '{}')", store, property);
+                                return format!("() => dispatch('{}', '{}')", store, property);
+                            }
                         }
                     }
                 }
