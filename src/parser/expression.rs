@@ -209,27 +209,36 @@ impl Parser {
     fn unary(&mut self) -> Result<Expression, ParseError> {
         if self.check(TokenKind::Bang) {
             self.advance();
-            let operand = self.unary()?;
+            // Check recursion for chained unary operators (!!!!!x)
+            self.enter_recursion()?;
+            let operand = self.unary();
+            self.exit_recursion();
             return Ok(Expression::UnaryOp {
                 op: UnaryOperator::Not,
-                operand: Box::new(operand),
+                operand: Box::new(operand?),
             });
         }
 
         if self.check(TokenKind::Minus) {
             self.advance();
-            let operand = self.unary()?;
+            // Check recursion for chained unary operators (-----x)
+            self.enter_recursion()?;
+            let operand = self.unary();
+            self.exit_recursion();
             return Ok(Expression::UnaryOp {
                 op: UnaryOperator::Neg,
-                operand: Box::new(operand),
+                operand: Box::new(operand?),
             });
         }
 
         if self.check(TokenKind::Await) {
             self.advance();
-            let expr = self.unary()?;
+            // Check recursion for chained await
+            self.enter_recursion()?;
+            let expr = self.unary();
+            self.exit_recursion();
             return Ok(Expression::Await {
-                expr: Box::new(expr),
+                expr: Box::new(expr?),
             });
         }
 
@@ -387,6 +396,9 @@ impl Parser {
                 self.sql_template()
             }
             TokenKind::LBracket => {
+                // Array literal - check recursion for nested arrays
+                // Check BEFORE advancing to avoid stack buildup
+                self.enter_recursion()?;
                 self.advance();
                 let mut elements = Vec::new();
                 while !self.check(TokenKind::RBracket) && !self.is_at_end() {
@@ -403,9 +415,13 @@ impl Parser {
                     }
                 }
                 self.expect(TokenKind::RBracket)?;
+                self.exit_recursion();
                 Ok(Expression::Array { elements })
             }
             TokenKind::LBrace => {
+                // Object literal - check recursion for nested objects
+                // Check BEFORE advancing to avoid stack buildup
+                self.enter_recursion()?;
                 self.advance();
                 let mut members = Vec::new();
                 while !self.check(TokenKind::RBrace) && !self.is_at_end() {
@@ -423,12 +439,17 @@ impl Parser {
                     }
                 }
                 self.expect(TokenKind::RBrace)?;
+                self.exit_recursion();
                 Ok(Expression::Object { members })
             }
             TokenKind::LParen => {
+                // Parenthesized expression - check recursion
+                // Check BEFORE advancing to avoid stack buildup
+                self.enter_recursion()?;
                 self.advance();
                 let expr = self.expression()?;
                 self.expect(TokenKind::RParen)?;
+                self.exit_recursion();
                 Ok(expr)
             }
             TokenKind::Dot => {
