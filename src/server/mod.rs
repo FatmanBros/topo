@@ -193,8 +193,10 @@ pub fn start_dev_server(port: u16, config: &Config) -> Result<()> {
 
     build::build_project_dev(&input, &output, &mode, port, config)?;
 
-    let ws_clients: Arc<Mutex<Vec<std::net::TcpStream>>> = Arc::new(Mutex::new(Vec::new()));
-    let ws_clients_clone = Arc::clone(&ws_clients);
+    // Use channels to communicate with WebSocket handlers
+    type ReloadSender = std::sync::mpsc::Sender<()>;
+    let reload_senders: Arc<Mutex<Vec<ReloadSender>>> = Arc::new(Mutex::new(Vec::new()));
+    let reload_senders_clone = Arc::clone(&reload_senders);
 
     let ws_port = port + 1;
     std::thread::spawn(move || {
@@ -207,22 +209,39 @@ pub fn start_dev_server(port: u16, config: &Config) -> Result<()> {
         };
 
         for stream in listener.incoming().flatten() {
-            let ws_clients = Arc::clone(&ws_clients_clone);
+            let reload_senders = Arc::clone(&reload_senders_clone);
             std::thread::spawn(move || {
-                let stream_clone = match stream.try_clone() {
-                    Ok(s) => s,
-                    Err(_) => return, // Skip if we can't clone the stream
-                };
-                if let Ok(mut websocket) = accept(stream_clone) {
-                    if let Ok(mut clients) = ws_clients.lock() {
-                        clients.push(stream);
+                if let Ok(mut websocket) = accept(stream) {
+                    // Create a channel for this client
+                    let (tx, rx) = std::sync::mpsc::channel::<()>();
+
+                    // Register the sender
+                    if let Ok(mut senders) = reload_senders.lock() {
+                        senders.push(tx);
                     }
+
+                    // Set non-blocking mode for WebSocket reads
+                    let _ = websocket.get_ref().set_nonblocking(true);
+
                     loop {
+                        // Check for reload signal (non-blocking)
+                        if rx.try_recv().is_ok() {
+                            if websocket.send(Message::Text("reload".into())).is_err() {
+                                break;
+                            }
+                        }
+
+                        // Check for WebSocket messages (non-blocking due to set_nonblocking)
                         match websocket.read() {
-                            Ok(Message::Close(_)) | Err(_) => break,
+                            Ok(Message::Close(_)) => break,
                             Ok(Message::Ping(data)) => {
                                 let _ = websocket.send(Message::Pong(data));
                             }
+                            Err(tungstenite::Error::Io(ref e)) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                                // No data available, sleep briefly to avoid busy loop
+                                std::thread::sleep(Duration::from_millis(50));
+                            }
+                            Err(_) => break,
                             _ => {}
                         }
                     }
@@ -231,7 +250,7 @@ pub fn start_dev_server(port: u16, config: &Config) -> Result<()> {
         }
     });
 
-    let ws_clients_for_watcher = Arc::clone(&ws_clients);
+    let reload_senders_for_watcher = Arc::clone(&reload_senders);
     let input_clone = input.clone();
     let output_clone = output.clone();
     let mode_clone = mode.clone();
@@ -270,17 +289,10 @@ pub fn start_dev_server(port: u16, config: &Config) -> Result<()> {
                     Ok(_) => {
                         println!("  ✓ Rebuild complete");
 
-                        if let Ok(mut clients) = ws_clients_for_watcher.lock() {
-                            clients.retain(|client| {
-                                let stream_clone = match client.try_clone() {
-                                    Ok(s) => s,
-                                    Err(_) => return false, // Remove client if we can't clone
-                                };
-                                if let Ok(mut ws) = accept(stream_clone) {
-                                    ws.send(Message::Text("reload".into())).is_ok()
-                                } else {
-                                    false
-                                }
+                        // Send reload signal to all connected clients
+                        if let Ok(mut senders) = reload_senders_for_watcher.lock() {
+                            senders.retain(|sender| {
+                                sender.send(()).is_ok()
                             });
                         }
                     }
