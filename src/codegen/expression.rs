@@ -142,25 +142,15 @@ impl JsCodegen {
             }
             Expression::ActionRef { store, action, args } => {
                 let args_str: Vec<String> = args.iter().map(|a| self.generate_expression(a)).collect();
-                if args_str.is_empty() {
-                    // For input handlers, use dispatchField for efficient updates
-                    if self.is_input_event_handler() {
-                        // Extract field name from action (e.g., SetEmail -> email)
-                        let field_name = if action.starts_with("Set") && action.len() > 3 {
-                            let name = &action[3..];
-                            // Convert to camelCase (first letter lowercase)
-                            let mut chars = name.chars();
-                            match chars.next() {
-                                Some(c) => format!("{}{}", c.to_lowercase(), chars.collect::<String>()),
-                                None => name.to_string(),
-                            }
-                        } else {
-                            action.clone()
-                        };
-                        format!("(value) => dispatchField('{}', '{}', value, '{}')", store, action, field_name)
+                // For input handlers, always pass value as first argument
+                if self.is_input_event_handler() {
+                    if args_str.is_empty() {
+                        format!("(value) => dispatch('{}', '{}', value)", store, action)
                     } else {
-                        format!("() => dispatch('{}', '{}')", store, action)
+                        format!("(value) => dispatch('{}', '{}', value, {})", store, action, args_str.join(", "))
                     }
+                } else if args_str.is_empty() {
+                    format!("() => dispatch('{}', '{}')", store, action)
                 } else {
                     format!(
                         "() => dispatch('{}', '{}', {})",
@@ -208,20 +198,9 @@ impl JsCodegen {
                     if let Expression::Identifier { name: store } = object.as_ref() {
                         // Check if this is a known store - don't wrap arbitrary identifiers
                         if self.store_state_fields.contains_key(store) || self.stores_with_components.contains(store) {
-                            // For input handlers, use dispatchField for efficient updates
+                            // For input handlers, always pass value as first argument
                             if self.is_input_event_handler() {
-                                // Extract field name from action (e.g., SetEmail -> email)
-                                let field_name = if property.starts_with("Set") && property.len() > 3 {
-                                    let name = &property[3..];
-                                    let mut chars = name.chars();
-                                    match chars.next() {
-                                        Some(c) => format!("{}{}", c.to_lowercase(), chars.collect::<String>()),
-                                        None => name.to_string(),
-                                    }
-                                } else {
-                                    property.clone()
-                                };
-                                return format!("(value) => dispatchField('{}', '{}', value, '{}')", store, property, field_name);
+                                return format!("(value) => dispatch('{}', '{}', value)", store, property);
                             } else {
                                 return format!("() => dispatch('{}', '{}')", store, property);
                             }
