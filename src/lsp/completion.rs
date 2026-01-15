@@ -1,8 +1,14 @@
+use once_cell::sync::Lazy;
+use regex::Regex;
 use serde_json::json;
 use tower_lsp::lsp_types::*;
 
 use crate::tailwind::TAILWIND_CLASSES;
 use crate::workspace::{ComponentInfo, WorkspaceManager};
+
+static IMPORT_RE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r#"import\s*\{\s*([^}]+)\s*\}"#).expect("Invalid import regex")
+});
 
 pub struct CompletionProvider {}
 
@@ -570,9 +576,8 @@ impl CompletionProvider {
 
     fn get_current_imports(&self, text: &str) -> Vec<String> {
         let mut imports = Vec::new();
-        let re = regex::Regex::new(r#"import\s*\{\s*([^}]+)\s*\}"#).unwrap();
 
-        for caps in re.captures_iter(text) {
+        for caps in IMPORT_RE.captures_iter(text) {
             for name in caps[1].split(',') {
                 imports.push(name.trim().to_string());
             }

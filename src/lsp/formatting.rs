@@ -1,4 +1,10 @@
+use once_cell::sync::Lazy;
+use regex::Regex;
 use tower_lsp::lsp_types::FormattingOptions;
+
+static MULTIPLE_NEWLINES_RE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\n{3,}").expect("Invalid newlines regex")
+});
 
 pub struct FormattingProvider {
     max_line_length: usize,
@@ -106,8 +112,7 @@ impl FormattingProvider {
         let body_part = parts[1].trim();
 
         // Format name and params
-        let formatted_name = if name_part.contains('(') {
-            let paren_start = name_part.find('(').unwrap();
+        let formatted_name = if let Some(paren_start) = name_part.find('(') {
             let name = &name_part[..paren_start];
             let params = &name_part[paren_start..];
             // Format params with consistent spacing
@@ -387,7 +392,6 @@ impl FormattingProvider {
 
     fn clean_empty_lines(&self, text: String) -> String {
         // Replace 3+ consecutive newlines with 2
-        let re = regex::Regex::new(r"\n{3,}").unwrap();
-        re.replace_all(&text, "\n\n").to_string()
+        MULTIPLE_NEWLINES_RE.replace_all(&text, "\n\n").to_string()
     }
 }

@@ -7,8 +7,20 @@ use std::net::TcpListener;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use tiny_http::{Response, Server};
+use tiny_http::{Header, Response, Server};
 use tungstenite::{accept, Message};
+
+/// Create Content-Type header safely (infallible for valid ASCII)
+fn content_type_header(content_type: &[u8]) -> Header {
+    Header::from_bytes(&b"Content-Type"[..], content_type)
+        .expect("Content-Type header with valid ASCII should never fail")
+}
+
+/// Create CORS header safely
+fn cors_header() -> Header {
+    Header::from_bytes(&b"Access-Control-Allow-Origin"[..], b"*")
+        .expect("CORS header with valid ASCII should never fail")
+}
 
 use topo::config::{Config, BuildMode};
 use crate::build;
@@ -72,9 +84,8 @@ pub fn start_server(port: u16, output_dir: &PathBuf, open_browser: bool, base_pa
                 match fs::read(&path) {
                     Ok(content) => {
                         let content_type = get_content_type(&path);
-                        Response::from_data(content).with_header(
-                            tiny_http::Header::from_bytes(&b"Content-Type"[..], content_type.as_bytes()).unwrap()
-                        )
+                        Response::from_data(content)
+                            .with_header(content_type_header(content_type.as_bytes()))
                     }
                     Err(_) => Response::from_string("500 Internal Server Error")
                         .with_status_code(500),
@@ -82,9 +93,8 @@ pub fn start_server(port: u16, output_dir: &PathBuf, open_browser: bool, base_pa
             }
             _ => {
                 match fs::read(output_dir.join("index.html")) {
-                    Ok(content) => Response::from_data(content).with_header(
-                        tiny_http::Header::from_bytes(&b"Content-Type"[..], b"text/html").unwrap()
-                    ),
+                    Ok(content) => Response::from_data(content)
+                        .with_header(content_type_header(b"text/html")),
                     Err(_) => Response::from_string("404 Not Found").with_status_code(404),
                 }
             }
@@ -199,7 +209,11 @@ pub fn start_dev_server(port: u16, config: &Config) -> Result<()> {
         for stream in listener.incoming().flatten() {
             let ws_clients = Arc::clone(&ws_clients_clone);
             std::thread::spawn(move || {
-                if let Ok(mut websocket) = accept(stream.try_clone().unwrap()) {
+                let stream_clone = match stream.try_clone() {
+                    Ok(s) => s,
+                    Err(_) => return, // Skip if we can't clone the stream
+                };
+                if let Ok(mut websocket) = accept(stream_clone) {
                     if let Ok(mut clients) = ws_clients.lock() {
                         clients.push(stream);
                     }
@@ -258,7 +272,11 @@ pub fn start_dev_server(port: u16, config: &Config) -> Result<()> {
 
                         if let Ok(mut clients) = ws_clients_for_watcher.lock() {
                             clients.retain(|client| {
-                                if let Ok(mut ws) = accept(client.try_clone().unwrap_or_else(|_| client.try_clone().unwrap())) {
+                                let stream_clone = match client.try_clone() {
+                                    Ok(s) => s,
+                                    Err(_) => return false, // Remove client if we can't clone
+                                };
+                                if let Ok(mut ws) = accept(stream_clone) {
                                     ws.send(Message::Text("reload".into())).is_ok()
                                 } else {
                                     false
@@ -324,9 +342,8 @@ pub fn start_dev_server(port: u16, config: &Config) -> Result<()> {
                     match fs::read(&path) {
                         Ok(content) => {
                             let content_type = get_content_type(&path);
-                            Response::from_data(content).with_header(
-                                tiny_http::Header::from_bytes(&b"Content-Type"[..], content_type.as_bytes()).unwrap()
-                            )
+                            Response::from_data(content)
+                                .with_header(content_type_header(content_type.as_bytes()))
                         }
                         Err(_) => Response::from_string("500 Internal Server Error")
                             .with_status_code(500),
@@ -334,9 +351,8 @@ pub fn start_dev_server(port: u16, config: &Config) -> Result<()> {
                 }
                 _ => {
                     match fs::read(output.join("index.html")) {
-                        Ok(content) => Response::from_data(content).with_header(
-                            tiny_http::Header::from_bytes(&b"Content-Type"[..], b"text/html").unwrap()
-                        ),
+                        Ok(content) => Response::from_data(content)
+                            .with_header(content_type_header(b"text/html")),
                         Err(_) => Response::from_string("404 Not Found").with_status_code(404),
                     }
                 }
@@ -355,9 +371,7 @@ fn serve_mock_api(url_path: &str, mocks_dir: &PathBuf) -> Response<std::io::Curs
     if api_path.contains("..") || api_path.contains('\0') {
         return Response::from_string(r#"{"error": "Invalid path"}"#)
             .with_status_code(400)
-            .with_header(
-                tiny_http::Header::from_bytes(&b"Content-Type"[..], b"application/json").unwrap()
-            );
+            .with_header(content_type_header(b"application/json"));
     }
 
     let mock_file = match safe_resolve_path(mocks_dir, &format!("{}.json", api_path)) {
@@ -365,9 +379,7 @@ fn serve_mock_api(url_path: &str, mocks_dir: &PathBuf) -> Response<std::io::Curs
         None => {
             return Response::from_string(r#"{"error": "Invalid path"}"#)
                 .with_status_code(400)
-                .with_header(
-                    tiny_http::Header::from_bytes(&b"Content-Type"[..], b"application/json").unwrap()
-                );
+                .with_header(content_type_header(b"application/json"));
         }
     };
 
@@ -375,24 +387,16 @@ fn serve_mock_api(url_path: &str, mocks_dir: &PathBuf) -> Response<std::io::Curs
         match fs::read(&mock_file) {
             Ok(content) => {
                 Response::from_data(content)
-                    .with_header(
-                        tiny_http::Header::from_bytes(&b"Content-Type"[..], b"application/json").unwrap()
-                    )
-                    .with_header(
-                        tiny_http::Header::from_bytes(&b"Access-Control-Allow-Origin"[..], b"*").unwrap()
-                    )
+                    .with_header(content_type_header(b"application/json"))
+                    .with_header(cors_header())
             }
             Err(_) => Response::from_string(r#"{"error": "Failed to read mock file"}"#)
                 .with_status_code(500)
-                .with_header(
-                    tiny_http::Header::from_bytes(&b"Content-Type"[..], b"application/json").unwrap()
-                ),
+                .with_header(content_type_header(b"application/json")),
         }
     } else {
         Response::from_string(format!(r#"{{"error": "Mock not found", "path": "{}"}}"#, mock_file.display()))
             .with_status_code(404)
-            .with_header(
-                tiny_http::Header::from_bytes(&b"Content-Type"[..], b"application/json").unwrap()
-            )
+            .with_header(content_type_header(b"application/json"))
     }
 }

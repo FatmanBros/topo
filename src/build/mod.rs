@@ -11,9 +11,19 @@ pub use html::{generate_html, generate_html_dev, generate_html_ssg};
 pub use resolver::{resolve_imports, resolve_import_path};
 
 use anyhow::Result;
+use once_cell::sync::Lazy;
+use regex::Regex;
 use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
+
+// Pre-compiled regex patterns for function deduplication
+static FUNC_DECL_RE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"function\s+([A-Z][a-zA-Z0-9_]*)\s*\(").expect("Invalid function declaration regex")
+});
+static CONST_DECL_RE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"const\s+([A-Z][a-zA-Z0-9_]*)\s*=").expect("Invalid const declaration regex")
+});
 
 /// Copy all files from source directory to destination
 pub fn copy_dir_contents(src: &Path, dst: &Path) -> Result<()> {
@@ -35,17 +45,11 @@ pub fn copy_dir_contents(src: &Path, dst: &Path) -> Result<()> {
 
 /// Deduplicate function definitions in generated JS code by renaming duplicates
 pub fn deduplicate_functions(js: &str, defined_names: &mut HashSet<String>) -> String {
-    use regex::Regex;
     use std::collections::HashMap;
-
-    // Find all function declarations: "function Name(" or "function Name ("
-    let func_regex = Regex::new(r"function\s+([A-Z][a-zA-Z0-9_]*)\s*\(").unwrap();
-    // Find all const declarations: "const Name =" or "const Name="
-    let const_regex = Regex::new(r"const\s+([A-Z][a-zA-Z0-9_]*)\s*=").unwrap();
 
     // First pass: find all names defined in this chunk
     let mut local_functions: Vec<String> = Vec::new();
-    for cap in func_regex.captures_iter(js) {
+    for cap in FUNC_DECL_RE.captures_iter(js) {
         if let Some(name_match) = cap.get(1) {
             let name = name_match.as_str().to_string();
             if !local_functions.contains(&name) {
@@ -53,7 +57,7 @@ pub fn deduplicate_functions(js: &str, defined_names: &mut HashSet<String>) -> S
             }
         }
     }
-    for cap in const_regex.captures_iter(js) {
+    for cap in CONST_DECL_RE.captures_iter(js) {
         if let Some(name_match) = cap.get(1) {
             let name = name_match.as_str().to_string();
             if !local_functions.contains(&name) {
@@ -92,18 +96,21 @@ pub fn deduplicate_functions(js: &str, defined_names: &mut HashSet<String>) -> S
     for (old_name, new_name) in &rename_map {
         // Replace function declaration: "function OldName(" -> "function NewName("
         let decl_pattern = format!(r"function\s+{}\s*\(", regex::escape(old_name));
-        let decl_regex = Regex::new(&decl_pattern).unwrap();
-        result = decl_regex.replace_all(&result, format!("function {}(", new_name)).to_string();
+        if let Ok(decl_regex) = Regex::new(&decl_pattern) {
+            result = decl_regex.replace_all(&result, format!("function {}(", new_name)).to_string();
+        }
 
         // Replace const declaration: "const OldName =" -> "const NewName ="
         let const_pattern = format!(r"const\s+{}\s*=", regex::escape(old_name));
-        let const_regex = Regex::new(&const_pattern).unwrap();
-        result = const_regex.replace_all(&result, format!("const {} =", new_name)).to_string();
+        if let Ok(const_regex) = Regex::new(&const_pattern) {
+            result = const_regex.replace_all(&result, format!("const {} =", new_name)).to_string();
+        }
 
         // Replace references using word boundaries
         let ref_pattern = format!(r"\b{}\b", regex::escape(old_name));
-        let ref_regex = Regex::new(&ref_pattern).unwrap();
-        result = ref_regex.replace_all(&result, new_name.as_str()).to_string();
+        if let Ok(ref_regex) = Regex::new(&ref_pattern) {
+            result = ref_regex.replace_all(&result, new_name.as_str()).to_string();
+        }
     }
 
     result

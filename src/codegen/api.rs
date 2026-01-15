@@ -85,7 +85,9 @@ impl JsCodegen {
     }
 
     fn generate_subscriber(&mut self, api: &ApiServiceDef) {
-        let subscribe_url = api.subscribe.as_ref().unwrap();
+        let Some(subscribe_url) = api.subscribe.as_ref() else {
+            return; // No subscribe URL, nothing to generate
+        };
         let is_websocket = subscribe_url.starts_with("ws://") || subscribe_url.starts_with("wss://");
 
         self.emit_line(&format!("const {}Subscriber = {{", api.name));
@@ -198,7 +200,9 @@ impl JsCodegen {
     }
 
     fn generate_subscriber_methods(&mut self, api: &ApiServiceDef) {
-        let subscribe_url = api.subscribe.as_ref().unwrap();
+        let Some(subscribe_url) = api.subscribe.as_ref() else {
+            return; // No subscribe URL, nothing to generate
+        };
         let is_websocket = subscribe_url.starts_with("ws://") || subscribe_url.starts_with("wss://");
 
         self.emit_line("_subscription: null,");

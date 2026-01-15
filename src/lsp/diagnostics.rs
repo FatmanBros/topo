@@ -1,6 +1,28 @@
+use once_cell::sync::Lazy;
+use regex::Regex;
 use tower_lsp::lsp_types::*;
 
 use crate::workspace::WorkspaceManager;
+
+// Pre-compiled regex patterns for better performance
+static IMPORT_RE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r#"import\s*\{\s*([^}]+)\s*\}"#).expect("Invalid import regex")
+});
+static COMP_DEF_RE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"^([A-Z][a-zA-Z0-9]*)\s*(\([^)]*\))?\s*->").expect("Invalid component def regex")
+});
+static STORE_DEF_RE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"^([A-Z][a-zA-Z0-9]*)\s*\|").expect("Invalid store def regex")
+});
+static API_DEF_RE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"^([A-Z][a-zA-Z0-9]*)\s*::").expect("Invalid api def regex")
+});
+static PASCAL_CASE_RE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"\b([A-Z][a-zA-Z0-9]*)\b").expect("Invalid pascal case regex")
+});
+static LEADING_PASCAL_RE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"^([A-Z][a-zA-Z0-9]*)").expect("Invalid leading pascal regex")
+});
 
 pub struct DiagnosticsProvider {}
 
@@ -51,10 +73,9 @@ impl DiagnosticsProvider {
 
     fn collect_imports(&self, text: &str) -> Vec<(String, u32)> {
         let mut imports = Vec::new();
-        let re = regex::Regex::new(r#"import\s*\{\s*([^}]+)\s*\}"#).unwrap();
 
         for (line_num, line) in text.lines().enumerate() {
-            if let Some(caps) = re.captures(line) {
+            if let Some(caps) = IMPORT_RE.captures(line) {
                 for name in caps[1].split(',') {
                     imports.push((name.trim().to_string(), line_num as u32));
                 }
@@ -67,23 +88,14 @@ impl DiagnosticsProvider {
     fn collect_local_definitions(&self, text: &str) -> Vec<String> {
         let mut defs = Vec::new();
 
-        // Component definitions: Name -> { or Name(params) -> {
-        let comp_re = regex::Regex::new(r"^([A-Z][a-zA-Z0-9]*)\s*(\([^)]*\))?\s*->").unwrap();
-
-        // Store definitions: Name | {
-        let store_re = regex::Regex::new(r"^([A-Z][a-zA-Z0-9]*)\s*\|").unwrap();
-
-        // API definitions: Name :: {
-        let api_re = regex::Regex::new(r"^([A-Z][a-zA-Z0-9]*)\s*::").unwrap();
-
         for line in text.lines() {
             let trimmed = line.trim();
 
-            if let Some(caps) = comp_re.captures(trimmed) {
+            if let Some(caps) = COMP_DEF_RE.captures(trimmed) {
                 defs.push(caps[1].to_string());
-            } else if let Some(caps) = store_re.captures(trimmed) {
+            } else if let Some(caps) = STORE_DEF_RE.captures(trimmed) {
                 defs.push(caps[1].to_string());
-            } else if let Some(caps) = api_re.captures(trimmed) {
+            } else if let Some(caps) = API_DEF_RE.captures(trimmed) {
                 defs.push(caps[1].to_string());
             }
         }
@@ -100,16 +112,13 @@ impl DiagnosticsProvider {
         workspace: &WorkspaceManager,
         diagnostics: &mut Vec<Diagnostic>,
     ) {
-        // Find component references (PascalCase identifiers)
-        let re = regex::Regex::new(r"\b([A-Z][a-zA-Z0-9]*)\b").unwrap();
-
         // Skip if this is a definition line
         if line.contains("->") && !line.contains(": ") {
             // This might be a component definition, skip the name part
-            if let Some(caps) = regex::Regex::new(r"^([A-Z][a-zA-Z0-9]*)").unwrap().captures(line) {
+            if let Some(caps) = LEADING_PASCAL_RE.captures(line) {
                 // Skip checking the component being defined
                 let defining = caps[1].to_string();
-                for caps in re.captures_iter(line) {
+                for caps in PASCAL_CASE_RE.captures_iter(line) {
                     let name = &caps[1];
                     if name == defining {
                         continue;
@@ -138,7 +147,7 @@ impl DiagnosticsProvider {
             return;
         }
 
-        for caps in re.captures_iter(line) {
+        for caps in PASCAL_CASE_RE.captures_iter(line) {
             let name = &caps[1];
             self.check_single_component(
                 name,
@@ -297,7 +306,9 @@ impl DiagnosticsProvider {
         for (name, line_num) in imports {
             // Count occurrences (excluding the import line itself)
             let pattern = format!(r"\b{}\b", regex::escape(name));
-            let re = regex::Regex::new(&pattern).unwrap();
+            let Ok(re) = Regex::new(&pattern) else {
+                continue; // Skip if pattern is invalid (shouldn't happen with escaped input)
+            };
             let count = re.find_iter(text).count();
 
             // If only found once (in the import), it's unused

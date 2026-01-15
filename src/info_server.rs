@@ -1535,9 +1535,11 @@ pub fn start_info_server(port: u16, no_open: bool) -> Result<()> {
     for request in server.incoming_requests() {
         let response = match request.url() {
             "/" => Response::from_string(VISUALIZER_HTML)
-                .with_header(Header::from_bytes(&b"Content-Type"[..], &b"text/html; charset=utf-8"[..]).unwrap()),
+                .with_header(Header::from_bytes(&b"Content-Type"[..], &b"text/html; charset=utf-8"[..])
+                    .expect("Valid ASCII header")),
             "/api/graph" => Response::from_string(&graph_json)
-                .with_header(Header::from_bytes(&b"Content-Type"[..], &b"application/json"[..]).unwrap()),
+                .with_header(Header::from_bytes(&b"Content-Type"[..], &b"application/json"[..])
+                    .expect("Valid ASCII header")),
             _ => Response::from_string("404 Not Found").with_status_code(404),
         };
         let _ = request.respond(response);
