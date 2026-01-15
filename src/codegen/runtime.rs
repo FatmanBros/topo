@@ -112,6 +112,7 @@ impl JsCodegen {
         self.emit_line("  const el = document.querySelector(container);");
         self.emit_line("  if (!el) return;");
         self.emit_line("  let lastPage = null;");
+        self.emit_line("  let lastLifecycleHooks = { init: [], destroy: [] };");
         self.emit_line("  const render = () => {");
         self.emit_line("    // Save focus state before re-render");
         self.emit_line("    const activeEl = document.activeElement;");
@@ -143,9 +144,16 @@ impl JsCodegen {
         self.emit_line("        document.title = __defaultTitle;");
         self.emit_line("      }");
         self.emit_line("    }");
-        self.emit_line("    // Call lifecycle init on page change");
-        self.emit_line("    if (pageChanged && vdom && vdom.lifecycle && vdom.lifecycle.init) {");
-        self.emit_line("      vdom.lifecycle.init();");
+        self.emit_line("    // Collect lifecycle hooks from all components in the VDOM tree");
+        self.emit_line("    const currentHooks = collectLifecycleHooks(vdom);");
+        self.emit_line("    // Call lifecycle hooks on page change");
+        self.emit_line("    if (pageChanged) {");
+        self.emit_line("      // Call destroy hooks from previous page");
+        self.emit_line("      lastLifecycleHooks.destroy.forEach(fn => { try { fn(); } catch(e) { console.error('Lifecycle destroy error:', e); } });");
+        self.emit_line("      // Call init hooks from current page");
+        self.emit_line("      currentHooks.init.forEach(fn => { try { fn(); } catch(e) { console.error('Lifecycle init error:', e); } });");
+        self.emit_line("      // Update tracked hooks");
+        self.emit_line("      lastLifecycleHooks = currentHooks;");
         self.emit_line("    }");
         self.emit_line("    // Restore focus after re-render");
         self.emit_line("    if (focusIndex >= 0) {");
@@ -348,6 +356,22 @@ impl JsCodegen {
         self.emit_line("    if (h) return h;");
         self.emit_line("  }");
         self.emit_line("  return null;");
+        self.emit_line("}");
+        self.emit_line("");
+
+        // Lifecycle hooks collection
+        self.emit_line("// Collect all lifecycle hooks from VDOM tree");
+        self.emit_line("function collectLifecycleHooks(vdom, hooks = { init: [], destroy: [] }) {");
+        self.emit_line("  if (!vdom) return hooks;");
+        self.emit_line("  if (vdom.lifecycle) {");
+        self.emit_line("    if (vdom.lifecycle.init) hooks.init.push(vdom.lifecycle.init);");
+        self.emit_line("    if (vdom.lifecycle.destroy) hooks.destroy.push(vdom.lifecycle.destroy);");
+        self.emit_line("  }");
+        self.emit_line("  for (const c of normalizeChildren(vdom.children)) {");
+        self.emit_line("    const child = typeof c === 'function' ? c() : c;");
+        self.emit_line("    collectLifecycleHooks(child, hooks);");
+        self.emit_line("  }");
+        self.emit_line("  return hooks;");
         self.emit_line("}");
         self.emit_line("");
 
