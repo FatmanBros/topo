@@ -22,7 +22,15 @@ pub fn check_project(input: &Path) -> Result<()> {
         print!("  Checking {:?}... ", file);
 
         let source = fs::read_to_string(file)?;
-        let mut lexer = Lexer::new(&source);
+        let mut lexer = match Lexer::new(&source) {
+            Ok(l) => l,
+            Err(e) => {
+                println!("\u{2717}");
+                println!("    Lexer error: {}", e);
+                errors += 1;
+                continue;
+            }
+        };
 
         match lexer.tokenize() {
             Ok(tokens) => {
@@ -55,7 +63,7 @@ pub fn check_project(input: &Path) -> Result<()> {
 
 pub fn parse_file(file: &Path, json: bool) -> Result<()> {
     let source = fs::read_to_string(file)?;
-    let mut lexer = Lexer::new(&source);
+    let mut lexer = Lexer::new(&source)?;
     let tokens = lexer.tokenize()?;
     let mut parser = TopoParser::new(tokens);
     let program = parser.parse()?;
@@ -215,7 +223,7 @@ pub fn show_info_list(pages_only: bool, apis_only: bool) -> Result<()> {
         // Parse all files and collect API services
         for file in &all_files {
             if let Ok(source) = fs::read_to_string(file) {
-                let mut lexer = Lexer::new(&source);
+                let Ok(mut lexer) = Lexer::new(&source) else { continue };
                 if let Ok(tokens) = lexer.tokenize() {
                     let mut parser = TopoParser::new(tokens);
                     if let Ok(program) = parser.parse() {

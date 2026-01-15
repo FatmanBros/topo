@@ -14,7 +14,7 @@ use topo::{Lexer, TypeChecker};
 // ============================================================================
 
 fn parse_source(source: &str) -> Result<topo::ast::Program, String> {
-    let mut lexer = Lexer::new(source);
+    let mut lexer = Lexer::new(source).map_err(|e| format!("{:?}", e))?;
     let tokens = lexer.tokenize().map_err(|e| format!("{:?}", e))?;
     let mut parser = Parser::new(tokens);
     parser.parse().map_err(|e| format!("{:?}", e))

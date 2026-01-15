@@ -1,0 +1,309 @@
+// Repository Definition docs page
+import { DocsTemplate } from "../template.tp"
+import { DocsSection, DocsDescription } from "@/components/molecules/docs-section.tp"
+import { DocsCodeSection } from "@/components/organisms/docs-code-section.tp"
+import { FeatureList } from "@/components/molecules/feature-list.tp"
+import { Text } from "@packages/components/atoms/text.tp"
+import { SectionTitle } from "@/components/molecules/section-title.tp"
+
+Page -> DocsTemplate({ children: [RepositoryContent] })
+
+RepositoryContent -> {
+    align: vertical
+    style: "space-y-8"
+    children: [
+        PageHeader,
+        OverviewSection,
+        BasicSyntaxSection,
+        SqlTemplateSection,
+        TypeInferenceSection,
+        CustomMethodsSection,
+        UsageSection
+    ]
+}
+
+PageHeader -> DocsSection({
+    id: "repository",
+    title: "Repository Definition",
+    children: [HeaderDesc]
+})
+
+HeaderDesc -> DocsDescription({
+    text: "Define type-safe database access with Repositories. Combines the power of raw SQL with automatic type inference from your Schema."
+})
+
+// Overview
+OverviewSection -> {
+    align: vertical
+    style: "space-y-4"
+    children: [
+        SectionTitle({ text: "Overview" }),
+        OverviewText,
+        FeaturesList
+    ]
+}
+
+OverviewText -> DocsDescription({
+    text: "Repositories provide a clean abstraction layer over your database tables. Write SQL templates and get fully typed results based on your Schema definition."
+})
+
+FeaturesList -> FeatureList({
+    title: "Key features:",
+    items: [
+        { icon: "v", text: "Type-safe SQL template literals" },
+        { icon: "v", text: "Automatic result type inference from Schema" },
+        { icon: "v", text: "Custom query methods with parameters" },
+        { icon: "v", text: "JOIN support with proper type handling" }
+    ]
+})
+
+// Basic Syntax
+BasicSyntaxSection -> DocsCodeSection({
+    title: "Basic Syntax",
+    description: "Define a repository bound to a table:",
+    filename: "user-repository.tp",
+    code: `
+    // First, define your schema
+    Schema {
+        users {
+            id: string @primary
+            name: string
+            email: string @unique
+            age: number?
+        }
+    }
+
+    // Then create a repository for the table
+    UserRepository :: users {
+        // Custom methods go here
+    }`,
+    preview: [SyntaxPreview]
+})
+
+SyntaxPreview -> FeatureList({
+    title: "Repository elements:",
+    items: [
+        { icon: "v", text: "Name followed by :: and table name" },
+        { icon: "v", text: "Table must be defined in Schema" },
+        { icon: "v", text: "Custom methods inside curly braces" }
+    ]
+})
+
+// SQL Templates
+SqlTemplateSection -> DocsCodeSection({
+    title: "SQL Templates",
+    description: "Use SQL template literals for type-safe queries:",
+    filename: "repository.tp",
+    code: `
+    UserRepository :: users {
+        // Simple query - returns User[]
+        findAll() -> sql\`
+            SELECT * FROM users
+        \`
+
+        // Query with parameter - returns User | null
+        findById(id) -> sql\`
+            SELECT * FROM users WHERE id = \${id}
+        \`.first()
+
+        // Query with multiple params
+        findByAgeRange(min, max) -> sql\`
+            SELECT * FROM users
+            WHERE age >= \${min} AND age <= \${max}
+        \`
+
+        // Insert - returns inserted User
+        create(data) -> sql\`
+            INSERT INTO users (id, name, email, age)
+            VALUES (\${data.id}, \${data.name}, \${data.email}, \${data.age})
+        \`
+
+        // Update - returns affected count
+        updateEmail(id, email) -> sql\`
+            UPDATE users SET email = \${email} WHERE id = \${id}
+        \`
+
+        // Delete - returns affected count
+        delete(id) -> sql\`
+            DELETE FROM users WHERE id = \${id}
+        \`
+    }`,
+    preview: [SqlNote]
+})
+
+SqlNote -> {
+    style: "p-4 bg-blue-50 rounded-lg border border-blue-200"
+    children: [
+        Text({ text: "SQL templates use ${} for parameter interpolation. Parameters are automatically escaped to prevent SQL injection.", style: "text-blue-700 text-sm" })
+    ]
+}
+
+// Type Inference
+TypeInferenceSection -> DocsCodeSection({
+    title: "Automatic Type Inference",
+    description: "Query results are automatically typed based on your Schema:",
+    filename: "type-inference.tp",
+    code: `
+    // Schema defines the types
+    Schema {
+        users {
+            id: string @primary
+            name: string
+            email: string
+            age: number?      // nullable
+        }
+    }
+
+    UserRepository :: users {
+        findById(id) -> sql\`
+            SELECT id, name, email, age FROM users
+            WHERE id = \${id}
+        \`.first()
+    }
+
+    // Generated TypeScript type:
+    // {
+    //   id: string;
+    //   name: string;
+    //   email: string;
+    //   age?: number;  // nullable becomes optional
+    // } | null`,
+    preview: [TypesPreview]
+})
+
+TypesPreview -> {
+    align: vertical
+    style: "space-y-2"
+    children: [
+        Text({ text: "Type mappings:", style: "font-medium text-gray-700" }),
+        TypeItem({ from: "string", to: "string" }),
+        TypeItem({ from: "number", to: "number" }),
+        TypeItem({ from: "boolean", to: "boolean" }),
+        TypeItem({ from: "datetime", to: "Date" }),
+        TypeItem({ from: "json", to: "unknown" }),
+        TypeItem({ from: "blob", to: "Uint8Array" })
+    ]
+}
+
+TypeItem(props) -> {
+    style: "flex items-center gap-2 pl-4"
+    children: [
+        Text({ text: props.from, style: "font-mono text-sm text-pink-600 w-20" }),
+        Text({ text: "→", style: "text-gray-400" }),
+        Text({ text: props.to, style: "font-mono text-sm text-gray-600" })
+    ]
+}
+
+// Custom Methods with JOINs
+CustomMethodsSection -> DocsCodeSection({
+    title: "JOIN Queries",
+    description: "Type inference works with JOIN queries too:",
+    filename: "join-repository.tp",
+    code: `
+    Schema {
+        users {
+            id: string @primary
+            name: string
+        }
+
+        posts {
+            id: string @primary
+            user_id: string @references(users.id)
+            title: string
+            content: string?
+        }
+    }
+
+    PostRepository :: posts {
+        // JOIN with alias support
+        findWithAuthor(id) -> sql\`
+            SELECT
+                p.id,
+                p.title,
+                p.content,
+                u.name AS author_name
+            FROM posts p
+            JOIN users u ON p.user_id = u.id
+            WHERE p.id = \${id}
+        \`.first()
+
+        // LEFT JOIN - columns become nullable
+        findAllWithAuthor() -> sql\`
+            SELECT
+                p.id,
+                p.title,
+                u.name AS author_name
+            FROM posts p
+            LEFT JOIN users u ON p.user_id = u.id
+        \`
+    }
+
+    // Result type for findWithAuthor:
+    // {
+    //   id: string;
+    //   title: string;
+    //   content?: string;
+    //   author_name: string;
+    // } | null`,
+    preview: [JoinNote]
+})
+
+JoinNote -> {
+    style: "p-4 bg-amber-50 rounded-lg border border-amber-200"
+    children: [
+        Text({ text: "LEFT JOIN and RIGHT JOIN columns are automatically marked as nullable in the result type.", style: "text-amber-700 text-sm" })
+    ]
+}
+
+// Usage in Server
+UsageSection -> DocsCodeSection({
+    title: "Usage in Server Handlers",
+    description: "Use repositories in your server-side handlers:",
+    filename: "usage.tp",
+    code: `
+    UserApi :: {
+        rest: "/api/users"
+
+        getById: get("/:id") -> User
+        create: post("/") {
+            request: CreateUserRequest
+            response: User
+        }
+
+        server {
+            on getById(id, ctx) {
+                // Use the repository
+                user: await UserRepository.findById(id)
+
+                if (!user) {
+                    throw: NotFoundError("User not found")
+                }
+
+                return: user
+            }
+
+            on create(data, ctx) {
+                // Create with repository
+                user: await UserRepository.create({
+                    id: generateId(),
+                    name: data.name,
+                    email: data.email,
+                    age: data.age
+                })
+
+                return: user
+            }
+        }
+    }`,
+    preview: [UsagePreview]
+})
+
+UsagePreview -> FeatureList({
+    title: "Benefits:",
+    items: [
+        { icon: "v", text: "Type-safe queries in server handlers" },
+        { icon: "v", text: "Automatic parameter escaping" },
+        { icon: "v", text: "Compile-time type checking" },
+        { icon: "v", text: "IDE autocompletion support" }
+    ]
+})

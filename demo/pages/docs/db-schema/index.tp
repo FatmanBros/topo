@@ -1,0 +1,291 @@
+// DB Schema Definition docs page
+import { DocsTemplate } from "../template.tp"
+import { DocsSection, DocsDescription } from "@/components/molecules/docs-section.tp"
+import { DocsCodeSection } from "@/components/organisms/docs-code-section.tp"
+import { FeatureList } from "@/components/molecules/feature-list.tp"
+import { Text } from "@packages/components/atoms/text.tp"
+import { SectionTitle } from "@/components/molecules/section-title.tp"
+
+Page -> DocsTemplate({ children: [SchemaContent] })
+
+SchemaContent -> {
+    align: vertical
+    style: "space-y-8"
+    children: [
+        PageHeader,
+        OverviewSection,
+        BasicSyntaxSection,
+        ColumnTypesSection,
+        ConstraintsSection,
+        RelationsSection,
+        DdlGenerationSection
+    ]
+}
+
+PageHeader -> DocsSection({
+    id: "db-schema",
+    title: "DB Schema Definition",
+    children: [HeaderDesc]
+})
+
+HeaderDesc -> DocsDescription({
+    text: "Define your database schema directly in topo. Code-first approach with type-safe SQL and automatic DDL generation."
+})
+
+// Overview
+OverviewSection -> {
+    align: vertical
+    style: "space-y-4"
+    children: [
+        SectionTitle({ text: "Overview" }),
+        OverviewText,
+        FeaturesList
+    ]
+}
+
+OverviewText -> DocsDescription({
+    text: "topo's Schema definition allows you to describe your database structure in a declarative way. From this single source of truth, you get type-safe SQL queries, automatic DDL generation, and repository support."
+})
+
+FeaturesList -> FeatureList({
+    title: "Key features:",
+    items: [
+        { icon: "v", text: "Code-first schema definition" },
+        { icon: "v", text: "Type-safe SQL template queries" },
+        { icon: "v", text: "Automatic DDL generation (SQLite, PostgreSQL, MySQL)" },
+        { icon: "v", text: "Relations support (hasMany, belongsTo, etc.)" }
+    ]
+})
+
+// Basic Syntax
+BasicSyntaxSection -> DocsCodeSection({
+    title: "Basic Syntax",
+    description: "Define your schema using the Schema block:",
+    filename: "schema.tp",
+    code: `
+    Schema {
+        users {
+            id: string @primary
+            name: string
+            email: string @unique
+            age: number?
+            created_at: datetime @default(now())
+        }
+
+        posts {
+            id: string @primary
+            user_id: string @references(users.id)
+            title: string
+            content: string?
+            published: boolean @default(false)
+        }
+    }`,
+    preview: [SyntaxPreview]
+})
+
+SyntaxPreview -> FeatureList({
+    title: "Schema elements:",
+    items: [
+        { icon: "v", text: "Table name followed by column definitions" },
+        { icon: "v", text: "Column type after colon (:)" },
+        { icon: "v", text: "? suffix for nullable columns" },
+        { icon: "v", text: "@ annotations for constraints" }
+    ]
+})
+
+// Column Types
+ColumnTypesSection -> DocsCodeSection({
+    title: "Column Types",
+    description: "Supported column types and their database mappings:",
+    filename: "types.tp",
+    code: `
+    Schema {
+        example_types {
+            text_col: string      // TEXT in SQLite/PostgreSQL
+            num_col: number       // INTEGER
+            bool_col: boolean     // INTEGER (SQLite), BOOLEAN (PostgreSQL)
+            date_col: datetime    // TEXT (SQLite), TIMESTAMPTZ (PostgreSQL)
+            json_col: json        // TEXT (SQLite), JSONB (PostgreSQL)
+            binary_col: blob      // BLOB (SQLite), BYTEA (PostgreSQL)
+        }
+    }`,
+    preview: [TypesTable]
+})
+
+TypesTable -> {
+    align: vertical
+    style: "space-y-2 text-sm"
+    children: [
+        TypeRow({ topo: "string", sqlite: "TEXT", postgres: "TEXT", mysql: "VARCHAR(255)" }),
+        TypeRow({ topo: "number", sqlite: "INTEGER", postgres: "INTEGER", mysql: "INT" }),
+        TypeRow({ topo: "boolean", sqlite: "INTEGER", postgres: "BOOLEAN", mysql: "TINYINT(1)" }),
+        TypeRow({ topo: "datetime", sqlite: "TEXT", postgres: "TIMESTAMPTZ", mysql: "DATETIME" }),
+        TypeRow({ topo: "json", sqlite: "TEXT", postgres: "JSONB", mysql: "JSON" }),
+        TypeRow({ topo: "blob", sqlite: "BLOB", postgres: "BYTEA", mysql: "BLOB" })
+    ]
+}
+
+TypeRow(props) -> {
+    style: "flex items-center gap-2 p-2 bg-gray-50 rounded"
+    children: [
+        Text({ text: props.topo, style: "font-mono text-pink-600 w-20" }),
+        Text({ text: "→", style: "text-gray-400" }),
+        Text({ text: props.sqlite, style: "font-mono text-gray-600 w-24" }),
+        Text({ text: props.postgres, style: "font-mono text-gray-600 w-28" }),
+        Text({ text: props.mysql, style: "font-mono text-gray-600" })
+    ]
+}
+
+// Constraints
+ConstraintsSection -> DocsCodeSection({
+    title: "Column Constraints",
+    description: "Use @ annotations to add constraints:",
+    filename: "constraints.tp",
+    code: `
+    Schema {
+        users {
+            // Primary key
+            id: string @primary
+
+            // Primary key with auto-increment
+            seq: number @primary @autoincrement
+
+            // Unique constraint
+            email: string @unique
+
+            // Foreign key reference
+            role_id: string @references(roles.id)
+
+            // Default value
+            status: string @default("active")
+            created_at: datetime @default(now())
+        }
+    }`,
+    preview: [ConstraintsPreview]
+})
+
+ConstraintsPreview -> {
+    align: vertical
+    style: "space-y-2 text-sm"
+    children: [
+        ConstraintItem({ name: "@primary", desc: "Primary key constraint" }),
+        ConstraintItem({ name: "@autoincrement", desc: "Auto-increment (number type)" }),
+        ConstraintItem({ name: "@unique", desc: "Unique constraint" }),
+        ConstraintItem({ name: "@references(table.column)", desc: "Foreign key reference" }),
+        ConstraintItem({ name: "@default(value)", desc: "Default value" })
+    ]
+}
+
+ConstraintItem(props) -> {
+    style: "flex items-center gap-2 p-2 bg-gray-50 rounded"
+    children: [
+        Text({ text: props.name, style: "font-mono text-pink-600 w-48" }),
+        Text({ text: "-", style: "text-gray-400" }),
+        Text({ text: props.desc, style: "text-gray-600" })
+    ]
+}
+
+// Relations
+RelationsSection -> DocsCodeSection({
+    title: "Relations",
+    description: "Define relationships between tables:",
+    filename: "relations.tp",
+    code: `
+    Schema {
+        users {
+            id: string @primary
+            name: string
+
+            // One user has many posts
+            @hasMany(posts)
+
+            // One user has one profile
+            @hasOne(profile)
+        }
+
+        posts {
+            id: string @primary
+            user_id: string @references(users.id)
+            title: string
+
+            // Post belongs to a user
+            @belongsTo(users)
+
+            // Many-to-many with tags
+            @manyToMany(tags, post_tags)
+        }
+
+        tags {
+            id: string @primary
+            name: string
+        }
+
+        post_tags {
+            post_id: string @references(posts.id)
+            tag_id: string @references(tags.id)
+        }
+    }`,
+    preview: [RelationsPreview]
+})
+
+RelationsPreview -> {
+    align: vertical
+    style: "space-y-2 text-sm"
+    children: [
+        RelationItem({ name: "@hasMany(table)", desc: "One-to-many relationship" }),
+        RelationItem({ name: "@hasOne(table)", desc: "One-to-one relationship" }),
+        RelationItem({ name: "@belongsTo(table)", desc: "Many-to-one (inverse of hasMany)" }),
+        RelationItem({ name: "@manyToMany(table, through)", desc: "Many-to-many via junction table" })
+    ]
+}
+
+RelationItem(props) -> {
+    style: "flex items-center gap-2 p-2 bg-gray-50 rounded"
+    children: [
+        Text({ text: props.name, style: "font-mono text-pink-600 w-52" }),
+        Text({ text: "-", style: "text-gray-400" }),
+        Text({ text: props.desc, style: "text-gray-600" })
+    ]
+}
+
+// DDL Generation
+DdlGenerationSection -> DocsCodeSection({
+    title: "DDL Generation",
+    description: "Generate database schema from your definition:",
+    filename: "terminal",
+    code: `
+    # Generate for SQLite (Cloudflare D1)
+    topo schema --dialect sqlite
+
+    # Generate for PostgreSQL
+    topo schema --dialect postgres
+
+    # Generate for MySQL
+    topo schema --dialect mysql
+
+    # Output example (SQLite):
+    CREATE TABLE users (
+      id TEXT PRIMARY KEY NOT NULL,
+      name TEXT NOT NULL,
+      email TEXT UNIQUE NOT NULL,
+      age INTEGER,
+      created_at TEXT DEFAULT (datetime('now')) NOT NULL
+    );
+
+    CREATE TABLE posts (
+      id TEXT PRIMARY KEY NOT NULL,
+      user_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      content TEXT,
+      published INTEGER DEFAULT 0 NOT NULL,
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    );`,
+    preview: [DdlNote]
+})
+
+DdlNote -> {
+    style: "p-4 bg-green-50 rounded-lg border border-green-200"
+    children: [
+        Text({ text: "DDL is automatically generated from your Schema definition. Use this output for migrations or initial database setup.", style: "text-green-700 text-sm" })
+    ]
+}

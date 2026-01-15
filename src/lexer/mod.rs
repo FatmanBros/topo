@@ -8,6 +8,12 @@ pub use token::{Token, TokenKind};
 
 use thiserror::Error;
 
+/// Maximum file size allowed (10MB)
+const MAX_FILE_SIZE: usize = 10 * 1024 * 1024;
+
+/// Maximum nesting depth for block comments
+const MAX_COMMENT_NESTING: usize = 64;
+
 #[derive(Error, Debug)]
 pub enum LexerError {
     #[error("Unexpected character '{0}' at line {1}, column {2}")]
@@ -18,6 +24,12 @@ pub enum LexerError {
 
     #[error("Invalid number at line {0}, column {1}")]
     InvalidNumber(usize, usize),
+
+    #[error("File size exceeds maximum allowed size of {0} bytes")]
+    FileTooLarge(usize),
+
+    #[error("Block comment nesting depth exceeds maximum of {0} at line {1}, column {2}")]
+    CommentNestingTooDeep(usize, usize, usize),
 }
 
 pub struct Lexer<'a> {
@@ -27,18 +39,24 @@ pub struct Lexer<'a> {
     column: usize,
     start_line: usize,
     start_column: usize,
+    /// Deferred error from skip_whitespace_and_comments
+    deferred_error: Option<LexerError>,
 }
 
 impl<'a> Lexer<'a> {
-    pub fn new(source: &'a str) -> Self {
-        Self {
+    pub fn new(source: &'a str) -> Result<Self, LexerError> {
+        if source.len() > MAX_FILE_SIZE {
+            return Err(LexerError::FileTooLarge(MAX_FILE_SIZE));
+        }
+        Ok(Self {
             source,
             chars: source.char_indices().peekable(),
             line: 1,
             column: 1,
             start_line: 1,
             start_column: 1,
-        }
+            deferred_error: None,
+        })
     }
 
     pub fn tokenize(&mut self) -> Result<Vec<Token>, LexerError> {
@@ -60,6 +78,11 @@ impl<'a> Lexer<'a> {
 
     fn next_token(&mut self) -> Result<Option<Token>, LexerError> {
         self.skip_whitespace_and_comments();
+
+        // Check for deferred errors from comment parsing
+        if let Some(err) = self.deferred_error.take() {
+            return Err(err);
+        }
 
         self.start_line = self.line;
         self.start_column = self.column;
@@ -236,6 +259,8 @@ impl<'a> Lexer<'a> {
                         }
                         Some((_, '*')) => {
                             // Block comment
+                            let comment_start_line = self.line;
+                            let comment_start_column = self.column;
                             self.advance(); // consume '/'
                             self.advance(); // consume '*'
                             let mut depth = 1;
@@ -249,6 +274,17 @@ impl<'a> Lexer<'a> {
                                     Some((_, '/')) => {
                                         if self.match_char('*') {
                                             depth += 1;
+                                            // Check nesting depth limit
+                                            if depth > MAX_COMMENT_NESTING {
+                                                self.deferred_error = Some(
+                                                    LexerError::CommentNestingTooDeep(
+                                                        MAX_COMMENT_NESTING,
+                                                        comment_start_line,
+                                                        comment_start_column,
+                                                    ),
+                                                );
+                                                return;
+                                            }
                                         }
                                     }
                                     None => break,
@@ -455,7 +491,7 @@ mod tests {
             content: "Click"
         }"#;
 
-        let mut lexer = Lexer::new(source);
+        let mut lexer = Lexer::new(source).unwrap();
         let tokens = lexer.tokenize().unwrap();
 
         assert_eq!(tokens[0].kind, TokenKind::Identifier);
@@ -468,7 +504,7 @@ mod tests {
     fn test_store_definition() {
         let source = "Counter | { State { count: 0 } }";
 
-        let mut lexer = Lexer::new(source);
+        let mut lexer = Lexer::new(source).unwrap();
         let tokens = lexer.tokenize().unwrap();
 
         assert_eq!(tokens[0].kind, TokenKind::Identifier);
@@ -480,7 +516,7 @@ mod tests {
     fn test_api_service_definition() {
         let source = r#"User :: { rest: "/api/users" }"#;
 
-        let mut lexer = Lexer::new(source);
+        let mut lexer = Lexer::new(source).unwrap();
         let tokens = lexer.tokenize().unwrap();
 
         assert_eq!(tokens[0].kind, TokenKind::Identifier);
@@ -492,12 +528,46 @@ mod tests {
     fn test_reference() {
         let source = "$Counter.count";
 
-        let mut lexer = Lexer::new(source);
+        let mut lexer = Lexer::new(source).unwrap();
         let tokens = lexer.tokenize().unwrap();
 
         assert_eq!(tokens[0].kind, TokenKind::Dollar);
         assert_eq!(tokens[1].kind, TokenKind::Identifier);
         assert_eq!(tokens[2].kind, TokenKind::Dot);
         assert_eq!(tokens[3].kind, TokenKind::Identifier);
+    }
+
+    #[test]
+    fn test_file_too_large() {
+        // Create a string larger than MAX_FILE_SIZE
+        let large_source = "a".repeat(MAX_FILE_SIZE + 1);
+        let result = Lexer::new(&large_source);
+        assert!(matches!(result, Err(LexerError::FileTooLarge(_))));
+    }
+
+    #[test]
+    fn test_comment_nesting_depth_limit() {
+        // Create nested block comments exceeding MAX_COMMENT_NESTING
+        let mut nested_comment = String::from("/*");
+        for _ in 0..MAX_COMMENT_NESTING + 1 {
+            nested_comment.push_str("/*");
+        }
+        nested_comment.push_str("*/".repeat(MAX_COMMENT_NESTING + 2).as_str());
+        nested_comment.push_str(" x");
+
+        let mut lexer = Lexer::new(&nested_comment).unwrap();
+        let result = lexer.tokenize();
+        assert!(matches!(result, Err(LexerError::CommentNestingTooDeep(_, _, _))));
+    }
+
+    #[test]
+    fn test_valid_nested_comments() {
+        // Valid nested comments within the limit
+        let source = "/* outer /* inner */ outer */ x";
+        let mut lexer = Lexer::new(source).unwrap();
+        let tokens = lexer.tokenize().unwrap();
+
+        assert_eq!(tokens[0].kind, TokenKind::Identifier);
+        assert_eq!(tokens[0].lexeme, "x");
     }
 }

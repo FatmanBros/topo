@@ -90,7 +90,7 @@ fn compile_test_files() -> Result<()> {
         println!("  Compiling test: {:?}", test_file);
         let source = fs::read_to_string(&test_file)?;
 
-        let mut lexer = Lexer::new(&source);
+        let mut lexer = Lexer::new(&source)?;
         let tokens = lexer.tokenize()?;
         let mut parser = TopoParser::new(tokens);
         let ast = parser.parse()?;

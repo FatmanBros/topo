@@ -1,0 +1,484 @@
+// Server-Side API Implementation docs page
+import { DocsTemplate } from "../template.tp"
+import { DocsSection, DocsDescription } from "@/components/molecules/docs-section.tp"
+import { DocsCodeSection } from "@/components/organisms/docs-code-section.tp"
+import { FeatureList } from "@/components/molecules/feature-list.tp"
+import { Text } from "@packages/components/atoms/text.tp"
+import { SectionTitle } from "@/components/molecules/section-title.tp"
+
+Page -> DocsTemplate({ children: [ServerApiContent] })
+
+ServerApiContent -> {
+    align: vertical
+    style: "space-y-8"
+    children: [
+        PageHeader,
+        OverviewSection,
+        BasicStructureSection,
+        RepositoryIntegrationSection,
+        RequestHandlingSection,
+        ResponseSection,
+        ErrorHandlingSection,
+        MiddlewareSection,
+        DeploymentSection
+    ]
+}
+
+PageHeader -> DocsSection({
+    id: "server-api-impl",
+    title: "Server-Side API Implementation",
+    children: [HeaderDesc]
+})
+
+HeaderDesc -> DocsDescription({
+    text: "Complete guide to implementing server-side APIs in topo. From endpoint definition to database access and deployment."
+})
+
+// Overview
+OverviewSection -> {
+    align: vertical
+    style: "space-y-4"
+    children: [
+        SectionTitle({ text: "Overview" }),
+        OverviewText,
+        FeaturesList
+    ]
+}
+
+OverviewText -> DocsDescription({
+    text: "topo's server-side implementation combines API definition, repository access, and handler logic in a single cohesive system. Write once, deploy to Cloudflare Workers or Rust Axum."
+})
+
+FeaturesList -> FeatureList({
+    title: "Key features:",
+    items: [
+        { icon: "v", text: "Declarative API endpoint definition" },
+        { icon: "v", text: "Type-safe repository integration" },
+        { icon: "v", text: "Built-in request validation" },
+        { icon: "v", text: "Automatic error handling" }
+    ]
+})
+
+// Basic Structure
+BasicStructureSection -> DocsCodeSection({
+    title: "API Structure",
+    description: "Complete server-side API definition:",
+    filename: "user-api.tp",
+    code: `
+    // 1. Define Schema
+    Schema {
+        users {
+            id: string @primary
+            name: string
+            email: string @unique
+            role: string @default("user")
+            created_at: datetime @default(now())
+        }
+    }
+
+    // 2. Create Repository
+    UserRepository :: users {
+        findAll() -> sql\`SELECT * FROM users\`
+        findById(id) -> sql\`SELECT * FROM users WHERE id = \${id}\`.first()
+        findByEmail(email) -> sql\`SELECT * FROM users WHERE email = \${email}\`.first()
+        create(data) -> sql\`
+            INSERT INTO users (id, name, email, role)
+            VALUES (\${data.id}, \${data.name}, \${data.email}, \${data.role})
+        \`
+        update(id, data) -> sql\`
+            UPDATE users SET name = \${data.name}, email = \${data.email}
+            WHERE id = \${id}
+        \`
+        delete(id) -> sql\`DELETE FROM users WHERE id = \${id}\`
+    }
+
+    // 3. Define API with handlers
+    UserApi :: {
+        rest: "/api/users"
+
+        getAll: get("/") -> User[]
+        getById: get("/:id") -> User
+        create: post("/") { request: CreateUserRequest, response: User }
+        update: put("/:id") { request: UpdateUserRequest, response: User }
+        delete: delete("/:id") -> void
+
+        server {
+            // Handler implementations
+        }
+    }`,
+    preview: [StructurePreview]
+})
+
+StructurePreview -> FeatureList({
+    title: "Components:",
+    items: [
+        { icon: "1", text: "Schema - Database structure" },
+        { icon: "2", text: "Repository - Data access layer" },
+        { icon: "3", text: "API - Endpoint definitions + handlers" }
+    ]
+})
+
+// Repository Integration
+RepositoryIntegrationSection -> DocsCodeSection({
+    title: "Repository Integration",
+    description: "Use repositories in your server handlers:",
+    filename: "handlers.tp",
+    code: `
+    UserApi :: {
+        rest: "/api/users"
+
+        getAll: get("/") -> User[]
+        getById: get("/:id") -> User
+        create: post("/") { request: CreateUserRequest, response: User }
+
+        server {
+            // List all users
+            on getAll(ctx) {
+                users: await UserRepository.findAll()
+                return: users
+            }
+
+            // Get user by ID
+            on getById(id, ctx) {
+                user: await UserRepository.findById(id)
+
+                if (!user) {
+                    throw: NotFoundError("User not found")
+                }
+
+                return: user
+            }
+
+            // Create new user
+            on create(data, ctx) {
+                // Check if email exists
+                existing: await UserRepository.findByEmail(data.email)
+
+                if (existing) {
+                    throw: ConflictError("Email already registered")
+                }
+
+                // Create user with generated ID
+                newUser: await UserRepository.create({
+                    id: crypto.randomUUID(),
+                    name: data.name,
+                    email: data.email,
+                    role: data.role ?? "user"
+                })
+
+                return: newUser
+            }
+        }
+    }`,
+    preview: [RepoNote]
+})
+
+RepoNote -> {
+    style: "p-4 bg-blue-50 rounded-lg border border-blue-200"
+    children: [
+        Text({ text: "Repository methods are fully typed. The return type is inferred from your Schema and SQL query.", style: "text-blue-700 text-sm" })
+    ]
+}
+
+// Request Handling
+RequestHandlingSection -> DocsCodeSection({
+    title: "Request Handling",
+    description: "Access request data in handlers:",
+    filename: "request.tp",
+    code: `
+    UserApi :: {
+        rest: "/api/users"
+
+        // Path parameters
+        getById: get("/:id") -> User
+
+        // Query parameters
+        search: get("/search") { query: SearchQuery, response: User[] }
+
+        // Request body
+        create: post("/") { request: CreateUserRequest, response: User }
+
+        // Multiple path params
+        getByOrgAndId: get("/org/:orgId/user/:userId") -> User
+
+        server {
+            // Path params are passed directly
+            on getById(id, ctx) {
+                user: await UserRepository.findById(id)
+                return: user
+            }
+
+            // Query params via ctx
+            on search(ctx) {
+                query: ctx.query.q ?? ""
+                limit: parseInt(ctx.query.limit ?? "10")
+
+                users: await UserRepository.search(query, limit)
+                return: users
+            }
+
+            // Body data as first param
+            on create(data, ctx) {
+                // data is typed as CreateUserRequest
+                user: await UserRepository.create(data)
+                return: user
+            }
+
+            // Multiple path params
+            on getByOrgAndId(orgId, userId, ctx) {
+                user: await UserRepository.findByOrgAndId(orgId, userId)
+                return: user
+            }
+        }
+    }`,
+    preview: [RequestPreview]
+})
+
+RequestPreview -> {
+    align: vertical
+    style: "space-y-2 text-sm"
+    children: [
+        RequestItem({ source: "/:id", access: "id (param)" }),
+        RequestItem({ source: "?q=test", access: "ctx.query.q" }),
+        RequestItem({ source: "POST body", access: "data (first param)" }),
+        RequestItem({ source: "Headers", access: "ctx.headers" })
+    ]
+}
+
+RequestItem(props) -> {
+    style: "flex items-center gap-2 p-2 bg-gray-50 rounded"
+    children: [
+        Text({ text: props.source, style: "font-mono text-pink-600 w-28" }),
+        Text({ text: "→", style: "text-gray-400" }),
+        Text({ text: props.access, style: "font-mono text-gray-600" })
+    ]
+}
+
+// Response
+ResponseSection -> DocsCodeSection({
+    title: "Response Handling",
+    description: "Return different response types:",
+    filename: "response.tp",
+    code: `
+    server {
+        // Simple object return (auto JSON serialization)
+        on getById(id, ctx) {
+            user: await UserRepository.findById(id)
+            return: user
+        }
+
+        // Array return
+        on getAll(ctx) {
+            users: await UserRepository.findAll()
+            return: users
+        }
+
+        // With status code
+        on create(data, ctx) {
+            user: await UserRepository.create(data)
+            return: {
+                status: 201
+                body: user
+            }
+        }
+
+        // Custom headers
+        on download(id, ctx) {
+            file: await FileRepository.findById(id)
+            return: {
+                status: 200
+                headers: {
+                    "Content-Type": file.mimeType
+                    "Content-Disposition": "attachment; filename=\"" + file.name + "\""
+                }
+                body: file.data
+            }
+        }
+
+        // No content
+        on delete(id, ctx) {
+            await UserRepository.delete(id)
+            return: { status: 204 }
+        }
+    }`,
+    preview: [ResponseNote]
+})
+
+ResponseNote -> {
+    style: "p-4 bg-green-50 rounded-lg border border-green-200"
+    children: [
+        Text({ text: "Simple return values are automatically serialized to JSON with status 200. Use object format for custom status codes or headers.", style: "text-green-700 text-sm" })
+    ]
+}
+
+// Error Handling
+ErrorHandlingSection -> DocsCodeSection({
+    title: "Error Handling",
+    description: "Throw typed errors for automatic HTTP responses:",
+    filename: "errors.tp",
+    code: `
+    server {
+        on getById(id, ctx) {
+            user: await UserRepository.findById(id)
+
+            // 404 Not Found
+            if (!user) {
+                throw: NotFoundError("User not found")
+            }
+
+            // 403 Forbidden
+            if (!ctx.user.canView(user)) {
+                throw: ForbiddenError("Access denied")
+            }
+
+            return: user
+        }
+
+        on create(data, ctx) {
+            // 400 Bad Request
+            if (!isValidEmail(data.email)) {
+                throw: BadRequestError("Invalid email format")
+            }
+
+            // 409 Conflict
+            existing: await UserRepository.findByEmail(data.email)
+            if (existing) {
+                throw: ConflictError("Email already exists")
+            }
+
+            try {
+                user: await UserRepository.create(data)
+                return: user
+            } catch(e) {
+                // 500 Internal Server Error
+                throw: InternalError("Failed to create user")
+            }
+        }
+    }`,
+    preview: [ErrorTypesPreview]
+})
+
+ErrorTypesPreview -> {
+    align: vertical
+    style: "space-y-1"
+    children: [
+        Text({ text: "Built-in error types:", style: "font-medium text-gray-700 mb-2" }),
+        ErrorTypeItem({ name: "BadRequestError", code: "400" }),
+        ErrorTypeItem({ name: "UnauthorizedError", code: "401" }),
+        ErrorTypeItem({ name: "ForbiddenError", code: "403" }),
+        ErrorTypeItem({ name: "NotFoundError", code: "404" }),
+        ErrorTypeItem({ name: "ConflictError", code: "409" }),
+        ErrorTypeItem({ name: "InternalError", code: "500" })
+    ]
+}
+
+ErrorTypeItem(props) -> {
+    style: "flex items-center gap-2 pl-4"
+    children: [
+        Text({ text: props.name, style: "font-mono text-sm text-pink-600 w-40" }),
+        Text({ text: "→", style: "text-gray-400" }),
+        Text({ text: props.code, style: "font-mono text-sm text-gray-600" })
+    ]
+}
+
+// Middleware
+MiddlewareSection -> DocsCodeSection({
+    title: "Middleware & Context",
+    description: "Add authentication and other middleware:",
+    filename: "middleware.tp",
+    code: `
+    // Define context type
+    AppContext {
+        db: D1Database
+        kv: KVNamespace
+        user: User?
+        env: Env
+    }
+
+    UserApi :: {
+        rest: "/api/users"
+
+        // Require auth for all endpoints
+        guards: [AuthGuard]
+
+        server {
+            // Use AppContext
+            context: AppContext
+
+            // Auth guard adds user to context
+            on getAll(ctx) {
+                // ctx.user is available after AuthGuard
+                if (ctx.user.role != "admin") {
+                    throw: ForbiddenError("Admin only")
+                }
+
+                users: await UserRepository.findAll()
+                return: users
+            }
+
+            on getProfile(ctx) {
+                // Get current user's profile
+                user: await UserRepository.findById(ctx.user.id)
+                return: user
+            }
+        }
+    }
+
+    // Define AuthGuard
+    AuthGuard ? {
+        activate(ctx) {
+            token: ctx.headers.get("Authorization")
+
+            if (!token) {
+                throw: UnauthorizedError("No token provided")
+            }
+
+            user: await verifyToken(token)
+            ctx.user = user
+
+            return: true
+        }
+    }`,
+    preview: [MiddlewareNote]
+})
+
+MiddlewareNote -> {
+    style: "p-4 bg-amber-50 rounded-lg border border-amber-200"
+    children: [
+        Text({ text: "Guards are executed before handlers. Use them for authentication, rate limiting, and other cross-cutting concerns.", style: "text-amber-700 text-sm" })
+    ]
+}
+
+// Deployment
+DeploymentSection -> DocsCodeSection({
+    title: "Deployment",
+    description: "Build and deploy your API:",
+    filename: "terminal",
+    code: `
+    # Build for Cloudflare Workers
+    topo build --target cloudflare
+
+    # Deploy to Cloudflare
+    cd dist/api
+    wrangler deploy
+
+    # Build for Rust Axum
+    topo build --target axum
+
+    # Run Rust server
+    cd dist/api-rust
+    cargo run --release
+
+    # Environment variables
+    # Cloudflare: Set in wrangler.toml or dashboard
+    # Axum: Use .env file or environment`,
+    preview: [DeployPreview]
+})
+
+DeployPreview -> FeatureList({
+    title: "Deployment targets:",
+    items: [
+        { icon: "v", text: "Cloudflare Workers - Edge computing, D1/KV support" },
+        { icon: "v", text: "Rust Axum - High-performance standalone server" }
+    ]
+})

@@ -93,7 +93,13 @@ pub fn build_project(input: &PathBuf, output: &PathBuf, mode: &str, target: &str
     if routes_def_path.exists() {
         println!("  Loading routes.tp...");
         let routes_source = fs::read_to_string(&routes_def_path)?;
-        let mut lexer = Lexer::new(&routes_source);
+        let mut lexer = match Lexer::new(&routes_source) {
+            Ok(l) => l,
+            Err(e) => {
+                eprintln!("Error creating lexer for routes.tp: {}", e);
+                return Ok(());
+            }
+        };
         match lexer.tokenize() {
             Ok(tokens) => {
                 let mut parser = TopoParser::new(tokens);

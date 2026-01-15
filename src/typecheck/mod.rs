@@ -556,7 +556,7 @@ mod tests {
     use crate::Parser;
 
     fn check_source(source: &str) -> Vec<TypeError> {
-        let mut lexer = Lexer::new(source);
+        let mut lexer = Lexer::new(source).unwrap();
         let tokens = lexer.tokenize().unwrap();
         let mut parser = Parser::new(tokens);
         let program = parser.parse().unwrap();

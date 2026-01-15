@@ -32,6 +32,15 @@ DocsSidebarNav -> {
             ]
         }),
         SidebarSection({
+            title: "Database",
+            items: [
+                DocsSidebarItem({ label: "Schema Definition", href: "/docs/db-schema", active: false }),
+                DocsSidebarItem({ label: "Repository", href: "/docs/repository", active: false }),
+                DocsSidebarItem({ label: "Migration", href: "/docs/migration", active: false }),
+                DocsSidebarItem({ label: "Server API Impl", href: "/docs/server-api", active: false })
+            ]
+        }),
+        SidebarSection({
             title: "UI Components",
             items: [
                 DocsSidebarItem({ label: "Atoms", href: "/docs/ui/atoms", active: false }),

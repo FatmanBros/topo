@@ -842,7 +842,7 @@ mod tests {
     use crate::parser::Parser;
 
     fn generate(source: &str) -> String {
-        let mut lexer = Lexer::new(source);
+        let mut lexer = Lexer::new(source).unwrap();
         let tokens = lexer.tokenize().unwrap();
         let mut parser = Parser::new(tokens);
         let program = parser.parse().unwrap();
@@ -880,7 +880,7 @@ mod tests {
     }
 
     fn generate_ts(source: &str) -> String {
-        let mut lexer = Lexer::new(source);
+        let mut lexer = Lexer::new(source).unwrap();
         let tokens = lexer.tokenize().unwrap();
         let mut parser = Parser::new(tokens);
         let program = parser.parse().unwrap();

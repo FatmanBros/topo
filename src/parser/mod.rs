@@ -12,6 +12,12 @@ use crate::ast::*;
 use crate::lexer::{Token, TokenKind};
 use thiserror::Error;
 
+/// Maximum recursion depth to prevent stack overflow with deeply nested input.
+/// This value accounts for the deep call chain in expression parsing
+/// (expression -> ternary -> pipe_expression -> ... -> primary).
+/// In debug builds, each stack frame is larger, so we use a conservative limit.
+const MAX_RECURSION_DEPTH: usize = 64;
+
 #[derive(Error, Debug)]
 pub enum ParseError {
     #[error("Unexpected token: expected {expected}, found {found} at line {line}, column {column}")]
@@ -27,16 +33,42 @@ pub enum ParseError {
 
     #[error("Invalid definition operator at line {line}, column {column}")]
     InvalidDefinitionOperator { line: usize, column: usize },
+
+    #[error("Maximum recursion depth exceeded at line {line}, column {column}")]
+    MaxRecursionDepthExceeded { line: usize, column: usize },
 }
 
 pub struct Parser {
     tokens: Vec<Token>,
     current: usize,
+    recursion_depth: usize,
 }
 
 impl Parser {
     pub fn new(tokens: Vec<Token>) -> Self {
-        Self { tokens, current: 0 }
+        Self {
+            tokens,
+            current: 0,
+            recursion_depth: 0,
+        }
+    }
+
+    /// Enter a recursive parsing context. Returns error if max depth exceeded.
+    fn enter_recursion(&mut self) -> Result<(), ParseError> {
+        self.recursion_depth += 1;
+        if self.recursion_depth > MAX_RECURSION_DEPTH {
+            let token = self.peek();
+            return Err(ParseError::MaxRecursionDepthExceeded {
+                line: token.line,
+                column: token.column,
+            });
+        }
+        Ok(())
+    }
+
+    /// Exit a recursive parsing context.
+    fn exit_recursion(&mut self) {
+        self.recursion_depth = self.recursion_depth.saturating_sub(1);
     }
 
     pub fn parse(&mut self) -> Result<Program, ParseError> {
@@ -921,40 +953,8 @@ impl Parser {
             return Ok(key);
         }
 
-        // Allow keywords to be used as property keys
-        let is_valid_key = matches!(
-            token.kind,
-            TokenKind::Identifier
-                | TokenKind::Type
-                | TokenKind::Button
-                | TokenKind::Submit
-                | TokenKind::Text
-                | TokenKind::Click
-                | TokenKind::Error
-                | TokenKind::Message
-                | TokenKind::Open
-                | TokenKind::Close
-                | TokenKind::State
-                | TokenKind::Actions
-                | TokenKind::Reducers
-                | TokenKind::Effects
-                | TokenKind::Selectors
-                | TokenKind::Rest
-                | TokenKind::Get
-                | TokenKind::Post
-                | TokenKind::Put
-                | TokenKind::Patch
-                | TokenKind::Delete
-                | TokenKind::Headers
-                | TokenKind::Auth
-                | TokenKind::Timeout
-                | TokenKind::Subscribe
-                | TokenKind::Visible
-                | TokenKind::Hidden
-                | TokenKind::Url
-                | TokenKind::Fill
-                | TokenKind::None
-        );
+        // Allow identifiers and keywords as property keys
+        let is_valid_key = Self::is_valid_identifier_token(token.kind);
 
         if is_valid_key {
             self.advance();
@@ -1015,9 +1015,23 @@ impl Parser {
         }
     }
 
+    /// Check if a token can be used as an identifier (identifier or keyword)
+    fn is_valid_identifier_token(kind: TokenKind) -> bool {
+        // Reject only structural tokens that would break parsing
+        !matches!(
+            kind,
+            TokenKind::Colon      // key-value separator
+                | TokenKind::Comma    // property separator
+                | TokenKind::RBrace   // end of object
+                | TokenKind::RBracket // end of array
+                | TokenKind::RParen   // end of group
+                | TokenKind::Eof
+        )
+    }
+
     fn expect_identifier(&mut self) -> Result<String, ParseError> {
         let token = self.peek().clone();
-        if token.kind == TokenKind::Identifier {
+        if Self::is_valid_identifier_token(token.kind) {
             self.advance();
             Ok(token.lexeme)
         } else {
@@ -1032,54 +1046,7 @@ impl Parser {
 
     /// Accept identifiers or keywords as valid names (for parameters, etc.)
     fn expect_identifier_or_keyword(&mut self) -> Result<String, ParseError> {
-        let token = self.peek().clone();
-        let is_valid = matches!(
-            token.kind,
-            TokenKind::Identifier
-                | TokenKind::Type
-                | TokenKind::Text
-                | TokenKind::Button
-                | TokenKind::Submit
-                | TokenKind::Click
-                | TokenKind::Error
-                | TokenKind::Message
-                | TokenKind::Open
-                | TokenKind::Close
-                | TokenKind::State
-                | TokenKind::Actions
-                | TokenKind::Reducers
-                | TokenKind::Effects
-                | TokenKind::Selectors
-                | TokenKind::Rest
-                | TokenKind::Get
-                | TokenKind::Post
-                | TokenKind::Put
-                | TokenKind::Patch
-                | TokenKind::Delete
-                | TokenKind::Headers
-                | TokenKind::Auth
-                | TokenKind::Timeout
-                | TokenKind::Subscribe
-                | TokenKind::Visible
-                | TokenKind::Hidden
-                | TokenKind::Url
-                | TokenKind::Fill
-                | TokenKind::For
-                | TokenKind::On
-                | TokenKind::None
-        );
-
-        if is_valid {
-            self.advance();
-            Ok(token.lexeme)
-        } else {
-            Err(ParseError::UnexpectedToken {
-                expected: "identifier".to_string(),
-                found: token.lexeme,
-                line: token.line,
-                column: token.column,
-            })
-        }
+        self.expect_identifier()
     }
 }
 
@@ -1089,7 +1056,7 @@ mod tests {
     use crate::lexer::Lexer;
 
     fn parse(source: &str) -> Result<Program, ParseError> {
-        let mut lexer = Lexer::new(source);
+        let mut lexer = Lexer::new(source).unwrap();
         let tokens = lexer.tokenize().unwrap();
         let mut parser = Parser::new(tokens);
         parser.parse()
@@ -1320,5 +1287,80 @@ mod tests {
         } else {
             panic!("Expected store declaration");
         }
+    }
+
+    #[test]
+    fn test_recursion_depth_limit_nested_parens() {
+        // Generate deeply nested parentheses that exceed MAX_RECURSION_DEPTH
+        let depth = super::MAX_RECURSION_DEPTH + 10;
+        let mut source = String::from("MyComponent -> { value: ");
+        source.push_str(&"(".repeat(depth));
+        source.push('1');
+        source.push_str(&")".repeat(depth));
+        source.push_str(" }");
+
+        let result = parse(&source);
+        assert!(result.is_err());
+        if let Err(ParseError::MaxRecursionDepthExceeded { .. }) = result {
+            // Expected error
+        } else {
+            panic!("Expected MaxRecursionDepthExceeded error, got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn test_recursion_depth_limit_nested_arrays() {
+        // Generate deeply nested arrays that exceed MAX_RECURSION_DEPTH
+        let depth = super::MAX_RECURSION_DEPTH + 10;
+        let mut source = String::from("MyComponent -> { value: ");
+        source.push_str(&"[".repeat(depth));
+        source.push('1');
+        source.push_str(&"]".repeat(depth));
+        source.push_str(" }");
+
+        let result = parse(&source);
+        assert!(result.is_err());
+        if let Err(ParseError::MaxRecursionDepthExceeded { .. }) = result {
+            // Expected error
+        } else {
+            panic!("Expected MaxRecursionDepthExceeded error, got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn test_recursion_depth_limit_nested_objects() {
+        // Generate deeply nested objects that exceed MAX_RECURSION_DEPTH
+        let depth = super::MAX_RECURSION_DEPTH + 10;
+        let mut source = String::from("MyComponent -> { value: ");
+        for i in 0..depth {
+            source.push_str(&format!("{{ a{}: ", i));
+        }
+        source.push('1');
+        for _ in 0..depth {
+            source.push_str(" }");
+        }
+        source.push_str(" }");
+
+        let result = parse(&source);
+        assert!(result.is_err());
+        if let Err(ParseError::MaxRecursionDepthExceeded { .. }) = result {
+            // Expected error
+        } else {
+            panic!("Expected MaxRecursionDepthExceeded error, got {:?}", result);
+        }
+    }
+
+    #[test]
+    fn test_moderate_nesting_allowed() {
+        // Test that moderate nesting (below limit) is still allowed
+        let depth = 50; // Well below MAX_RECURSION_DEPTH
+        let mut source = String::from("MyComponent -> { value: ");
+        source.push_str(&"(".repeat(depth));
+        source.push('1');
+        source.push_str(&")".repeat(depth));
+        source.push_str(" }");
+
+        let result = parse(&source);
+        assert!(result.is_ok(), "Moderate nesting should be allowed");
     }
 }

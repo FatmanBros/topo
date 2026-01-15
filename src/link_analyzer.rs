@@ -546,7 +546,7 @@ impl LinkAnalyzer {
                                 if let Some(service_path) = service_file {
                                     if !seen_services.contains(&service_path) {
                                         if let Ok(service_source) = fs::read_to_string(&service_path) {
-                                            let mut lexer = Lexer::new(&service_source);
+                                            let Ok(mut lexer) = Lexer::new(&service_source) else { continue };
                                             if let Ok(tokens) = lexer.tokenize() {
                                                 let mut parser = TopoParser::new(tokens);
                                                 if let Ok(program) = parser.parse() {
@@ -839,7 +839,7 @@ impl LinkAnalyzer {
     /// Extract component imports from a file
     fn extract_component_imports(&self, file: &Path) -> Result<Vec<String>> {
         let source = fs::read_to_string(file)?;
-        let mut lexer = Lexer::new(&source);
+        let mut lexer = Lexer::new(&source)?;
         let tokens = lexer.tokenize()?;
         let mut parser = TopoParser::new(tokens);
         let program = parser.parse()?;
@@ -860,7 +860,7 @@ impl LinkAnalyzer {
     /// Extract links from a .tp file
     fn extract_links_from_file(&self, file: &Path, source_route: &str) -> Result<Vec<PageLink>> {
         let source = fs::read_to_string(file)?;
-        let mut lexer = Lexer::new(&source);
+        let mut lexer = Lexer::new(&source)?;
         let tokens = lexer.tokenize()?;
         let mut parser = TopoParser::new(tokens);
         let program = parser.parse()?;
