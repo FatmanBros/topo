@@ -91,7 +91,7 @@ jobs:
 
           # Update main package version
           cd npm/topo-ui
-          npm version $VERSION --no-git-tag-version
+          npm version $VERSION --no-git-tag-version --allow-same-version
           # Update optionalDependencies versions
           sed -i "s/\"0.1.0\"/\"$VERSION\"/g" package.json
           cd ../..
@@ -99,7 +99,7 @@ jobs:
           # Update platform package versions
           for pkg in topo-ui-linux-x64 topo-ui-darwin-arm64 topo-ui-darwin-x64 topo-ui-win32-x64; do
             cd npm/$pkg
-            npm version $VERSION --no-git-tag-version
+            npm version $VERSION --no-git-tag-version --allow-same-version
             cd ../..
           done
 
