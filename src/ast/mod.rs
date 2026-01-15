@@ -71,6 +71,9 @@ pub enum Declaration {
 
     /// Directive definition: `Name @ { onMount, onDestroy }`
     Directive(DirectiveDef),
+
+    /// Schema definition: `Schema { tables... }`
+    Schema(SchemaDef),
 }
 
 // ============================================================================
@@ -805,6 +808,12 @@ pub enum Expression {
         then_branch: Box<Expression>,
         else_branch: Box<Expression>,
     },
+
+    /// SQL template literal: ctx.sql`SELECT * FROM users WHERE id = ${id}`
+    SqlTemplate {
+        parts: Vec<String>,
+        expressions: Vec<Expression>,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -964,4 +973,91 @@ impl Default for Span {
             column: 1,
         }
     }
+}
+
+// ============================================================================
+// Schema Definition (Database Schema)
+// ============================================================================
+
+/// Schema definition: `Schema { tables... }`
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SchemaDef {
+    pub tables: Vec<TableDef>,
+}
+
+/// Table definition within a schema
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct TableDef {
+    pub name: String,
+    pub columns: Vec<ColumnDef>,
+}
+
+/// Column definition within a table
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ColumnDef {
+    pub name: String,
+    pub column_type: ColumnType,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub nullable: bool,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub constraints: Vec<ColumnConstraint>,
+}
+
+/// Column data types
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum ColumnType {
+    String,
+    Number,
+    Boolean,
+    Datetime,
+    Json,
+    Blob,
+}
+
+/// Column constraints
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "type")]
+pub enum ColumnConstraint {
+    /// Primary key: @primary
+    Primary,
+    /// Unique constraint: @unique
+    Unique,
+    /// Foreign key reference: @references(table.column)
+    References { table: String, column: String },
+    /// Default value: @default(value)
+    Default { value: Expression },
+    /// Auto-increment: @autoincrement
+    AutoIncrement,
+}
+
+// ============================================================================
+// SQL Template Expression
+// ============================================================================
+
+/// SQL template literal: ctx.sql`SELECT * FROM users WHERE id = ${id}`
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SqlTemplate {
+    /// Static parts of the SQL string
+    pub parts: Vec<String>,
+    /// Interpolated expressions (${expr})
+    pub expressions: Vec<Expression>,
+}
+
+/// Inferred type from SQL query based on schema
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SqlResultType {
+    /// Selected columns and their types
+    pub columns: Vec<SqlColumnType>,
+    /// Whether result can be null (for .first())
+    pub nullable: bool,
+    /// Whether result is array (for .all())
+    pub is_array: bool,
+}
+
+/// Column type in SQL result
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SqlColumnType {
+    pub name: String,
+    pub column_type: ColumnType,
+    pub nullable: bool,
 }

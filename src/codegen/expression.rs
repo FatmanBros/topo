@@ -386,6 +386,20 @@ impl JsCodegen {
                     format!("__pipes.{}({}, {})", pipe_name, value_str, args_str.join(", "))
                 }
             }
+            Expression::SqlTemplate { parts, expressions } => {
+                // Generate tagged template literal: ctx.sql`...`
+                let mut result = String::from("ctx.sql`");
+                for (i, part) in parts.iter().enumerate() {
+                    result.push_str(part);
+                    if i < expressions.len() {
+                        result.push_str("${");
+                        result.push_str(&self.generate_expression(&expressions[i]));
+                        result.push('}');
+                    }
+                }
+                result.push('`');
+                result
+            }
         }
     }
 }

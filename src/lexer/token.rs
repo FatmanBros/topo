@@ -100,6 +100,11 @@ pub enum TokenKind {
     Middleware,
     Throw,
 
+    // Keywords - Database Schema
+    Schema,
+    Sql,        // sql` template literal start
+    Backtick,   // ` for template literals
+
     // Keywords - Subscribe (WebSocket/SSE)
     Subscribe,
     Message,
@@ -220,6 +225,9 @@ impl std::fmt::Display for TokenKind {
             TokenKind::Context => write!(f, "context"),
             TokenKind::Middleware => write!(f, "middleware"),
             TokenKind::Throw => write!(f, "throw"),
+            TokenKind::Schema => write!(f, "Schema"),
+            TokenKind::Sql => write!(f, "sql"),
+            TokenKind::Backtick => write!(f, "`"),
             TokenKind::Subscribe => write!(f, "subscribe"),
             TokenKind::Message => write!(f, "message"),
             TokenKind::Error => write!(f, "error"),

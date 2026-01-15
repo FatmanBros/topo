@@ -330,6 +330,30 @@ impl AxumCodegen {
                 let elems: Vec<String> = elements.iter().map(|e| self.generate_expression(e)).collect();
                 format!("vec![{}]", elems.join(", "))
             }
+            Expression::SqlTemplate { parts, expressions } => {
+                // Generate sqlx query
+                // sql`SELECT * FROM users WHERE id = ${id}` -> sqlx::query!("SELECT * FROM users WHERE id = $1", id)
+                let mut sql_str = String::new();
+                let mut bindings = Vec::new();
+
+                for (i, part) in parts.iter().enumerate() {
+                    sql_str.push_str(part);
+                    if i < expressions.len() {
+                        sql_str.push_str(&format!("${}", i + 1)); // PostgreSQL style
+                        bindings.push(self.generate_expression(&expressions[i]));
+                    }
+                }
+
+                if bindings.is_empty() {
+                    format!("sqlx::query!(\"{}\")", sql_str.replace('"', "\\\""))
+                } else {
+                    format!(
+                        "sqlx::query!(\"{}\", {})",
+                        sql_str.replace('"', "\\\""),
+                        bindings.join(", ")
+                    )
+                }
+            }
             _ => "/* unsupported expression */".to_string(),
         }
     }

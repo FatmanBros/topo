@@ -264,6 +264,30 @@ impl WorkersCodegen {
                 let elems: Vec<String> = elements.iter().map(|e| self.generate_expression(e)).collect();
                 format!("[{}]", elems.join(", "))
             }
+            Expression::SqlTemplate { parts, expressions } => {
+                // Generate D1 prepared statement
+                // sql`SELECT * FROM users WHERE id = ${id}` -> env.DB.prepare("SELECT * FROM users WHERE id = ?").bind(id)
+                let mut sql_str = String::new();
+                let mut bindings = Vec::new();
+
+                for (i, part) in parts.iter().enumerate() {
+                    sql_str.push_str(part);
+                    if i < expressions.len() {
+                        sql_str.push('?');
+                        bindings.push(self.generate_expression(&expressions[i]));
+                    }
+                }
+
+                if bindings.is_empty() {
+                    format!("context.db.prepare(\"{}\")", sql_str.replace('"', "\\\""))
+                } else {
+                    format!(
+                        "context.db.prepare(\"{}\").bind({})",
+                        sql_str.replace('"', "\\\""),
+                        bindings.join(", ")
+                    )
+                }
+            }
             _ => "/* unsupported expression */".to_string(),
         }
     }
