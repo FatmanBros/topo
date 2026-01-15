@@ -3,9 +3,11 @@
 mod builder;
 mod html;
 mod resolver;
+mod tailwind;
 mod verify;
 
 pub use builder::{build_project, build_project_dev};
+pub use tailwind::build_tailwind;
 pub use verify::verify_build;
 #[allow(unused_imports)]
 pub use html::{generate_html, generate_html_dev, generate_html_ssg};

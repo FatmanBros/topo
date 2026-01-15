@@ -12,7 +12,7 @@ use topo::lexer::Lexer;
 use topo::parser::Parser as TopoParser;
 
 use super::{
-    copy_dir_contents, deduplicate_functions, find_project_root, find_tp_files,
+    build_tailwind, copy_dir_contents, deduplicate_functions, find_project_root, find_tp_files,
     generate_i18n_runtime, minify_js,
 };
 use super::html::{generate_html, generate_html_dev, generate_html_ssg};
@@ -190,6 +190,10 @@ pub fn build_project(input: &PathBuf, output: &PathBuf, mode: &str, target: &str
         generate_html(&config)
     };
     fs::write(output.join("index.html"), &html)?;
+
+    // Build Tailwind CSS
+    let minify_css = mode == "ssg";
+    build_tailwind(&project_root, output, minify_css)?;
 
     // SSG mode: generate HTML files for each static route
     if mode == "ssg" {
