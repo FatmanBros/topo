@@ -119,3 +119,11 @@ jobs:
         run: |
           cd npm/topo-ui
           npm publish --access public
+
+      - name: Publish components package
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          cd packages/components
+          npm version ${{ steps.version.outputs.VERSION }} --no-git-tag-version --allow-same-version
+          npm publish --access public
