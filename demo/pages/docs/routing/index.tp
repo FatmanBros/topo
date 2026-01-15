@@ -16,6 +16,7 @@ RoutingContent -> {
         FileBasedSection,
         RouterSection,
         RoutesSection,
+        RouteMetaSection,
         DynamicRoutesSection,
         NavigationSection,
         LayoutsSection
@@ -130,6 +131,48 @@ RoutesSection -> DocsCodeSection({
             { label: "Routes.home()", desc: "Returns \"/\"" },
             { label: "Routes.userDetail(\"123\")", desc: "Returns \"/users/123\"" },
             { label: "Routes.docs.installation()", desc: "Returns \"/docs/installation\"" }
+        ]
+    })]
+})
+
+// Route Metadata
+RouteMetaSection -> DocsCodeSection({
+    title: "Route Metadata",
+    description: "Set page titles and metadata via routes using the arrow syntax:",
+    filename: "routes.tp",
+    code: `
+    Routes {
+        // Simple title
+        home: "/" -> { title: "Home" }
+
+        // Title and description
+        login: "/login" -> {
+            title: "Login",
+            description: "Sign in to your account"
+        }
+
+        // With guards + metadata
+        dashboard: "/dashboard", [AuthGuard] -> { title: "Dashboard" }
+
+        // Parameterized routes
+        userDetail(id): "/users/{id}" -> { title: "User Profile" }
+
+        // Sub-routes (metadata not supported)
+        docs: "/docs" -> DocsRoutes
+    }`,
+    preview: [FeatureList({
+        title: "Metadata features:",
+        items: [
+            { icon: "v", text: "title - Sets document.title on navigation" },
+            { icon: "v", text: "description - Page description (for SEO)" },
+            { icon: "v", text: "Works with guards and resolvers" },
+            { icon: "v", text: "Appends to defaultTitle from config" }
+        ]
+    }), ConfigPreview({
+        items: [
+            { label: "-> { title }", desc: "Arrow syntax for metadata" },
+            { label: "__defaultTitle", desc: "Base title from topo.config.json" },
+            { label: "Result", desc: "\"Login | My App\"" }
         ]
     })]
 })
