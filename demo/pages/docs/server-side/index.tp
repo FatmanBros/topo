@@ -1,0 +1,376 @@
+// Server-Side API docs page
+import { DocsTemplate } from "../template.tp"
+import { DocsSection, DocsDescription } from "@/components/molecules/docs-section.tp"
+import { DocsCodeSection } from "@/components/organisms/docs-code-section.tp"
+import { FeatureList } from "@/components/molecules/feature-list.tp"
+import { Text } from "@packages/components/atoms/text.tp"
+import { SectionTitle } from "@/components/molecules/section-title.tp"
+
+Page -> DocsTemplate({ children: [ServerSideContent] })
+
+ServerSideContent -> {
+    align: vertical
+    style: "space-y-8"
+    children: [
+        PageHeader,
+        OverviewSection,
+        SyntaxSection,
+        HandlersSection,
+        StatementsSection,
+        ContextSection,
+        ErrorHandlingSection,
+        BuildSection,
+        CloudflareSection,
+        AxumSection
+    ]
+}
+
+PageHeader -> DocsSection({
+    id: "server-side",
+    title: "Server-Side API",
+    children: [HeaderDesc]
+})
+
+HeaderDesc -> DocsDescription({
+    text: "Define server-side API handlers directly in topo. Generate Cloudflare Workers or Rust Axum servers from a single source."
+})
+
+// Overview
+OverviewSection -> {
+    align: vertical
+    style: "space-y-4"
+    children: [
+        SectionTitle({ text: "Overview" }),
+        OverviewText,
+        TargetsList
+    ]
+}
+
+OverviewText -> DocsDescription({
+    text: "topo's server block allows you to define API handlers alongside your endpoint definitions. Write once, deploy to multiple targets."
+})
+
+TargetsList -> FeatureList({
+    title: "Supported targets:",
+    items: [
+        { icon: "v", text: "Cloudflare Workers - Edge computing with D1/KV" },
+        { icon: "v", text: "Rust Axum - High-performance Rust server" }
+    ]
+})
+
+// Basic Syntax
+SyntaxSection -> DocsCodeSection({
+    title: "Basic Syntax",
+    description: "Add a server block inside your API service definition:",
+    filename: "user-api.tp",
+    code: `
+    UserApi :: {
+        rest: "/api/users"
+
+        // Endpoint definitions
+        getById: get("/:id") -> User
+        create: post("/") {
+            request: CreateUserRequest
+            response: User
+        }
+
+        // Server-side implementation
+        server {
+            on getById(id, ctx) {
+                user: await ctx.db.query(
+                    "SELECT * FROM users WHERE id = ?",
+                    id
+                )
+                if (!user) {
+                    throw: NotFoundError("User not found")
+                }
+                return: user
+            }
+
+            on create(data, ctx) {
+                user: await ctx.db.insert("users", data)
+                return: user
+            }
+        }
+    }`,
+    preview: [SyntaxPreview]
+})
+
+SyntaxPreview -> FeatureList({
+    title: "Key points:",
+    items: [
+        { icon: "v", text: "server block contains handlers" },
+        { icon: "v", text: "on keyword binds to endpoint" },
+        { icon: "v", text: "ctx provides database/env access" },
+        { icon: "v", text: "return sends JSON response" }
+    ]
+})
+
+// Handlers
+HandlersSection -> DocsCodeSection({
+    title: "Handler Syntax",
+    description: "Each handler uses the on keyword followed by the endpoint name:",
+    filename: "handlers.tp",
+    code: `
+    server {
+        // Simple handler with path param
+        on getById(id, ctx) {
+            // id is extracted from /:id
+            return: ctx.db.findById(id)
+        }
+
+        // Handler with request body
+        on create(data, ctx) {
+            // data is the parsed JSON body
+            return: ctx.db.insert(data)
+        }
+
+        // Handler with multiple params
+        on getByCategory(category, page, ctx) {
+            // Multiple path/query params
+            return: ctx.db.findByCategory(category, page)
+        }
+    }`,
+    preview: [HandlerNote]
+})
+
+HandlerNote -> {
+    style: "p-4 bg-blue-50 rounded-lg border border-blue-200"
+    children: [
+        Text({ text: "The last parameter 'ctx' provides access to database, KV store, and environment variables.", style: "text-blue-700 text-sm" })
+    ]
+}
+
+// Statements
+StatementsSection -> DocsCodeSection({
+    title: "Statement Types",
+    description: "Available statements inside handlers:",
+    filename: "statements.tp",
+    code: `
+    server {
+        on example(id, ctx) {
+            // Assignment
+            user: await ctx.db.query("...")
+
+            // Conditional
+            if (!user) {
+                throw: NotFoundError("Not found")
+            }
+
+            // Try-catch
+            try {
+                result: await riskyOperation()
+            } catch(e) {
+                throw: InternalError(e.message)
+            }
+
+            // Return
+            return: user
+        }
+    }`,
+    preview: [StatementsPreview]
+})
+
+StatementsPreview -> {
+    align: vertical
+    style: "space-y-2 text-sm"
+    children: [
+        StatementItem({ name: "name: value", desc: "Variable assignment" }),
+        StatementItem({ name: "return: expr", desc: "Return JSON response" }),
+        StatementItem({ name: "throw: Error(msg)", desc: "Return error response" }),
+        StatementItem({ name: "if (cond) { }", desc: "Conditional execution" }),
+        StatementItem({ name: "try { } catch { }", desc: "Error handling" })
+    ]
+}
+
+StatementItem(props) -> {
+    style: "flex items-center gap-2 p-2 bg-gray-50 rounded"
+    children: [
+        Text({ text: props.name, style: "font-mono text-pink-600" }),
+        Text({ text: "-", style: "text-gray-400" }),
+        Text({ text: props.desc, style: "text-gray-600" })
+    ]
+}
+
+// Context
+ContextSection -> DocsCodeSection({
+    title: "Context Object",
+    description: "The ctx parameter provides access to platform-specific features:",
+    filename: "context.tp",
+    code: `
+    server {
+        // Optional: Define context type
+        context: AppContext
+
+        on getUser(id, ctx) {
+            // Cloudflare D1 (SQLite)
+            user: await ctx.db.prepare(
+                "SELECT * FROM users WHERE id = ?"
+            ).bind(id).first()
+
+            // Cloudflare KV
+            cache: await ctx.kv.get("user:" + id)
+
+            // Environment variables
+            apiKey: ctx.env.API_KEY
+
+            return: user
+        }
+    }`,
+    preview: [ContextPreview]
+})
+
+ContextPreview -> {
+    align: vertical
+    style: "space-y-2"
+    children: [
+        Text({ text: "Cloudflare Workers:", style: "font-medium text-gray-700" }),
+        ContextItem({ prop: "ctx.db", desc: "D1 database binding" }),
+        ContextItem({ prop: "ctx.kv", desc: "KV namespace binding" }),
+        ContextItem({ prop: "ctx.env", desc: "Environment variables" }),
+        Text({ text: "Rust Axum:", style: "font-medium text-gray-700 mt-2" }),
+        ContextItem({ prop: "state", desc: "Shared application state" })
+    ]
+}
+
+ContextItem(props) -> {
+    style: "flex items-center gap-2 pl-4"
+    children: [
+        Text({ text: props.prop, style: "font-mono text-sm text-pink-600" }),
+        Text({ text: props.desc, style: "text-sm text-gray-600" })
+    ]
+}
+
+// Error Handling
+ErrorHandlingSection -> DocsCodeSection({
+    title: "Error Handling",
+    description: "Use throw with error types for automatic HTTP status codes:",
+    filename: "errors.tp",
+    code: `
+    server {
+        on getById(id, ctx) {
+            user: await ctx.db.findById(id)
+
+            if (!user) {
+                // Returns 404
+                throw: NotFoundError("User not found")
+            }
+
+            if (!user.active) {
+                // Returns 403
+                throw: ForbiddenError("User is inactive")
+            }
+
+            return: user
+        }
+    }`,
+    preview: [ErrorTypesPreview]
+})
+
+ErrorTypesPreview -> {
+    align: vertical
+    style: "space-y-1"
+    children: [
+        Text({ text: "Built-in error types:", style: "font-medium text-gray-700 mb-2" }),
+        ErrorTypeItem({ name: "NotFoundError", code: "404" }),
+        ErrorTypeItem({ name: "BadRequestError", code: "400" }),
+        ErrorTypeItem({ name: "UnauthorizedError", code: "401" }),
+        ErrorTypeItem({ name: "ForbiddenError", code: "403" }),
+        ErrorTypeItem({ name: "ConflictError", code: "409" }),
+        ErrorTypeItem({ name: "InternalError", code: "500" })
+    ]
+}
+
+ErrorTypeItem(props) -> {
+    style: "flex items-center gap-2 pl-4"
+    children: [
+        Text({ text: props.name, style: "font-mono text-sm text-pink-600" }),
+        Text({ text: "->", style: "text-gray-400" }),
+        Text({ text: props.code, style: "font-mono text-sm text-gray-600" })
+    ]
+}
+
+// Build
+BuildSection -> DocsCodeSection({
+    title: "Building",
+    description: "Generate server code with the build command:",
+    filename: "terminal",
+    code: `
+    # Generate Cloudflare Workers
+    topo build --target cloudflare
+
+    # Generate Rust Axum
+    topo build --target axum
+
+    # Output structure:
+    dist/
+      api/              # Cloudflare Workers
+        worker.js
+        wrangler.toml
+      api-rust/         # Rust Axum
+        Cargo.toml
+        src/main.rs`,
+    preview: [BuildNote]
+})
+
+BuildNote -> {
+    style: "p-4 bg-green-50 rounded-lg border border-green-200"
+    children: [
+        Text({ text: "Server code is only generated when API services have server blocks.", style: "text-green-700 text-sm" })
+    ]
+}
+
+// Cloudflare
+CloudflareSection -> DocsCodeSection({
+    title: "Cloudflare Workers",
+    description: "Deploy to Cloudflare's edge network:",
+    filename: "terminal",
+    code: `
+    # Build for Cloudflare
+    topo build --target cloudflare
+
+    # Deploy
+    cd dist/api
+    wrangler deploy
+
+    # Local development
+    wrangler dev`,
+    preview: [CloudflarePreview]
+})
+
+CloudflarePreview -> FeatureList({
+    title: "Features:",
+    items: [
+        { icon: "v", text: "D1 SQLite database" },
+        { icon: "v", text: "KV key-value storage" },
+        { icon: "v", text: "Edge computing (low latency)" },
+        { icon: "v", text: "Auto-scaling" }
+    ]
+})
+
+// Axum
+AxumSection -> DocsCodeSection({
+    title: "Rust Axum",
+    description: "Deploy as a Rust server:",
+    filename: "terminal",
+    code: `
+    # Build for Axum
+    topo build --target axum
+
+    # Run the server
+    cd dist/api-rust
+    cargo run
+
+    # Server starts on http://localhost:3000`,
+    preview: [AxumPreview]
+})
+
+AxumPreview -> FeatureList({
+    title: "Features:",
+    items: [
+        { icon: "v", text: "High performance" },
+        { icon: "v", text: "Type-safe handlers" },
+        { icon: "v", text: "Async/await support" },
+        { icon: "v", text: "Easy to extend" }
+    ]
+})
