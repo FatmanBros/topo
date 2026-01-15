@@ -505,6 +505,9 @@ impl JsCodegen {
             Declaration::Directive(directive) => self.generate_directive(directive),
             Declaration::Routes(routes) => self.generate_routes(routes),
             Declaration::Function(func) => self.generate_function(func),
+            Declaration::Schema(_) => {
+                // Schema definitions are used for type inference, not code generation
+            }
         }
     }
 

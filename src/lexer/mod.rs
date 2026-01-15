@@ -398,6 +398,9 @@ impl<'a> Lexer<'a> {
             "context" => TokenKind::Context,
             "middleware" => TokenKind::Middleware,
             "throw" => TokenKind::Throw,
+            // Database Schema
+            "Schema" => TokenKind::Schema,
+            "sql" => TokenKind::Sql,
             // Subscribe (WebSocket/SSE)
             "subscribe" => TokenKind::Subscribe,
             "message" => TokenKind::Message,

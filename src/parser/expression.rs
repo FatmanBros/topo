@@ -381,6 +381,11 @@ impl Parser {
                 self.advance();
                 self.reference()
             }
+            TokenKind::Sql => {
+                // sql`SELECT * FROM users WHERE id = ${id}`
+                self.advance();
+                self.sql_template()
+            }
             TokenKind::LBracket => {
                 self.advance();
                 let mut elements = Vec::new();
@@ -455,5 +460,68 @@ impl Parser {
         }
 
         Ok(Expression::Reference { store, path })
+    }
+
+    /// Parse SQL template literal: sql`SELECT * FROM users WHERE id = ${id}`
+    fn sql_template(&mut self) -> Result<Expression, ParseError> {
+        // Expect a template string token (backtick string)
+        let token = self.peek().clone();
+        if token.kind != TokenKind::String {
+            return Err(ParseError::UnexpectedToken {
+                expected: "template string".to_string(),
+                found: token.lexeme,
+                line: token.line,
+                column: token.column,
+            });
+        }
+        self.advance();
+
+        // Remove backticks from the lexeme
+        let template = token.lexeme.trim_matches('`').to_string();
+
+        // Parse template for ${...} interpolations
+        let mut parts: Vec<String> = Vec::new();
+        let mut expressions: Vec<Expression> = Vec::new();
+        let mut current_part = String::new();
+        let mut chars = template.chars().peekable();
+
+        while let Some(c) = chars.next() {
+            if c == '$' && chars.peek() == Some(&'{') {
+                // Start of interpolation
+                chars.next(); // consume '{'
+                parts.push(current_part);
+                current_part = String::new();
+
+                // Collect expression content until matching '}'
+                let mut expr_content = String::new();
+                let mut brace_depth = 1;
+                while let Some(ec) = chars.next() {
+                    if ec == '{' {
+                        brace_depth += 1;
+                        expr_content.push(ec);
+                    } else if ec == '}' {
+                        brace_depth -= 1;
+                        if brace_depth == 0 {
+                            break;
+                        }
+                        expr_content.push(ec);
+                    } else {
+                        expr_content.push(ec);
+                    }
+                }
+
+                // Parse the expression content
+                // For simplicity, treat single identifiers directly
+                let expr = Expression::Identifier { name: expr_content.trim().to_string() };
+                expressions.push(expr);
+            } else {
+                current_part.push(c);
+            }
+        }
+
+        // Add remaining part
+        parts.push(current_part);
+
+        Ok(Expression::SqlTemplate { parts, expressions })
     }
 }

@@ -92,6 +92,11 @@ impl Parser {
             return self.routes_definition();
         }
 
+        // Check for Schema definition: Schema { ... }
+        if self.check(TokenKind::Schema) {
+            return self.schema_definition();
+        }
+
         // Check for activate/deactivate guard: activate AuthGuard ? { } or deactivate UnsavedChanges ? { }
         if self.check(TokenKind::Activate) || self.check(TokenKind::Deactivate) {
             let guard_type = if self.check(TokenKind::Activate) {
@@ -555,6 +560,116 @@ impl Parser {
         self.expect(TokenKind::RBrace)?;
 
         Ok(Declaration::GuardSetup(GuardSetupDef { global, routes }))
+    }
+
+    // ========================================================================
+    // Schema Definition
+    // ========================================================================
+
+    fn schema_definition(&mut self) -> Result<Declaration, ParseError> {
+        self.expect(TokenKind::Schema)?;
+        self.expect(TokenKind::LBrace)?;
+
+        let mut tables = Vec::new();
+
+        while !self.check(TokenKind::RBrace) && !self.is_at_end() {
+            tables.push(self.parse_table_def()?);
+        }
+
+        self.expect(TokenKind::RBrace)?;
+
+        Ok(Declaration::Schema(SchemaDef { tables }))
+    }
+
+    fn parse_table_def(&mut self) -> Result<TableDef, ParseError> {
+        let name = self.expect_identifier()?;
+        self.expect(TokenKind::LBrace)?;
+
+        let mut columns = Vec::new();
+
+        while !self.check(TokenKind::RBrace) && !self.is_at_end() {
+            columns.push(self.parse_column_def()?);
+        }
+
+        self.expect(TokenKind::RBrace)?;
+
+        Ok(TableDef { name, columns })
+    }
+
+    fn parse_column_def(&mut self) -> Result<ColumnDef, ParseError> {
+        let name = self.expect_identifier()?;
+        self.expect(TokenKind::Colon)?;
+
+        // Parse column type
+        let type_token = self.expect_identifier()?;
+        let column_type = match type_token.as_str() {
+            "string" | "String" | "text" | "Text" => ColumnType::String,
+            "number" | "Number" | "int" | "Int" | "integer" | "Integer" => ColumnType::Number,
+            "boolean" | "Boolean" | "bool" | "Bool" => ColumnType::Boolean,
+            "datetime" | "Datetime" | "timestamp" | "Timestamp" => ColumnType::Datetime,
+            "json" | "Json" | "JSON" => ColumnType::Json,
+            "blob" | "Blob" | "binary" | "Binary" => ColumnType::Blob,
+            _ => {
+                return Err(ParseError::UnexpectedToken {
+                    expected: "column type (string, number, boolean, datetime, json, blob)".to_string(),
+                    found: type_token,
+                    line: self.peek().line,
+                    column: self.peek().column,
+                });
+            }
+        };
+
+        // Check for nullable (?)
+        let nullable = if self.check(TokenKind::Question) {
+            self.advance();
+            true
+        } else {
+            false
+        };
+
+        // Parse column constraints (@primary, @unique, etc.)
+        let mut constraints = Vec::new();
+        while self.check(TokenKind::At) {
+            self.advance();
+            let constraint_name = self.expect_identifier()?;
+            let constraint = match constraint_name.as_str() {
+                "primary" | "primaryKey" => ColumnConstraint::Primary,
+                "unique" => ColumnConstraint::Unique,
+                "autoincrement" | "autoIncrement" => ColumnConstraint::AutoIncrement,
+                "references" => {
+                    // @references(table.column)
+                    self.expect(TokenKind::LParen)?;
+                    let table = self.expect_identifier()?;
+                    self.expect(TokenKind::Dot)?;
+                    let column = self.expect_identifier()?;
+                    self.expect(TokenKind::RParen)?;
+                    ColumnConstraint::References { table, column }
+                }
+                "default" => {
+                    // @default(value)
+                    self.expect(TokenKind::LParen)?;
+                    let value = self.expression()?;
+                    self.expect(TokenKind::RParen)?;
+                    ColumnConstraint::Default { value }
+                }
+                _ => {
+                    return Err(ParseError::UnexpectedToken {
+                        expected: "column constraint (primary, unique, references, default, autoincrement)".to_string(),
+                        found: constraint_name,
+                        line: self.peek().line,
+                        column: self.peek().column,
+                    });
+                }
+            };
+            constraints.push(constraint);
+        }
+
+        Ok(ColumnDef {
+            name,
+            column_type,
+            nullable,
+            constraints,
+        })
     }
 
     // ========================================================================
