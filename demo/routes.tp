@@ -11,10 +11,10 @@ Routes DocsRoutes {
 
 // Main routes
 Routes {
-    home: "/"
-    login: "/login"
-    dashboard: "/dashboard"
+    home: "/" -> { title: "Home" }
+    login: "/login" -> { title: "Login" }
+    dashboard: "/dashboard" -> { title: "Dashboard" }
     docs: "/docs" -> DocsRoutes
-    userDetail(id): "/users/{id}"
+    userDetail(id): "/users/{id}" -> { title: "User Detail" }
     projectTask(projectId, taskId): "/projects/{projectId}/tasks/{taskId}"
 }

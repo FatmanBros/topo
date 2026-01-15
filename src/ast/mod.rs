@@ -600,6 +600,9 @@ pub struct RouteEntry {
     pub params: Vec<String>,
     /// Route configuration
     pub config: RouteConfig,
+    /// Route metadata (title, description)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub meta: Option<RouteMeta>,
 }
 
 /// Route configuration - path only, path with guards, resolvers, or subroute reference
@@ -650,6 +653,17 @@ pub struct RoutesGuardsConfig {
     pub global: Vec<String>,
     /// Routes that skip global guards
     pub skip: Vec<String>,
+}
+
+/// Route metadata - title, description, etc.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct RouteMeta {
+    /// Page title (document.title)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    /// Page description (meta tag)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
 }
 
 // ============================================================================

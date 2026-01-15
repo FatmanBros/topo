@@ -366,7 +366,7 @@ impl JsCodegen {
         self.emit_line("");
 
         // Route registration
-        self.emit_line("function registerRoute(pattern, component) {");
+        self.emit_line("function registerRoute(pattern, component, meta = null) {");
         self.emit_line("  const paramNames = [];");
         self.emit_line("  const regexPattern = pattern.replace(/\\[([^\\]]+)\\]/g, (_, name) => {");
         self.emit_line("    if (name.startsWith('...')) {");
@@ -376,7 +376,7 @@ impl JsCodegen {
         self.emit_line("    paramNames.push(name);");
         self.emit_line("    return '([^/]+)';");
         self.emit_line("  });");
-        self.emit_line("  routes.push({ pattern: new RegExp(`^${regexPattern}$`), paramNames, component });");
+        self.emit_line("  routes.push({ pattern: new RegExp(`^${regexPattern}$`), paramNames, component, meta });");
         self.emit_line("}");
         self.emit_line("");
 
@@ -387,7 +387,7 @@ impl JsCodegen {
         self.emit_line("    if (match) {");
         self.emit_line("      const params = {};");
         self.emit_line("      route.paramNames.forEach((name, i) => { params[name] = match[i + 1]; });");
-        self.emit_line("      return { component: route.component, params };");
+        self.emit_line("      return { component: route.component, params, meta: route.meta };");
         self.emit_line("    }");
         self.emit_line("  }");
         self.emit_line("  return null;");
@@ -455,6 +455,11 @@ impl JsCodegen {
         self.emit_line("  } else {");
         self.emit_line("    routeState.params = {};");
         self.emit_line("    currentPage = null;");
+        self.emit_line("  }");
+        self.emit_line("  // Apply route metadata from __routeMeta or matched.meta");
+        self.emit_line("  const meta = (typeof __routeMeta !== 'undefined' && __routeMeta[path]) || (matched && matched.meta);");
+        self.emit_line("  if (meta && meta.title) {");
+        self.emit_line("    document.title = __defaultTitle ? `${meta.title} | ${__defaultTitle}` : meta.title;");
         self.emit_line("  }");
         self.emit_line("  stores.forEach(store => store.dispatch && store.dispatch('__routeChange'));");
         self.emit_line("}");

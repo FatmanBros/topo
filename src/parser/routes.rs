@@ -1,6 +1,6 @@
 //! Routes parsing - handles Routes definitions
 
-use crate::ast::{Declaration, ResolverRef, RouteConfig, RouteEntry, RoutesDef, RoutesGuardsConfig};
+use crate::ast::{Declaration, ResolverRef, RouteConfig, RouteEntry, RouteMeta, RoutesDef, RoutesGuardsConfig};
 use crate::lexer::TokenKind;
 use crate::parser::{ParseError, Parser};
 
@@ -57,12 +57,13 @@ impl Parser {
             self.expect(TokenKind::Colon)?;
 
             // Parse route config: "/path", {"/path", [guards]}, or "/path" -> SubRoute
-            let config = self.parse_route_config()?;
+            let (config, meta) = self.parse_route_config_with_meta()?;
 
             routes.push(RouteEntry {
                 name: route_name,
                 params,
                 config,
+                meta,
             });
         }
 
@@ -75,15 +76,22 @@ impl Parser {
         }))
     }
 
-    fn parse_route_config(&mut self) -> Result<RouteConfig, ParseError> {
+    fn parse_route_config_with_meta(&mut self) -> Result<(RouteConfig, Option<RouteMeta>), ParseError> {
         // Simple path: "/path", "/path" -> SubRoute, "/path", [guards], or "/path", {resolvers}
         let path = self.expect_string()?;
 
-        // Check for subroute: -> SubRoute
+        // Check for metadata or subroute: -> { title: "..." } or -> SubRoute
         if self.check(TokenKind::Arrow) {
             self.advance();
-            let route_ref = self.expect_identifier()?;
-            return Ok(RouteConfig::SubRoute { path, route_ref });
+
+            // If next token is {, it's metadata; otherwise it's a subroute reference
+            if self.check(TokenKind::LBrace) {
+                let meta = self.parse_route_meta()?;
+                return Ok((RouteConfig::Path { path }, Some(meta)));
+            } else {
+                let route_ref = self.expect_identifier()?;
+                return Ok((RouteConfig::SubRoute { path, route_ref }, None));
+            }
         }
 
         // Check for guards and/or resolvers: , [guards], {resolvers}
@@ -125,26 +133,65 @@ impl Parser {
                 resolvers = self.parse_resolver_refs()?;
             }
 
+            // Check for metadata after guards/resolvers: -> { title: "..." }
+            let meta = if self.check(TokenKind::Arrow) {
+                self.advance();
+                if self.check(TokenKind::LBrace) {
+                    Some(self.parse_route_meta()?)
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
+
             // Return appropriate variant based on what was parsed
             let has_guards = !guards.is_empty() || !can_deactivate.is_empty();
             return match (has_guards, resolvers.is_empty()) {
-                (true, true) => Ok(RouteConfig::PathWithGuards {
+                (true, true) => Ok((RouteConfig::PathWithGuards {
                     path,
                     guards,
                     can_deactivate,
-                }),
-                (true, false) => Ok(RouteConfig::PathWithGuardsAndResolvers {
+                }, meta)),
+                (true, false) => Ok((RouteConfig::PathWithGuardsAndResolvers {
                     path,
                     guards,
                     can_deactivate,
                     resolvers,
-                }),
-                (false, true) => Ok(RouteConfig::Path { path }),
-                (false, false) => Ok(RouteConfig::PathWithResolvers { path, resolvers }),
+                }, meta)),
+                (false, true) => Ok((RouteConfig::Path { path }, meta)),
+                (false, false) => Ok((RouteConfig::PathWithResolvers { path, resolvers }, meta)),
             };
         }
 
-        Ok(RouteConfig::Path { path })
+        Ok((RouteConfig::Path { path }, None))
+    }
+
+    /// Parse route metadata: { title: "Page Title", description: "..." }
+    fn parse_route_meta(&mut self) -> Result<RouteMeta, ParseError> {
+        self.expect(TokenKind::LBrace)?;
+
+        let mut meta = RouteMeta::default();
+
+        while !self.check(TokenKind::RBrace) && !self.is_at_end() {
+            let key = self.expect_identifier()?;
+            self.expect(TokenKind::Colon)?;
+
+            match key.as_str() {
+                "title" => meta.title = Some(self.expect_string()?),
+                "description" => meta.description = Some(self.expect_string()?),
+                _ => {
+                    // Skip unknown keys
+                    let _ = self.expression();
+                }
+            }
+
+            // Optional comma
+            let _ = self.match_token(TokenKind::Comma);
+        }
+
+        self.expect(TokenKind::RBrace)?;
+        Ok(meta)
     }
 
     /// Parse resolver references: {Resolver1, Resolver2(arg)}

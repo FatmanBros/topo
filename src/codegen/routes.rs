@@ -69,6 +69,46 @@ impl JsCodegen {
 
         // Generate guards configuration if present
         self.generate_routes_guards(routes, &unique_name);
+
+        // Generate route metadata map for main Routes only
+        if unique_name == "Routes" {
+            self.generate_route_meta_map(routes);
+        }
+    }
+
+    /// Generate __routeMeta map for title/description lookup by path
+    fn generate_route_meta_map(&mut self, routes: &RoutesDef) {
+        self.emit_line("// Route metadata map");
+        self.emit_line("const __routeMeta = {");
+        self.indent += 1;
+
+        for entry in &routes.routes {
+            if let Some(meta) = &entry.meta {
+                let path = match &entry.config {
+                    RouteConfig::Path { path } => path.clone(),
+                    RouteConfig::PathWithGuards { path, .. } => path.clone(),
+                    RouteConfig::PathWithResolvers { path, .. } => path.clone(),
+                    RouteConfig::PathWithGuardsAndResolvers { path, .. } => path.clone(),
+                    RouteConfig::SubRoute { .. } => continue, // Skip sub-routes
+                };
+
+                let mut parts = Vec::new();
+                if let Some(title) = &meta.title {
+                    parts.push(format!("title: '{}'", title.replace('\'', "\\'")));
+                }
+                if let Some(desc) = &meta.description {
+                    parts.push(format!("description: '{}'", desc.replace('\'', "\\'")));
+                }
+
+                if !parts.is_empty() {
+                    self.emit_line(&format!("'{}': {{ {} }},", path, parts.join(", ")));
+                }
+            }
+        }
+
+        self.indent -= 1;
+        self.emit_line("};");
+        self.emit_line("");
     }
 
     pub(super) fn generate_routes_router(&mut self, routes: &RoutesDef, unique_name: &str) {
@@ -136,9 +176,27 @@ impl JsCodegen {
                 format!("[{}]", resolvers_formatted)
             };
 
+            // Generate meta object if present
+            let meta_str = if let Some(meta) = &entry.meta {
+                let mut parts = Vec::new();
+                if let Some(title) = &meta.title {
+                    parts.push(format!("title: '{}'", title.replace('\'', "\\'")));
+                }
+                if let Some(desc) = &meta.description {
+                    parts.push(format!("description: '{}'", desc.replace('\'', "\\'")));
+                }
+                if parts.is_empty() {
+                    "null".to_string()
+                } else {
+                    format!("{{ {} }}", parts.join(", "))
+                }
+            } else {
+                "null".to_string()
+            };
+
             self.emit_line(&format!(
-                "{}: {{ path: '{}', guards: {}, canDeactivate: {}, resolvers: {} }},",
-                entry.name, path, guards_str, can_deactivate_str, resolvers_str
+                "{}: {{ path: '{}', guards: {}, canDeactivate: {}, resolvers: {}, meta: {} }},",
+                entry.name, path, guards_str, can_deactivate_str, resolvers_str, meta_str
             ));
         }
 
