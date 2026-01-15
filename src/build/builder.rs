@@ -19,6 +19,7 @@ use super::html::{generate_html, generate_html_dev, generate_html_ssg};
 use super::resolver::resolve_imports;
 use crate::deploy::generate_routes;
 use crate::deploy::generate_ssr_output;
+use crate::deploy::{extract_api_services_with_server, generate_cloudflare_api, generate_axum_api};
 
 /// Build project for production
 pub fn build_project(input: &PathBuf, output: &PathBuf, mode: &str, target: &str) -> Result<()> {
@@ -214,6 +215,21 @@ pub fn build_project(input: &PathBuf, output: &PathBuf, mode: &str, target: &str
     // SSR mode
     if mode == "ssr" {
         generate_ssr_output(output, &routes, &config, target)?;
+    }
+
+    // Generate Server API code if API services with server blocks exist
+    let programs: Vec<&Program> = parsed_files.values().collect();
+    let api_services = extract_api_services_with_server(&programs);
+    if !api_services.is_empty() {
+        println!("  Found {} API services with server blocks", api_services.len());
+        match target {
+            "cloudflare" => generate_cloudflare_api(output, &api_services, &config)?,
+            "axum" | "rust" => generate_axum_api(output, &api_services, &config)?,
+            _ => {
+                // Default: generate both
+                generate_cloudflare_api(output, &api_services, &config)?;
+            }
+        }
     }
 
     Ok(())

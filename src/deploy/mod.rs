@@ -4,6 +4,8 @@ use anyhow::Result;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use topo::ast::{ApiServiceDef, Declaration, Program};
+use topo::codegen::{AxumCodegen, WorkersCodegen, generate_cargo_toml};
 use topo::config::Config;
 
 /// Generate routes from file-based routing structure
@@ -330,4 +332,103 @@ compatibility_date = "2024-01-01"
 "#,
         name = name.to_lowercase().replace(' ', "-")
     )
+}
+
+// ============================================================================
+// Server API Code Generation
+// ============================================================================
+
+/// Extract API services with server blocks from parsed programs
+pub fn extract_api_services_with_server<'a>(programs: &'a [&'a Program]) -> Vec<&'a ApiServiceDef> {
+    let mut services = Vec::new();
+    for program in programs {
+        for decl in &program.declarations {
+            if let Declaration::ApiService(api) = decl {
+                if api.server.is_some() {
+                    services.push(api);
+                }
+            }
+        }
+    }
+    services
+}
+
+/// Generate Cloudflare Workers API server code
+pub fn generate_cloudflare_api(output: &Path, services: &[&ApiServiceDef], config: &Config) -> Result<()> {
+    if services.is_empty() {
+        return Ok(());
+    }
+
+    let api_output = output.join("api");
+    fs::create_dir_all(&api_output)?;
+
+    let mut codegen = WorkersCodegen::new();
+    let worker_code = codegen.generate(services);
+
+    fs::write(api_output.join("worker.js"), &worker_code)?;
+    println!("  Generated: api/worker.js");
+
+    // Generate wrangler.toml for API
+    let name = config
+        .project
+        .as_ref()
+        .map(|p| format!("{}-api", p.name))
+        .unwrap_or_else(|| "topo-api".to_string());
+
+    let wrangler = format!(r#"name = "{}"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+# D1 Database binding (optional)
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "my-database"
+# database_id = "your-database-id"
+
+# KV Namespace binding (optional)
+# [[kv_namespaces]]
+# binding = "KV"
+# id = "your-kv-id"
+"#, name.to_lowercase().replace(' ', "-"));
+
+    fs::write(api_output.join("wrangler.toml"), &wrangler)?;
+    println!("  Generated: api/wrangler.toml");
+
+    println!("✓ Cloudflare Workers API generated");
+    println!("  To deploy: cd {}/api && wrangler deploy", output.display());
+
+    Ok(())
+}
+
+/// Generate Rust Axum API server code
+pub fn generate_axum_api(output: &Path, services: &[&ApiServiceDef], config: &Config) -> Result<()> {
+    if services.is_empty() {
+        return Ok(());
+    }
+
+    let api_output = output.join("api-rust");
+    let src_dir = api_output.join("src");
+    fs::create_dir_all(&src_dir)?;
+
+    let mut codegen = AxumCodegen::new();
+    let rust_code = codegen.generate(services);
+
+    fs::write(src_dir.join("main.rs"), &rust_code)?;
+    println!("  Generated: api-rust/src/main.rs");
+
+    // Generate Cargo.toml
+    let name = config
+        .project
+        .as_ref()
+        .map(|p| format!("{}-api", p.name))
+        .unwrap_or_else(|| "topo-api".to_string());
+
+    let cargo_toml = generate_cargo_toml(&name.to_lowercase().replace(' ', "-"));
+    fs::write(api_output.join("Cargo.toml"), &cargo_toml)?;
+    println!("  Generated: api-rust/Cargo.toml");
+
+    println!("✓ Rust Axum API generated");
+    println!("  To run: cd {}/api-rust && cargo run", output.display());
+
+    Ok(())
 }

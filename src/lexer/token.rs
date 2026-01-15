@@ -94,6 +94,12 @@ pub enum TokenKind {
     Auth,
     Timeout,
 
+    // Keywords - Server-side API
+    Server,
+    Context,
+    Middleware,
+    Throw,
+
     // Keywords - Subscribe (WebSocket/SSE)
     Subscribe,
     Message,
@@ -210,6 +216,10 @@ impl std::fmt::Display for TokenKind {
             TokenKind::Headers => write!(f, "headers"),
             TokenKind::Auth => write!(f, "auth"),
             TokenKind::Timeout => write!(f, "timeout"),
+            TokenKind::Server => write!(f, "server"),
+            TokenKind::Context => write!(f, "context"),
+            TokenKind::Middleware => write!(f, "middleware"),
+            TokenKind::Throw => write!(f, "throw"),
             TokenKind::Subscribe => write!(f, "subscribe"),
             TokenKind::Message => write!(f, "message"),
             TokenKind::Error => write!(f, "error"),

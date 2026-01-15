@@ -332,6 +332,87 @@ pub struct ApiServiceDef {
     pub subscribe: Option<String>,
     /// Event handlers for subscription
     pub event_handlers: Vec<EventHandler>,
+    /// Server-side implementation block
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub server: Option<ServerBlock>,
+}
+
+// ============================================================================
+// Server-side Implementation (server block)
+// ============================================================================
+
+/// Server-side implementation block for API services
+/// ```topo
+/// UserApi :: {
+///     rest: "/api/users"
+///     getById: get("/:id") -> User
+///
+///     server {
+///         on getById(id, ctx) {
+///             user: await ctx.db.query("SELECT * FROM users WHERE id = ?", id)
+///             return: user
+///         }
+///     }
+/// }
+/// ```
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ServerBlock {
+    /// Context type definition (DB, Auth, etc.)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub context: Option<TypeAnnotation>,
+    /// Middleware chain
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub middleware: Vec<Expression>,
+    /// Endpoint handlers
+    pub handlers: Vec<ServerHandler>,
+}
+
+/// Server-side handler for an endpoint
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ServerHandler {
+    /// Endpoint name (must match an endpoint definition)
+    pub endpoint: String,
+    /// Handler parameters
+    pub params: Vec<TypedParam>,
+    /// Context parameter name (e.g., "ctx")
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ctx_param: Option<String>,
+    /// Handler body statements
+    pub body: Vec<ServerStatement>,
+}
+
+/// Statements allowed in server handlers
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "type")]
+pub enum ServerStatement {
+    /// Variable assignment: `name: value`
+    Assignment {
+        name: String,
+        value: Expression,
+    },
+    /// Return statement: `return: expr`
+    Return {
+        value: Expression,
+    },
+    /// Throw error: `throw: ErrorType("message")`
+    Throw {
+        error_type: String,
+        message: Expression,
+    },
+    /// If statement
+    If {
+        condition: Expression,
+        then_block: Vec<ServerStatement>,
+        else_block: Option<Vec<ServerStatement>>,
+    },
+    /// Try-catch block
+    TryCatch {
+        try_block: Vec<ServerStatement>,
+        catch_param: String,
+        catch_block: Vec<ServerStatement>,
+    },
+    /// Expression statement
+    Expression(Expression),
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

@@ -393,6 +393,11 @@ impl<'a> Lexer<'a> {
             "headers" => TokenKind::Headers,
             "auth" => TokenKind::Auth,
             "timeout" => TokenKind::Timeout,
+            // Server-side API
+            "server" => TokenKind::Server,
+            "context" => TokenKind::Context,
+            "middleware" => TokenKind::Middleware,
+            "throw" => TokenKind::Throw,
             // Subscribe (WebSocket/SSE)
             "subscribe" => TokenKind::Subscribe,
             "message" => TokenKind::Message,
