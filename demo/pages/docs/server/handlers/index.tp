@@ -1,0 +1,384 @@
+// API Handlers docs page
+import { DocsTemplate } from "../../template.tp"
+import { DocsSection, DocsDescription } from "@/components/molecules/docs-section.tp"
+import { DocsCodeSection } from "@/components/organisms/docs-code-section.tp"
+import { ConfigPreview } from "@/components/molecules/config-preview.tp"
+import { FeatureList } from "@/components/molecules/feature-list.tp"
+
+Page -> DocsTemplate({ children: [HandlersContent] })
+
+HandlersContent -> {
+    align: vertical
+    style: "space-y-8"
+    children: [
+        PageHeader,
+        BasicHandlerSection,
+        RequestDataSection,
+        ResponseSection,
+        ValidationSection,
+        ErrorHandlingSection
+    ]
+}
+
+PageHeader -> DocsSection({
+    id: "handlers",
+    title: "API Handlers",
+    children: [HeaderDesc]
+})
+
+HeaderDesc -> DocsDescription({
+    text: "Handlers process incoming requests and return responses. Learn how to read request data, validate input, and return proper responses."
+})
+
+// Basic Handler
+BasicHandlerSection -> DocsCodeSection({
+    title: "Basic Handlers",
+    description: "Export handlers for each HTTP method:",
+    filename: "users.tp",
+    code: `
+    // api/users/index.tp
+
+    // GET /api/users - List all users
+    export GET: async (req) => {
+        users: await db.users.findMany()
+        return { users }
+    }
+
+    // POST /api/users - Create user
+    export POST: async (req) => {
+        data: await req.json()
+        user: await db.users.create({ data })
+        return { user }, 201
+    }
+
+    // api/users/[id]/index.tp
+
+    // GET /api/users/:id - Get single user
+    export GET: async (req, { params }) => {
+        user: await db.users.findUnique({
+            where: { id: params.id }
+        })
+
+        if (!user) {
+            return { error: "User not found" }, 404
+        }
+
+        return { user }
+    }
+
+    // PUT /api/users/:id - Update user
+    export PUT: async (req, { params }) => {
+        data: await req.json()
+        user: await db.users.update({
+            where: { id: params.id },
+            data: data
+        })
+        return { user }
+    }
+
+    // DELETE /api/users/:id - Delete user
+    export DELETE: async (req, { params }) => {
+        await db.users.delete({
+            where: { id: params.id }
+        })
+        return { success: true }
+    }`,
+    preview: [FeatureList({
+        title: "Handler basics:",
+        items: [
+            { icon: "v", text: "export GET, POST, etc." },
+            { icon: "v", text: "async (req, context) signature" },
+            { icon: "v", text: "params from URL segments" },
+            { icon: "v", text: "Return object + status" }
+        ]
+    })]
+})
+
+// Request Data
+RequestDataSection -> DocsCodeSection({
+    title: "Reading Request Data",
+    description: "Access different types of request data:",
+    filename: "request-data.tp",
+    code: `
+    export POST: async (req, ctx) => {
+        // JSON body
+        body: await req.json()
+        // { name: "John", email: "john@example.com" }
+
+        // URL parameters (from path)
+        userId: ctx.params.id
+        // /api/users/123 -> "123"
+
+        // Query parameters
+        page: req.query.get("page") || "1"
+        limit: req.query.get("limit") || "20"
+        // /api/users?page=2&limit=10
+
+        // Headers
+        authHeader: req.headers.get("Authorization")
+        contentType: req.headers.get("Content-Type")
+
+        // Cookies
+        sessionId: req.cookies.get("session_id")
+
+        // Form data (multipart)
+        formData: await req.formData()
+        file: formData.get("avatar")
+        name: formData.get("name")
+
+        return { success: true }
+    }
+
+    // Search endpoint example
+    // api/products/search/index.tp
+    export GET: async (req) => {
+        // Read all query params
+        query: req.query.get("q") || ""
+        category: req.query.get("category")
+        minPrice: parseFloat(req.query.get("minPrice") || "0")
+        maxPrice: parseFloat(req.query.get("maxPrice") || "Infinity")
+        sortBy: req.query.get("sortBy") || "name"
+        order: req.query.get("order") || "asc"
+
+        results: await searchProducts({
+            query, category, minPrice, maxPrice, sortBy, order
+        })
+
+        return { results }
+    }`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "req.json()", desc: "Parse JSON body" },
+            { label: "ctx.params", desc: "URL path parameters" },
+            { label: "req.query", desc: "Query string params" },
+            { label: "req.headers", desc: "Request headers" }
+        ]
+    })]
+})
+
+// Response
+ResponseSection -> DocsCodeSection({
+    title: "Returning Responses",
+    description: "Different ways to return response data:",
+    filename: "responses.tp",
+    code: `
+    // Return JSON object (default status 200)
+    export GET: async (req) => {
+        return { message: "Hello" }
+    }
+
+    // Return with status code
+    export POST: async (req) => {
+        user: await createUser(data)
+        return { user }, 201  // Created
+    }
+
+    // Return error with status
+    export GET: async (req, { params }) => {
+        user: await findUser(params.id)
+        if (!user) {
+            return { error: "Not found" }, 404
+        }
+        return { user }
+    }
+
+    // Return with custom headers
+    export GET: async (req) => {
+        return {
+            body: { data: "..." },
+            status: 200,
+            headers: {
+                "X-Custom-Header": "value",
+                "Cache-Control": "max-age=3600"
+            }
+        }
+    }
+
+    // Return different content types
+    export GET: async (req) => {
+        // Plain text
+        return {
+            body: "Hello, plain text",
+            headers: { "Content-Type": "text/plain" }
+        }
+    }
+
+    // Redirect
+    export GET: async (req) => {
+        return {
+            status: 302,
+            headers: { "Location": "/new-path" }
+        }
+    }
+
+    // No content
+    export DELETE: async (req, { params }) => {
+        await deleteItem(params.id)
+        return null, 204  // No Content
+    }`,
+    preview: [FeatureList({
+        title: "Response types:",
+        items: [
+            { icon: "v", text: "return { data } - JSON 200" },
+            { icon: "v", text: "return { data }, 201 - With status" },
+            { icon: "v", text: "Custom headers" },
+            { icon: "v", text: "Redirects and no-content" }
+        ]
+    })]
+})
+
+// Validation
+ValidationSection -> DocsCodeSection({
+    title: "Input Validation",
+    description: "Validate request data before processing:",
+    filename: "validation.tp",
+    code: `
+    import { validate, schema } from "@/api/validation.tp"
+
+    // Define validation schema
+    UserSchema: schema({
+        name: { type: "string", required: true, minLength: 2 },
+        email: { type: "string", required: true, format: "email" },
+        age: { type: "number", min: 0, max: 150 },
+        role: { type: "string", enum: ["user", "admin"] }
+    })
+
+    export POST: async (req) => {
+        data: await req.json()
+
+        // Validate input
+        validation: validate(data, UserSchema)
+
+        if (!validation.valid) {
+            return {
+                error: "Validation failed",
+                details: validation.errors
+            }, 400
+        }
+
+        // Data is now validated
+        user: await db.users.create({ data: validation.data })
+        return { user }, 201
+    }
+
+    // Manual validation
+    export POST: async (req) => {
+        data: await req.json()
+        errors: {}
+
+        // Check required fields
+        if (!data.email) {
+            errors.email = "Email is required"
+        } else if (!isValidEmail(data.email)) {
+            errors.email = "Invalid email format"
+        }
+
+        if (!data.password) {
+            errors.password = "Password is required"
+        } else if (data.password.length < 8) {
+            errors.password = "Password must be at least 8 characters"
+        }
+
+        // Return errors if any
+        if (Object.keys(errors).length > 0) {
+            return { error: "Validation failed", errors }, 400
+        }
+
+        // Process valid data
+        // ...
+    }`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "schema()", desc: "Define validation rules" },
+            { label: "validate()", desc: "Check data against schema" },
+            { label: "400 response", desc: "Return validation errors" },
+            { label: "Manual checks", desc: "Custom validation logic" }
+        ]
+    })]
+})
+
+// Error Handling
+ErrorHandlingSection -> DocsCodeSection({
+    title: "Error Handling",
+    description: "Handle errors in API handlers:",
+    filename: "error-handling.tp",
+    code: `
+    // Try-catch in handlers
+    export POST: async (req) => {
+        try {
+            data: await req.json()
+            user: await db.users.create({ data })
+            return { user }, 201
+        } catch(e) {
+            // Database unique constraint error
+            if (e.code == "P2002") {
+                return { error: "Email already exists" }, 409
+            }
+
+            // Log unexpected errors
+            console.error("Create user error:", e)
+            return { error: "Internal server error" }, 500
+        }
+    }
+
+    // Global error handler (middleware)
+    // api/middleware/error.tp
+    ErrorHandler: async (req, next) => {
+        try {
+            return await next()
+        } catch(e) {
+            // Log error
+            console.error("API Error:", {
+                url: req.url,
+                method: req.method,
+                error: e.message,
+                stack: e.stack
+            })
+
+            // Don't expose internal errors
+            if (env.isProd) {
+                return { error: "An error occurred" }, 500
+            }
+
+            // Show details in development
+            return {
+                error: e.message,
+                stack: e.stack
+            }, 500
+        }
+    }
+
+    // Custom error classes
+    class NotFoundError extends Error {
+        status: 404
+        constructor(resource) {
+            super(resource + " not found")
+        }
+    }
+
+    class ValidationError extends Error {
+        status: 400
+        constructor(errors) {
+            super("Validation failed")
+            this.errors = errors
+        }
+    }
+
+    // Usage
+    export GET: async (req, { params }) => {
+        user: await db.users.findUnique({ where: { id: params.id } })
+        if (!user) {
+            throw new NotFoundError("User")
+        }
+        return { user }
+    }`,
+    preview: [FeatureList({
+        title: "Error handling:",
+        items: [
+            { icon: "v", text: "try/catch in handlers" },
+            { icon: "v", text: "Error middleware" },
+            { icon: "v", text: "Custom error classes" },
+            { icon: "v", text: "Log errors for debugging" }
+        ]
+    })]
+})

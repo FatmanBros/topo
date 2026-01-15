@@ -1,0 +1,313 @@
+// Actions & Reducers docs page
+import { DocsTemplate } from "../../template.tp"
+import { DocsSection, DocsDescription } from "@/components/molecules/docs-section.tp"
+import { DocsCodeSection } from "@/components/organisms/docs-code-section.tp"
+import { ConfigPreview } from "@/components/molecules/config-preview.tp"
+import { FeatureList } from "@/components/molecules/feature-list.tp"
+
+Page -> DocsTemplate({ children: [ActionsContent] })
+
+ActionsContent -> {
+    align: vertical
+    style: "space-y-8"
+    children: [
+        PageHeader,
+        ActionsBasicsSection,
+        ActionParametersSection,
+        ReducersSection,
+        ComplexReducersSection,
+        DispatchingSection
+    ]
+}
+
+PageHeader -> DocsSection({
+    id: "actions",
+    title: "Actions & Reducers",
+    children: [HeaderDesc]
+})
+
+HeaderDesc -> DocsDescription({
+    text: "Actions describe what happened. Reducers specify how state changes in response. Together they provide predictable state management."
+})
+
+// Actions Basics
+ActionsBasicsSection -> DocsCodeSection({
+    title: "Defining Actions",
+    description: "Actions are declared in the Actions block:",
+    filename: "counter.tp",
+    code: `
+    Counter | {
+        State { count: 0 }
+
+        // Simple actions (no parameters)
+        Actions {
+            Increment
+            Decrement
+            Reset
+        }
+
+        Reducers {
+            on Increment { count: state.count + 1 }
+            on Decrement { count: state.count - 1 }
+            on Reset { count: 0 }
+        }
+    }
+
+    // Dispatching actions
+    CounterButtons -> {
+        children: [
+            Button({ text: "-", onClick: Counter.Decrement }),
+            Text({ text: $Counter.count }),
+            Button({ text: "+", onClick: Counter.Increment }),
+            Button({ text: "Reset", onClick: Counter.Reset })
+        ]
+    }`,
+    preview: [FeatureList({
+        title: "Action basics:",
+        items: [
+            { icon: "v", text: "Actions are just names" },
+            { icon: "v", text: "Describe intent, not implementation" },
+            { icon: "v", text: "Store.ActionName to dispatch" },
+            { icon: "v", text: "Can be used as onClick handlers" }
+        ]
+    })]
+})
+
+// Action Parameters
+ActionParametersSection -> DocsCodeSection({
+    title: "Actions with Parameters",
+    description: "Actions can carry payload data:",
+    filename: "todo.tp",
+    code: `
+    TodoStore | {
+        State {
+            todos: []
+            filter: "all"
+        }
+
+        // Actions with parameters
+        Actions {
+            AddTodo(text)
+            RemoveTodo(id)
+            ToggleTodo(id)
+            SetFilter(filter)
+            SetTodos(todos)
+        }
+
+        Reducers {
+            on AddTodo(text) {
+                todos: [...state.todos, {
+                    id: Date.now(),
+                    text: text,
+                    completed: false
+                }]
+            }
+            on RemoveTodo(id) {
+                todos: state.todos.filter(t => t.id != id)
+            }
+            on ToggleTodo(id) {
+                todos: state.todos.map(t =>
+                    t.id == id ? { ...t, completed: !t.completed } : t
+                )
+            }
+            on SetFilter(filter) { filter: filter }
+            on SetTodos(todos) { todos: todos }
+        }
+    }
+
+    // Dispatching with parameters
+    TodoInput -> {
+        children: [
+            Input({ value: inputValue, onChange: setInputValue }),
+            Button({
+                text: "Add",
+                onClick: () => TodoStore.AddTodo(inputValue)
+            })
+        ]
+    }`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "Action(param)", desc: "Single parameter" },
+            { label: "Action(a, b)", desc: "Multiple parameters" },
+            { label: "on Action(param)", desc: "Access in reducer" },
+            { label: "Store.Action(value)", desc: "Dispatch with value" }
+        ]
+    })]
+})
+
+// Reducers
+ReducersSection -> DocsCodeSection({
+    title: "Writing Reducers",
+    description: "Reducers return new state based on action:",
+    filename: "user.tp",
+    code: `
+    UserStore | {
+        State {
+            user: null
+            isLoading: false
+            error: null
+        }
+
+        Actions {
+            FetchUser(id)
+            FetchSuccess(user)
+            FetchError(error)
+            ClearError
+        }
+
+        Reducers {
+            // Return partial state updates
+            on FetchUser {
+                isLoading: true
+                error: null
+            }
+
+            // Update multiple fields
+            on FetchSuccess(user) {
+                user: user
+                isLoading: false
+            }
+
+            // Access both action payload and current state
+            on FetchError(error) {
+                error: error
+                isLoading: false
+                user: null
+            }
+
+            on ClearError { error: null }
+        }
+    }
+
+    // Reducers are pure functions:
+    // - Return new state, don't mutate
+    // - Same input = same output
+    // - No side effects (use Effects for that)`,
+    preview: [FeatureList({
+        title: "Reducer rules:",
+        items: [
+            { icon: "v", text: "Return object with changed fields only" },
+            { icon: "v", text: "state.field to access current state" },
+            { icon: "v", text: "Never mutate state directly" },
+            { icon: "v", text: "Keep reducers pure (no side effects)" }
+        ]
+    })]
+})
+
+// Complex Reducers
+ComplexReducersSection -> DocsCodeSection({
+    title: "Complex State Updates",
+    description: "Handle nested state and arrays:",
+    filename: "cart.tp",
+    code: `
+    CartStore | {
+        State {
+            items: []
+            totals: { subtotal: 0, tax: 0, total: 0 }
+        }
+
+        Actions {
+            AddItem(product)
+            UpdateQuantity(productId, quantity)
+            RemoveItem(productId)
+            ClearCart
+        }
+
+        Reducers {
+            // Add or update item
+            on AddItem(product) {
+                items: state.items.find(i => i.id == product.id)
+                    ? state.items.map(i => i.id == product.id
+                        ? { ...i, quantity: i.quantity + 1 }
+                        : i)
+                    : [...state.items, { ...product, quantity: 1 }]
+            }
+
+            // Update specific item
+            on UpdateQuantity(productId, quantity) {
+                items: quantity > 0
+                    ? state.items.map(i => i.id == productId
+                        ? { ...i, quantity: quantity }
+                        : i)
+                    : state.items.filter(i => i.id != productId)
+            }
+
+            // Computed totals
+            on AddItem, on UpdateQuantity, on RemoveItem {
+                totals: calculateTotals(state.items)
+            }
+
+            on ClearCart {
+                items: []
+                totals: { subtotal: 0, tax: 0, total: 0 }
+            }
+        }
+    }`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "spread ...", desc: "Copy and update objects" },
+            { label: ".map()", desc: "Transform array items" },
+            { label: ".filter()", desc: "Remove array items" },
+            { label: "Multiple actions", desc: "Same reducer for many" }
+        ]
+    })]
+})
+
+// Dispatching
+DispatchingSection -> DocsCodeSection({
+    title: "Dispatching Actions",
+    description: "Different ways to dispatch actions:",
+    filename: "dispatch.tp",
+    code: `
+    // 1. Direct dispatch (onClick, etc.)
+    Button({
+        onClick: Counter.Increment
+    })
+
+    // 2. With parameters
+    Button({
+        onClick: () => TodoStore.RemoveTodo(item.id)
+    })
+
+    // 3. In Effects
+    UserStore | {
+        Effects {
+            on FetchUser(id) {
+                try {
+                    user: await UserApi.getById(id)
+                    dispatch: FetchSuccess(user)
+                } catch(e) {
+                    dispatch: FetchError(e.message)
+                }
+            }
+        }
+    }
+
+    // 4. Component init
+    UserProfile -> {
+        init: UserStore.FetchUser(props.userId)
+        children: [...]
+    }
+
+    // 5. Multiple dispatches
+    Form | {
+        Effects {
+            on Submit {
+                dispatch: ValidateForm
+                if (state.isValid) {
+                    dispatch: SaveData
+                    dispatch: ShowSuccess
+                }
+            }
+        }
+    }`,
+    preview: [FeatureList({
+        title: "Dispatch methods:",
+        items: [
+            { icon: "v", text: "onClick: Store.Action" },
+            { icon: "v", text: "onClick: () => Store.Action(param)" },
+            { icon: "v", text: "dispatch: ActionName in Effects" },
+            { icon: "v", text: "init: Store.Action for mount" }
+        ]
+    })]
+})

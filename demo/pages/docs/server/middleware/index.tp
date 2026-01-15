@@ -1,0 +1,381 @@
+// Middleware docs page
+import { DocsTemplate } from "../../template.tp"
+import { DocsSection, DocsDescription } from "@/components/molecules/docs-section.tp"
+import { DocsCodeSection } from "@/components/organisms/docs-code-section.tp"
+import { ConfigPreview } from "@/components/molecules/config-preview.tp"
+import { FeatureList } from "@/components/molecules/feature-list.tp"
+
+Page -> DocsTemplate({ children: [MiddlewareContent] })
+
+MiddlewareContent -> {
+    align: vertical
+    style: "space-y-8"
+    children: [
+        PageHeader,
+        BasicMiddlewareSection,
+        AuthMiddlewareSection,
+        CorsMiddlewareSection,
+        LoggingMiddlewareSection,
+        ChainMiddlewareSection
+    ]
+}
+
+PageHeader -> DocsSection({
+    id: "middleware",
+    title: "API Middleware",
+    children: [HeaderDesc]
+})
+
+HeaderDesc -> DocsDescription({
+    text: "Middleware intercepts requests before they reach handlers. Use it for authentication, logging, CORS, rate limiting, and more."
+})
+
+// Basic Middleware
+BasicMiddlewareSection -> DocsCodeSection({
+    title: "Basic Middleware",
+    description: "Middleware receives request and calls next handler:",
+    filename: "middleware.tp",
+    code: `
+    // api/middleware/example.tp
+
+    // Middleware function signature
+    ExampleMiddleware: async (req, next) => {
+        // Run code BEFORE handler
+        console.log("Before handler")
+
+        // Call the next handler
+        response: await next()
+
+        // Run code AFTER handler
+        console.log("After handler")
+
+        // Return the response
+        return response
+    }
+
+    // Modify request before handler
+    RequestLogger: async (req, next) => {
+        // Add timestamp to request
+        req.startTime = Date.now()
+
+        // Continue to handler
+        response: await next()
+
+        // Log response time
+        duration: Date.now() - req.startTime
+        console.log(req.method, req.url, response.status, duration + "ms")
+
+        return response
+    }
+
+    // Apply middleware to routes
+    // api/routes.tp
+    import { AuthMiddleware } from "./middleware/auth.tp"
+    import { LoggingMiddleware } from "./middleware/logging.tp"
+
+    Routes {
+        // Public routes
+        "/api/public/*": [LoggingMiddleware]
+
+        // Protected routes
+        "/api/users/*": [LoggingMiddleware, AuthMiddleware]
+        "/api/admin/*": [LoggingMiddleware, AuthMiddleware, AdminMiddleware]
+    }`,
+    preview: [FeatureList({
+        title: "Middleware basics:",
+        items: [
+            { icon: "v", text: "async (req, next) signature" },
+            { icon: "v", text: "await next() calls handler" },
+            { icon: "v", text: "Modify request before" },
+            { icon: "v", text: "Modify response after" }
+        ]
+    })]
+})
+
+// Auth Middleware
+AuthMiddlewareSection -> DocsCodeSection({
+    title: "Authentication Middleware",
+    description: "Protect routes with authentication:",
+    filename: "auth-middleware.tp",
+    code: `
+    // api/middleware/auth.tp
+    import { verifyToken } from "@/api/utils/jwt.tp"
+
+    AuthMiddleware: async (req, next) => {
+        // Get token from header
+        authHeader: req.headers.get("Authorization")
+
+        if (!authHeader || !authHeader.startsWith("Bearer ")) {
+            return { error: "No token provided" }, 401
+        }
+
+        token: authHeader.substring(7)
+
+        try {
+            // Verify JWT token
+            payload: await verifyToken(token)
+
+            // Attach user to request
+            req.user = payload
+
+            // Continue to handler
+            return await next()
+        } catch(e) {
+            return { error: "Invalid token" }, 401
+        }
+    }
+
+    // Role-based middleware
+    RequireRole: (roles) => async (req, next) => {
+        // AuthMiddleware must run first
+        if (!req.user) {
+            return { error: "Not authenticated" }, 401
+        }
+
+        if (!roles.includes(req.user.role)) {
+            return { error: "Insufficient permissions" }, 403
+        }
+
+        return await next()
+    }
+
+    // Usage
+    AdminMiddleware: RequireRole(["admin"])
+    ModeratorMiddleware: RequireRole(["admin", "moderator"])
+
+    // In handler, access authenticated user
+    // api/users/me/index.tp
+    export GET: async (req) => {
+        // req.user was set by AuthMiddleware
+        user: await db.users.findUnique({
+            where: { id: req.user.id }
+        })
+        return { user }
+    }`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "Bearer token", desc: "Extract from header" },
+            { label: "verifyToken()", desc: "Validate JWT" },
+            { label: "req.user", desc: "Attach user to request" },
+            { label: "RequireRole()", desc: "Role-based access" }
+        ]
+    })]
+})
+
+// CORS Middleware
+CorsMiddlewareSection -> DocsCodeSection({
+    title: "CORS Middleware",
+    description: "Handle Cross-Origin Resource Sharing:",
+    filename: "cors.tp",
+    code: `
+    // api/middleware/cors.tp
+
+    CorsMiddleware: async (req, next) => {
+        // Define allowed origins
+        allowedOrigins: [
+            "http://localhost:3000",
+            "https://myapp.com"
+        ]
+
+        origin: req.headers.get("Origin")
+
+        // Check if origin is allowed
+        isAllowed: allowedOrigins.includes(origin)
+
+        // Handle preflight OPTIONS request
+        if (req.method == "OPTIONS") {
+            return {
+                status: 204,
+                headers: {
+                    "Access-Control-Allow-Origin": isAllowed ? origin : "",
+                    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+                    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+                    "Access-Control-Max-Age": "86400"
+                }
+            }
+        }
+
+        // Call handler
+        response: await next()
+
+        // Add CORS headers to response
+        if (isAllowed) {
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+        }
+
+        return response
+    }
+
+    // Configurable CORS
+    createCors: (options = {}) => {
+        origins: options.origins || ["*"]
+        methods: options.methods || ["GET", "POST", "PUT", "DELETE"]
+        headers: options.headers || ["Content-Type", "Authorization"]
+
+        return async (req, next) => {
+            // ... CORS logic using options
+        }
+    }
+
+    // Usage
+    StrictCors: createCors({
+        origins: ["https://myapp.com"],
+        methods: ["GET", "POST"],
+        headers: ["Content-Type"]
+    })`,
+    preview: [FeatureList({
+        title: "CORS handling:",
+        items: [
+            { icon: "v", text: "Allow specific origins" },
+            { icon: "v", text: "Handle OPTIONS preflight" },
+            { icon: "v", text: "Set response headers" },
+            { icon: "v", text: "Configurable per route" }
+        ]
+    })]
+})
+
+// Logging Middleware
+LoggingMiddlewareSection -> DocsCodeSection({
+    title: "Logging Middleware",
+    description: "Log requests and responses:",
+    filename: "logging.tp",
+    code: `
+    // api/middleware/logging.tp
+
+    LoggingMiddleware: async (req, next) => {
+        startTime: Date.now()
+
+        // Log incoming request
+        console.log("[REQ]", {
+            method: req.method,
+            url: req.url,
+            ip: req.headers.get("x-forwarded-for") || req.ip,
+            userAgent: req.headers.get("user-agent")
+        })
+
+        try {
+            response: await next()
+
+            // Log successful response
+            duration: Date.now() - startTime
+            console.log("[RES]", {
+                method: req.method,
+                url: req.url,
+                status: response.status,
+                duration: duration + "ms"
+            })
+
+            return response
+        } catch(e) {
+            // Log error
+            duration: Date.now() - startTime
+            console.error("[ERR]", {
+                method: req.method,
+                url: req.url,
+                error: e.message,
+                stack: e.stack,
+                duration: duration + "ms"
+            })
+
+            throw e
+        }
+    }
+
+    // Structured logging for production
+    StructuredLogger: async (req, next) => {
+        requestId: generateRequestId()
+        startTime: Date.now()
+
+        // Attach request ID for tracing
+        req.requestId = requestId
+
+        response: await next()
+
+        // JSON log format for log aggregators
+        log: JSON.stringify({
+            timestamp: new Date().toISOString(),
+            requestId: requestId,
+            method: req.method,
+            path: req.url,
+            status: response.status,
+            duration: Date.now() - startTime,
+            userId: req.user?.id
+        })
+
+        console.log(log)
+        return response
+    }`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "Request log", desc: "Method, URL, IP" },
+            { label: "Response log", desc: "Status, duration" },
+            { label: "Error log", desc: "Message, stack trace" },
+            { label: "Request ID", desc: "Trace requests" }
+        ]
+    })]
+})
+
+// Chaining Middleware
+ChainMiddlewareSection -> DocsCodeSection({
+    title: "Middleware Chains",
+    description: "Combine multiple middleware for routes:",
+    filename: "chains.tp",
+    code: `
+    // api/routes.tp
+    import { Cors } from "./middleware/cors.tp"
+    import { Logger } from "./middleware/logging.tp"
+    import { Auth } from "./middleware/auth.tp"
+    import { RateLimit } from "./middleware/rate-limit.tp"
+    import { Validate } from "./middleware/validate.tp"
+
+    // Define middleware chains
+    PublicChain: [Cors, Logger]
+    AuthChain: [Cors, Logger, Auth]
+    AdminChain: [Cors, Logger, Auth, RequireRole(["admin"])]
+
+    Routes {
+        // Apply chains to route patterns
+        "/api/health": PublicChain
+        "/api/public/*": PublicChain
+
+        "/api/users/*": AuthChain
+        "/api/profile/*": AuthChain
+
+        "/api/admin/*": AdminChain
+
+        // Per-route middleware
+        "/api/auth/login": [Cors, Logger, RateLimit(5, "minute")]
+        "/api/upload": [Cors, Logger, Auth, FileSizeLimit(10 * 1024 * 1024)]
+    }
+
+    // Execution order
+    // Request -> Cors -> Logger -> Auth -> Handler -> Logger -> Cors -> Response
+    //                                           ↑
+    //                                    Response flows back
+
+    // Rate limiting middleware
+    RateLimit: (limit, window) => async (req, next) => {
+        key: req.ip + ":" + req.url
+        current: await cache.get(key) || 0
+
+        if (current >= limit) {
+            return {
+                error: "Too many requests",
+                retryAfter: window
+            }, 429
+        }
+
+        await cache.incr(key, 1, window)
+        return await next()
+    }`,
+    preview: [FeatureList({
+        title: "Middleware chains:",
+        items: [
+            { icon: "v", text: "Define reusable chains" },
+            { icon: "v", text: "Apply to route patterns" },
+            { icon: "v", text: "Order matters (left to right)" },
+            { icon: "v", text: "Per-route overrides" }
+        ]
+    })]
+})

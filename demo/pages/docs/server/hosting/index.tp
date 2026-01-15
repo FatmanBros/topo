@@ -1,0 +1,357 @@
+// Hosting docs page
+import { DocsTemplate } from "../../template.tp"
+import { DocsSection, DocsDescription } from "@/components/molecules/docs-section.tp"
+import { DocsCodeSection } from "@/components/organisms/docs-code-section.tp"
+import { ConfigPreview } from "@/components/molecules/config-preview.tp"
+import { FeatureList } from "@/components/molecules/feature-list.tp"
+
+Page -> DocsTemplate({ children: [HostingContent] })
+
+HostingContent -> {
+    align: vertical
+    style: "space-y-8"
+    children: [
+        PageHeader,
+        BuildSection,
+        DockerSection,
+        CloudSection,
+        EnvSection,
+        MonitoringSection
+    ]
+}
+
+PageHeader -> DocsSection({
+    id: "hosting",
+    title: "Deployment & Hosting",
+    children: [HeaderDesc]
+})
+
+HeaderDesc -> DocsDescription({
+    text: "Deploy your Topo application to production. Learn about building, Docker, cloud platforms, environment configuration, and monitoring."
+})
+
+// Build
+BuildSection -> DocsCodeSection({
+    title: "Production Build",
+    description: "Build your app for production:",
+    filename: "build.tp",
+    code: `
+    // Build the application
+    $ topo build
+
+    // Output structure
+    dist/
+    ├── client/           # Client-side bundle
+    │   ├── index.html
+    │   ├── assets/
+    │   │   ├── main.[hash].js
+    │   │   └── main.[hash].css
+    │   └── favicon.ico
+    ├── server/           # Server-side code
+    │   ├── index.js
+    │   └── api/
+    └── static/           # Static files
+
+    // Build with verification
+    $ topo build --verify
+
+    // Build for specific target
+    $ topo build --target node
+    $ topo build --target edge
+
+    // Start production server
+    $ topo start
+
+    // Or use the built files directly
+    $ node dist/server/index.js
+
+    // Environment variables for production
+    NODE_ENV=production
+    PORT=3000
+    DATABASE_URL=postgresql://...
+    API_URL=https://api.example.com`,
+    preview: [FeatureList({
+        title: "Build steps:",
+        items: [
+            { icon: "v", text: "topo build - Create bundle" },
+            { icon: "v", text: "--verify - Check for errors" },
+            { icon: "v", text: "topo start - Run production" },
+            { icon: "v", text: "Optimized assets with hashing" }
+        ]
+    })]
+})
+
+// Docker
+DockerSection -> DocsCodeSection({
+    title: "Docker Deployment",
+    description: "Containerize your application:",
+    filename: "Dockerfile",
+    code: `
+    # Dockerfile
+    FROM node:20-alpine AS builder
+
+    WORKDIR /app
+
+    # Install topo CLI
+    RUN npm install -g @anthropic/topo
+
+    # Copy project files
+    COPY . .
+
+    # Build the application
+    RUN topo build
+
+    # Production image
+    FROM node:20-alpine AS runner
+
+    WORKDIR /app
+
+    # Copy built files
+    COPY --from=builder /app/dist ./dist
+    COPY --from=builder /app/package.json ./
+
+    # Install production dependencies only
+    RUN npm install --production
+
+    # Set environment
+    ENV NODE_ENV=production
+    ENV PORT=3000
+
+    EXPOSE 3000
+
+    CMD ["node", "dist/server/index.js"]
+
+    # docker-compose.yml
+    version: '3.8'
+
+    services:
+      app:
+        build: .
+        ports:
+          - "3000:3000"
+        environment:
+          - DATABASE_URL=postgresql://postgres:postgres@db:5432/app
+        depends_on:
+          - db
+
+      db:
+        image: postgres:15-alpine
+        environment:
+          - POSTGRES_DB=app
+          - POSTGRES_PASSWORD=postgres
+        volumes:
+          - pgdata:/var/lib/postgresql/data
+
+    volumes:
+      pgdata:`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "Multi-stage", desc: "Build then run" },
+            { label: "Alpine", desc: "Small image size" },
+            { label: "docker-compose", desc: "App + database" },
+            { label: "Volumes", desc: "Persistent data" }
+        ]
+    })]
+})
+
+// Cloud Platforms
+CloudSection -> DocsCodeSection({
+    title: "Cloud Platforms",
+    description: "Deploy to popular cloud platforms:",
+    filename: "cloud.tp",
+    code: `
+    // Vercel deployment
+    // vercel.json
+    {
+      "buildCommand": "topo build",
+      "outputDirectory": "dist",
+      "framework": null
+    }
+
+    // Deploy
+    $ vercel deploy
+
+    // Railway deployment
+    // railway.toml
+    [build]
+    builder = "nixpacks"
+    buildCommand = "npm install -g @anthropic/topo && topo build"
+
+    [deploy]
+    startCommand = "node dist/server/index.js"
+
+    // Fly.io deployment
+    // fly.toml
+    app = "my-topo-app"
+
+    [build]
+      builder = "dockerfile"
+
+    [http_service]
+      internal_port = 3000
+      force_https = true
+
+    // Deploy
+    $ fly deploy
+
+    // AWS (using Docker)
+    // Push to ECR
+    $ aws ecr get-login-password | docker login --username AWS --password-stdin <account>.ecr.<region>.amazonaws.com
+    $ docker build -t my-app .
+    $ docker tag my-app:latest <account>.ecr.<region>.amazonaws.com/my-app:latest
+    $ docker push <account>.ecr.<region>.amazonaws.com/my-app:latest
+
+    // Deploy to ECS/Fargate or App Runner`,
+    preview: [FeatureList({
+        title: "Platform options:",
+        items: [
+            { icon: "v", text: "Vercel - Serverless" },
+            { icon: "v", text: "Railway - Simple PaaS" },
+            { icon: "v", text: "Fly.io - Edge deployment" },
+            { icon: "v", text: "AWS - Full control" }
+        ]
+    })]
+})
+
+// Environment
+EnvSection -> DocsCodeSection({
+    title: "Environment Configuration",
+    description: "Manage environment variables across deployments:",
+    filename: "env.tp",
+    code: `
+    // .env.example - Document required variables
+    # Application
+    NODE_ENV=development
+    PORT=3000
+
+    # Database
+    DATABASE_URL=postgresql://user:pass@localhost:5432/app
+
+    # Authentication
+    JWT_SECRET=your-secret-key-here
+    JWT_EXPIRES_IN=7d
+
+    # External services
+    SMTP_HOST=smtp.example.com
+    SMTP_USER=
+    SMTP_PASS=
+
+    # Feature flags
+    ENABLE_ANALYTICS=true
+    ENABLE_CACHE=true
+
+    // Access in code
+    db: createDb({
+        url: env.DATABASE_URL
+    })
+
+    jwtConfig: {
+        secret: env.JWT_SECRET,
+        expiresIn: env.JWT_EXPIRES_IN
+    }
+
+    // Environment-specific behavior
+    if (env.NODE_ENV == "production") {
+        // Production settings
+        enableCache: true
+        logLevel: "error"
+    } else {
+        // Development settings
+        enableCache: false
+        logLevel: "debug"
+    }
+
+    // Validate required variables on startup
+    requiredEnv: ["DATABASE_URL", "JWT_SECRET"]
+
+    for (key of requiredEnv) {
+        if (!env[key]) {
+            throw new Error("Missing required env: " + key)
+        }
+    }`,
+    preview: [ConfigPreview({
+        items: [
+            { label: ".env.example", desc: "Document variables" },
+            { label: "env.VAR_NAME", desc: "Access in code" },
+            { label: "Validation", desc: "Check required vars" },
+            { label: "Per-environment", desc: "Different configs" }
+        ]
+    })]
+})
+
+// Monitoring
+MonitoringSection -> DocsCodeSection({
+    title: "Monitoring & Logging",
+    description: "Monitor your production application:",
+    filename: "monitoring.tp",
+    code: `
+    // Health check endpoint
+    // api/health/index.tp
+    export GET: async (req) => {
+        checks: {
+            database: await checkDatabase(),
+            cache: await checkCache(),
+            external: await checkExternalServices()
+        }
+
+        allHealthy: Object.values(checks).every(c => c.status == "healthy")
+
+        return {
+            status: allHealthy ? "healthy" : "degraded",
+            checks,
+            version: env.APP_VERSION,
+            uptime: process.uptime()
+        }, allHealthy ? 200 : 503
+    }
+
+    // Structured logging
+    import { logger } from "@/api/logger.tp"
+
+    logger: createLogger({
+        level: env.LOG_LEVEL || "info",
+        format: env.NODE_ENV == "production" ? "json" : "pretty"
+    })
+
+    // Usage in handlers
+    export POST: async (req) => {
+        logger.info("Creating user", { email: data.email })
+
+        try {
+            user: await createUser(data)
+            logger.info("User created", { userId: user.id })
+            return { user }
+        } catch(e) {
+            logger.error("Failed to create user", {
+                error: e.message,
+                email: data.email
+            })
+            throw e
+        }
+    }
+
+    // Error tracking
+    import { captureException } from "@/api/sentry.tp"
+
+    ErrorMiddleware: async (req, next) => {
+        try {
+            return await next()
+        } catch(e) {
+            // Report to error tracking
+            captureException(e, {
+                url: req.url,
+                method: req.method,
+                userId: req.user?.id
+            })
+            throw e
+        }
+    }`,
+    preview: [FeatureList({
+        title: "Monitoring essentials:",
+        items: [
+            { icon: "v", text: "Health check endpoint" },
+            { icon: "v", text: "Structured JSON logging" },
+            { icon: "v", text: "Error tracking (Sentry)" },
+            { icon: "v", text: "Metrics and alerting" }
+        ]
+    })]
+})

@@ -1,0 +1,367 @@
+// Theme & Styling docs page
+import { DocsTemplate } from "../../template.tp"
+import { DocsSection, DocsDescription } from "@/components/molecules/docs-section.tp"
+import { DocsCodeSection } from "@/components/organisms/docs-code-section.tp"
+import { ConfigPreview } from "@/components/molecules/config-preview.tp"
+import { FeatureList } from "@/components/molecules/feature-list.tp"
+
+Page -> DocsTemplate({ children: [ThemeContent] })
+
+ThemeContent -> {
+    align: vertical
+    style: "space-y-8"
+    children: [
+        PageHeader,
+        StylingBasicsSection,
+        ThemeConfigSection,
+        DarkModeSection,
+        CustomPropertiesSection,
+        ResponsiveSection
+    ]
+}
+
+PageHeader -> DocsSection({
+    id: "theme",
+    title: "Theme & Styling",
+    children: [HeaderDesc]
+})
+
+HeaderDesc -> DocsDescription({
+    text: "Style your components with Tailwind CSS classes, configure themes, implement dark mode, and create responsive designs."
+})
+
+// Styling Basics
+StylingBasicsSection -> DocsCodeSection({
+    title: "Styling Basics",
+    description: "Apply styles using the style property:",
+    filename: "styling.tp",
+    code: `
+    // Direct Tailwind classes
+    Card -> {
+        style: "bg-white rounded-lg shadow-md p-6"
+        children: [Content]
+    }
+
+    // Conditional styles
+    Button(props) -> {
+        style: props.variant == "primary"
+            ? "bg-blue-500 text-white hover:bg-blue-600"
+            : "bg-gray-200 text-gray-800 hover:bg-gray-300"
+        children: [Text({ text: props.text })]
+    }
+
+    // Combining styles
+    Alert(props) -> {
+        baseStyle: "rounded-lg p-4 flex items-center gap-2"
+        variantStyle: {
+            "success": "bg-green-100 text-green-800",
+            "error": "bg-red-100 text-red-800",
+            "warning": "bg-yellow-100 text-yellow-800",
+            "info": "bg-blue-100 text-blue-800"
+        }[props.variant]
+
+        style: baseStyle + " " + variantStyle
+        children: [Icon({ name: props.variant }), Text({ text: props.message })]
+    }
+
+    // Array of styles (joined with space)
+    Card(props) -> {
+        style: [
+            "bg-white rounded-lg shadow-md",
+            "p-6",
+            props.bordered ? "border border-gray-200" : "",
+            props.hoverable ? "hover:shadow-lg transition-shadow" : ""
+        ].filter(s => s).join(" ")
+        children: props.children
+    }`,
+    preview: [FeatureList({
+        title: "Styling patterns:",
+        items: [
+            { icon: "v", text: "style: \"classes\" - Tailwind CSS" },
+            { icon: "v", text: "Conditional classes with ternary" },
+            { icon: "v", text: "Style maps for variants" },
+            { icon: "v", text: "Array joining for complex styles" }
+        ]
+    })]
+})
+
+// Theme Configuration
+ThemeConfigSection -> DocsCodeSection({
+    title: "Theme Configuration",
+    description: "Configure your theme in topo.config.ts:",
+    filename: "topo.config.ts",
+    code: `
+    // topo.config.ts
+    export default {
+        theme: {
+            // Extend Tailwind theme
+            extend: {
+                colors: {
+                    primary: {
+                        50: "#eff6ff",
+                        100: "#dbeafe",
+                        500: "#3b82f6",
+                        600: "#2563eb",
+                        700: "#1d4ed8"
+                    },
+                    secondary: {
+                        500: "#6b7280",
+                        600: "#4b5563"
+                    },
+                    accent: "#f59e0b"
+                },
+                fontFamily: {
+                    sans: ["Inter", "system-ui", "sans-serif"],
+                    mono: ["Fira Code", "monospace"]
+                },
+                spacing: {
+                    "18": "4.5rem",
+                    "88": "22rem"
+                },
+                borderRadius: {
+                    "xl": "1rem",
+                    "2xl": "1.5rem"
+                }
+            }
+        }
+    }
+
+    // Usage in components
+    Button -> {
+        style: "bg-primary-500 hover:bg-primary-600 text-white"
+    }
+
+    Card -> {
+        style: "font-sans rounded-2xl"
+    }
+
+    CodeBlock -> {
+        style: "font-mono bg-gray-900 text-gray-100"
+    }`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "colors", desc: "Custom color palette" },
+            { label: "fontFamily", desc: "Typography" },
+            { label: "spacing", desc: "Margins/padding" },
+            { label: "extend", desc: "Add to defaults" }
+        ]
+    })]
+})
+
+// Dark Mode
+DarkModeSection -> DocsCodeSection({
+    title: "Dark Mode",
+    description: "Implement dark mode with theme switching:",
+    filename: "dark-mode.tp",
+    code: `
+    // Theme store for mode management
+    ThemeStore | {
+        State {
+            mode: localStorage.getItem("theme") || "light"
+        }
+
+        Actions {
+            SetMode(mode)
+            Toggle
+        }
+
+        Reducers {
+            on SetMode(mode) { mode: mode }
+            on Toggle {
+                mode: state.mode == "light" ? "dark" : "light"
+            }
+        }
+
+        Effects {
+            on SetMode(mode) {
+                localStorage.setItem("theme", mode)
+                // Apply to document
+                if (mode == "dark") {
+                    document.documentElement.classList.add("dark")
+                } else {
+                    document.documentElement.classList.remove("dark")
+                }
+            }
+
+            on Toggle {
+                dispatch: SetMode(state.mode == "light" ? "dark" : "light")
+            }
+        }
+    }
+
+    // Dark mode styles with Tailwind
+    Card -> {
+        style: "bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+        children: [Content]
+    }
+
+    // Theme toggle button
+    ThemeToggle -> {
+        style: "p-2 rounded-lg bg-gray-100 dark:bg-gray-700"
+        onClick: ThemeStore.Toggle
+        children: [
+            $ThemeStore.mode == "light"
+                ? Icon({ name: "moon" })
+                : Icon({ name: "sun" })
+        ]
+    }
+
+    // Initialize theme on app load
+    App -> {
+        init: () => {
+            // Check system preference
+            if (!localStorage.getItem("theme")) {
+                prefersDark: window.matchMedia("(prefers-color-scheme: dark)").matches
+                dispatch: ThemeStore.SetMode(prefersDark ? "dark" : "light")
+            } else {
+                dispatch: ThemeStore.SetMode(localStorage.getItem("theme"))
+            }
+        }
+        children: [Router]
+    }`,
+    preview: [FeatureList({
+        title: "Dark mode features:",
+        items: [
+            { icon: "v", text: "dark: prefix for dark styles" },
+            { icon: "v", text: "ThemeStore for mode state" },
+            { icon: "v", text: "localStorage persistence" },
+            { icon: "v", text: "System preference detection" }
+        ]
+    })]
+})
+
+// Custom Properties
+CustomPropertiesSection -> DocsCodeSection({
+    title: "CSS Custom Properties",
+    description: "Use CSS variables for dynamic theming:",
+    filename: "css-vars.tp",
+    code: `
+    // styles/theme.css
+    :root {
+        --color-bg: #ffffff;
+        --color-text: #1f2937;
+        --color-primary: #3b82f6;
+        --color-border: #e5e7eb;
+        --radius-default: 0.5rem;
+        --shadow-default: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .dark {
+        --color-bg: #111827;
+        --color-text: #f9fafb;
+        --color-primary: #60a5fa;
+        --color-border: #374151;
+    }
+
+    // topo.config.ts - Reference CSS vars in Tailwind
+    export default {
+        theme: {
+            extend: {
+                colors: {
+                    bg: "var(--color-bg)",
+                    text: "var(--color-text)",
+                    primary: "var(--color-primary)",
+                    border: "var(--color-border)"
+                },
+                borderRadius: {
+                    DEFAULT: "var(--radius-default)"
+                },
+                boxShadow: {
+                    DEFAULT: "var(--shadow-default)"
+                }
+            }
+        }
+    }
+
+    // Usage
+    Card -> {
+        style: "bg-bg text-text border border-border rounded shadow"
+    }
+
+    // Dynamic theme updates
+    ThemeStore | {
+        Effects {
+            on SetAccentColor(color) {
+                document.documentElement.style.setProperty("--color-primary", color)
+            }
+        }
+    }`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "--var-name", desc: "Define CSS variable" },
+            { label: "var(--name)", desc: "Use in Tailwind" },
+            { label: ".dark selector", desc: "Dark mode values" },
+            { label: "setProperty()", desc: "Dynamic updates" }
+        ]
+    })]
+})
+
+// Responsive Design
+ResponsiveSection -> DocsCodeSection({
+    title: "Responsive Design",
+    description: "Create responsive layouts with breakpoints:",
+    filename: "responsive.tp",
+    code: `
+    // Tailwind breakpoints
+    // sm: 640px, md: 768px, lg: 1024px, xl: 1280px, 2xl: 1536px
+
+    // Responsive grid
+    ProductGrid -> {
+        style: "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+        children: products.for(p => ProductCard({ product: p }))
+    }
+
+    // Responsive navigation
+    Header -> {
+        style: "flex items-center justify-between px-4 py-3"
+        children: [
+            Logo,
+            // Desktop nav
+            DesktopNav({
+                style: "hidden md:flex items-center gap-6"
+            }),
+            // Mobile menu button
+            MobileMenuButton({
+                style: "md:hidden"
+            })
+        ]
+    }
+
+    // Responsive typography
+    Heading(props) -> {
+        style: "text-2xl sm:text-3xl lg:text-4xl font-bold"
+        children: [Text({ text: props.text })]
+    }
+
+    // Responsive spacing
+    Section -> {
+        style: "px-4 py-8 sm:px-6 sm:py-12 lg:px-8 lg:py-16"
+        children: [Content]
+    }
+
+    // Hide/show based on breakpoint
+    Sidebar -> {
+        style: "hidden lg:block w-64"
+        children: [SidebarContent]
+    }
+
+    MobileBottomNav -> {
+        style: "lg:hidden fixed bottom-0 left-0 right-0"
+        children: [NavItems]
+    }
+
+    // Container with max width
+    Container -> {
+        style: "w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"
+        children: props.children
+    }`,
+    preview: [FeatureList({
+        title: "Responsive patterns:",
+        items: [
+            { icon: "v", text: "sm:/md:/lg:/xl: prefixes" },
+            { icon: "v", text: "hidden/block for visibility" },
+            { icon: "v", text: "Responsive grid columns" },
+            { icon: "v", text: "Mobile-first approach" }
+        ]
+    })]
+})

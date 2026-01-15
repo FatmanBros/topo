@@ -1,0 +1,338 @@
+// Mock Services docs page
+import { DocsTemplate } from "../../template.tp"
+import { DocsSection, DocsDescription } from "@/components/molecules/docs-section.tp"
+import { DocsCodeSection } from "@/components/organisms/docs-code-section.tp"
+import { ConfigPreview } from "@/components/molecules/config-preview.tp"
+import { FeatureList } from "@/components/molecules/feature-list.tp"
+
+Page -> DocsTemplate({ children: [MockContent] })
+
+MockContent -> {
+    align: vertical
+    style: "space-y-8"
+    children: [
+        PageHeader,
+        MockBasicsSection,
+        MockDataSection,
+        MockServiceSection,
+        MockDelaysSection,
+        DevModeSection
+    ]
+}
+
+PageHeader -> DocsSection({
+    id: "mock",
+    title: "Mock Services",
+    children: [HeaderDesc]
+})
+
+HeaderDesc -> DocsDescription({
+    text: "Mock your API services for development and testing. Work on frontend features without waiting for backend implementation."
+})
+
+// Mock Basics
+MockBasicsSection -> DocsCodeSection({
+    title: "Mock Service Pattern",
+    description: "Create mock implementations of your services:",
+    filename: "mock-basics.tp",
+    code: `
+    // services/users.tp - Real service
+    UserService {
+        getAll: async () => {
+            return await http.get("/api/users")
+        }
+
+        getById: async (id) => {
+            return await http.get("/api/users/" + id)
+        }
+    }
+
+    // services/users.mock.tp - Mock service
+    UserServiceMock {
+        getAll: async () => {
+            return mockUsers
+        }
+
+        getById: async (id) => {
+            return mockUsers.find(u => u.id == id)
+        }
+    }
+
+    // Export based on environment
+    export {
+        UserService: env.useMocks ? UserServiceMock : UserService
+    }
+
+    // Alternative: Mock at HTTP level
+    http | {
+        mock: env.useMocks ? {
+            "GET /api/users": mockUsers,
+            "GET /api/users/:id": (params) => {
+                return mockUsers.find(u => u.id == params.id)
+            }
+        } : null
+    }`,
+    preview: [FeatureList({
+        title: "Mock patterns:",
+        items: [
+            { icon: "v", text: "Separate mock files" },
+            { icon: "v", text: "Same interface as real service" },
+            { icon: "v", text: "Environment-based switching" },
+            { icon: "v", text: "HTTP-level mocking" }
+        ]
+    })]
+})
+
+// Mock Data
+MockDataSection -> DocsCodeSection({
+    title: "Mock Data Files",
+    description: "Store mock data in JSON files:",
+    filename: "mock-data.tp",
+    code: `
+    // File structure
+    pages/
+    └── dashboard/
+        ├── index.tp
+        └── mocks/
+            ├── users.json
+            ├── stats.json
+            └── activities.json
+
+    // mocks/users.json
+    [
+        {
+            "id": "1",
+            "name": "John Doe",
+            "email": "john@example.com",
+            "avatar": "/avatars/1.jpg",
+            "role": "admin"
+        },
+        {
+            "id": "2",
+            "name": "Jane Smith",
+            "email": "jane@example.com",
+            "avatar": "/avatars/2.jpg",
+            "role": "user"
+        }
+    ]
+
+    // Import and use mock data
+    import mockUsers from "./mocks/users.json"
+    import mockStats from "./mocks/stats.json"
+
+    UserServiceMock {
+        getAll: async () => mockUsers
+
+        getById: async (id) => {
+            return mockUsers.find(u => u.id == id) || null
+        }
+
+        search: async (query) => {
+            return mockUsers.filter(u =>
+                u.name.toLowerCase().includes(query.toLowerCase())
+            )
+        }
+    }`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "mocks/", desc: "Co-locate with feature" },
+            { label: ".json files", desc: "Static mock data" },
+            { label: "import", desc: "Import JSON directly" },
+            { label: "Filter/search", desc: "Simulate queries" }
+        ]
+    })]
+})
+
+// Mock Service Implementation
+MockServiceSection -> DocsCodeSection({
+    title: "Full Mock Service",
+    description: "Implement CRUD operations with in-memory data:",
+    filename: "mock-service.tp",
+    code: `
+    import mockData from "./mocks/products.json"
+
+    // In-memory data store
+    let products = [...mockData]
+    let nextId = products.length + 1
+
+    ProductServiceMock {
+        getAll: async () => {
+            return [...products]
+        }
+
+        getById: async (id) => {
+            return products.find(p => p.id == id) || null
+        }
+
+        create: async (data) => {
+            newProduct: {
+                id: String(nextId++),
+                ...data,
+                createdAt: new Date().toISOString()
+            }
+            products.push(newProduct)
+            return newProduct
+        }
+
+        update: async (id, data) => {
+            index: products.findIndex(p => p.id == id)
+            if (index == -1) {
+                throw { status: 404, message: "Not found" }
+            }
+            products[index] = { ...products[index], ...data }
+            return products[index]
+        }
+
+        delete: async (id) => {
+            index: products.findIndex(p => p.id == id)
+            if (index == -1) {
+                throw { status: 404, message: "Not found" }
+            }
+            products.splice(index, 1)
+            return { success: true }
+        }
+
+        search: async (query, filters = {}) => {
+            result: products
+                .filter(p => {
+                    matchesQuery: !query ||
+                        p.name.toLowerCase().includes(query.toLowerCase())
+                    matchesCategory: !filters.category ||
+                        p.category == filters.category
+                    return matchesQuery && matchesCategory
+                })
+                .slice(0, filters.limit || 20)
+            return result
+        }
+    }`,
+    preview: [FeatureList({
+        title: "Mock CRUD:",
+        items: [
+            { icon: "v", text: "In-memory data array" },
+            { icon: "v", text: "Create with auto ID" },
+            { icon: "v", text: "Update by ID" },
+            { icon: "v", text: "Delete with splice" }
+        ]
+    })]
+})
+
+// Mock Delays
+MockDelaysSection -> DocsCodeSection({
+    title: "Simulating Network Delays",
+    description: "Add realistic delays to test loading states:",
+    filename: "mock-delays.tp",
+    code: `
+    // Helper for delays
+    delay: (ms) => new Promise(resolve => setTimeout(resolve, ms))
+
+    // Random delay helper
+    randomDelay: (min = 200, max = 800) => {
+        return delay(Math.random() * (max - min) + min)
+    }
+
+    ProductServiceMock {
+        getAll: async () => {
+            // Simulate network latency
+            await delay(500)
+            return products
+        }
+
+        getById: async (id) => {
+            await randomDelay(200, 500)
+            return products.find(p => p.id == id)
+        }
+
+        create: async (data) => {
+            // Simulate slower write operation
+            await delay(1000)
+            // ... create logic
+        }
+    }
+
+    // Mock with simulated errors
+    UnreliableServiceMock {
+        getData: async () => {
+            await delay(300)
+
+            // Randomly fail 20% of requests
+            if (Math.random() < 0.2) {
+                throw { status: 500, message: "Random server error" }
+            }
+
+            return data
+        }
+    }
+
+    // Test loading states with long delay
+    SlowServiceMock {
+        getAll: async () => {
+            await delay(3000)  // 3 seconds to test spinners
+            return data
+        }
+    }`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "delay(ms)", desc: "Fixed delay" },
+            { label: "randomDelay()", desc: "Realistic variance" },
+            { label: "Random errors", desc: "Test error handling" },
+            { label: "Long delays", desc: "Test loading UI" }
+        ]
+    })]
+})
+
+// Development Mode
+DevModeSection -> DocsCodeSection({
+    title: "Development Mode Setup",
+    description: "Configure mock services for development:",
+    filename: "dev-mode.tp",
+    code: `
+    // Environment configuration
+    // .env.development
+    USE_MOCKS=true
+    API_URL=http://localhost:3000
+
+    // .env.production
+    USE_MOCKS=false
+    API_URL=https://api.example.com
+
+    // Service factory pattern
+    // services/index.tp
+    import { UserService } from "./users.tp"
+    import { UserServiceMock } from "./users.mock.tp"
+    import { ProductService } from "./products.tp"
+    import { ProductServiceMock } from "./products.mock.tp"
+
+    export {
+        Users: env.USE_MOCKS == "true" ? UserServiceMock : UserService,
+        Products: env.USE_MOCKS == "true" ? ProductServiceMock : ProductService
+    }
+
+    // Usage in stores
+    import { Users, Products } from "@/services"
+
+    UserStore | {
+        Effects {
+            on Load {
+                // Uses mock or real based on env
+                users: await Users.getAll()
+                dispatch: SetUsers(users)
+            }
+        }
+    }
+
+    // Override for specific tests
+    // tests/user-store.test.tp
+    import { UserServiceMock } from "@/services/users.mock.tp"
+
+    // Force mock regardless of environment
+    UserStore.setService(UserServiceMock)`,
+    preview: [FeatureList({
+        title: "Dev mode setup:",
+        items: [
+            { icon: "v", text: "Environment variables" },
+            { icon: "v", text: "Service factory pattern" },
+            { icon: "v", text: "Single import point" },
+            { icon: "v", text: "Override for tests" }
+        ]
+    })]
+})

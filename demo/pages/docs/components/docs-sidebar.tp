@@ -11,50 +11,99 @@ DocsSidebarNav -> {
     align: vertical
     style: "space-y-6"
     children: [
+        // Getting Started
         SidebarSection({
             title: "Getting Started",
             items: [
                 DocsSidebarItem({ label: "Introduction", href: "/docs", active: false }),
                 DocsSidebarItem({ label: "Installation", href: "/docs/installation", active: false }),
-                DocsSidebarItem({ label: "Quick Start", href: "/docs/quick-start", active: false })
+                DocsSidebarItem({ label: "Quick Start", href: "/docs/quick-start", active: false }),
+                DocsSidebarItem({ label: "Project Structure", href: "/docs/project-structure", active: false })
             ]
         }),
+        // Components
         SidebarSection({
-            title: "Core Concepts",
+            title: "Components",
             items: [
-                DocsSidebarItem({ label: "Components", href: "/docs/components-guide", active: false }),
-                DocsSidebarItem({ label: "Store", href: "/docs/store", active: false }),
-                DocsSidebarItem({ label: "API Services", href: "/docs/api", active: false }),
-                DocsSidebarItem({ label: "Server-Side API", href: "/docs/server-side", active: false }),
-                DocsSidebarItem({ label: "Routing", href: "/docs/routing", active: false }),
-                DocsSidebarItem({ label: "Guards", href: "/docs/guards", active: false }),
-                DocsSidebarItem({ label: "Pipes", href: "/docs/pipes", active: false })
+                DocsSidebarItem({ label: "Component Basics", href: "/docs/components-guide", active: false }),
+                DocsSidebarItem({ label: "Props & Events", href: "/docs/components/props", active: false }),
+                DocsSidebarItem({ label: "Lifecycle", href: "/docs/components/lifecycle", active: false }),
+                DocsSidebarItem({ label: "Slots", href: "/docs/components/slots", active: false })
             ]
         }),
+        // State Management
+        SidebarSection({
+            title: "State Management",
+            items: [
+                DocsSidebarItem({ label: "Store Basics", href: "/docs/store", active: false }),
+                DocsSidebarItem({ label: "Actions & Reducers", href: "/docs/store/actions", active: false }),
+                DocsSidebarItem({ label: "Effects", href: "/docs/store/effects", active: false }),
+                DocsSidebarItem({ label: "Multiple Stores", href: "/docs/store/multiple", active: false })
+            ]
+        }),
+        // Routing
+        SidebarSection({
+            title: "Routing",
+            items: [
+                DocsSidebarItem({ label: "File-based Routing", href: "/docs/routing", active: false }),
+                DocsSidebarItem({ label: "Routes Definition", href: "/docs/routing/routes", active: false }),
+                DocsSidebarItem({ label: "Route Metadata", href: "/docs/routing/metadata", active: false }),
+                DocsSidebarItem({ label: "Guards", href: "/docs/guards", active: false }),
+                DocsSidebarItem({ label: "Navigation", href: "/docs/routing/navigation", active: false })
+            ]
+        }),
+        // Client Services
+        SidebarSection({
+            title: "Client Services",
+            items: [
+                DocsSidebarItem({ label: "Service Definition", href: "/docs/services", active: false }),
+                DocsSidebarItem({ label: "HTTP Setup", href: "/docs/services/http-setup", active: false }),
+                DocsSidebarItem({ label: "Making Requests", href: "/docs/services/requests", active: false }),
+                DocsSidebarItem({ label: "Error Handling", href: "/docs/services/errors", active: false }),
+                DocsSidebarItem({ label: "Mock Data", href: "/docs/services/mock", active: false })
+            ]
+        }),
+        // Server API
+        SidebarSection({
+            title: "Server API",
+            items: [
+                DocsSidebarItem({ label: "API Definition", href: "/docs/server", active: false }),
+                DocsSidebarItem({ label: "Handlers", href: "/docs/server/handlers", active: false }),
+                DocsSidebarItem({ label: "Middleware", href: "/docs/server/middleware", active: false }),
+                DocsSidebarItem({ label: "Database Integration", href: "/docs/server/database", active: false }),
+                DocsSidebarItem({ label: "Hosting", href: "/docs/server/hosting", active: false })
+            ]
+        }),
+        // Database
         SidebarSection({
             title: "Database",
             items: [
                 DocsSidebarItem({ label: "Schema Definition", href: "/docs/db-schema", active: false }),
-                DocsSidebarItem({ label: "Repository", href: "/docs/repository", active: false }),
-                DocsSidebarItem({ label: "Migration", href: "/docs/migration", active: false }),
-                DocsSidebarItem({ label: "Server API Impl", href: "/docs/server-api", active: false })
+                DocsSidebarItem({ label: "Relations", href: "/docs/database/relations", active: false }),
+                DocsSidebarItem({ label: "Repository Pattern", href: "/docs/repository", active: false }),
+                DocsSidebarItem({ label: "Queries", href: "/docs/database/queries", active: false }),
+                DocsSidebarItem({ label: "Migration", href: "/docs/migration", active: false })
             ]
         }),
+        // UI Library
         SidebarSection({
-            title: "UI Components",
+            title: "UI Library",
             items: [
+                DocsSidebarItem({ label: "Overview", href: "/docs/ui", active: false }),
                 DocsSidebarItem({ label: "Atoms", href: "/docs/ui/atoms", active: false }),
                 DocsSidebarItem({ label: "Molecules", href: "/docs/ui/molecules", active: false }),
-                DocsSidebarItem({ label: "Organisms", href: "/docs/ui/organisms", active: false })
+                DocsSidebarItem({ label: "Organisms", href: "/docs/ui/organisms", active: false }),
+                DocsSidebarItem({ label: "Theme Customization", href: "/docs/ui/theme", active: false })
             ]
         }),
+        // Advanced
         SidebarSection({
-            title: "Guides",
+            title: "Advanced",
             items: [
-                DocsSidebarItem({ label: "Styling", href: "/docs/styling", active: false }),
-                DocsSidebarItem({ label: "Forms", href: "/docs/forms", active: false }),
+                DocsSidebarItem({ label: "Forms & Validation", href: "/docs/forms", active: false }),
                 DocsSidebarItem({ label: "Testing", href: "/docs/testing", active: false }),
-                DocsSidebarItem({ label: "i18n", href: "/docs/i18n", active: false })
+                DocsSidebarItem({ label: "Performance", href: "/docs/advanced/performance", active: false }),
+                DocsSidebarItem({ label: "TypeScript", href: "/docs/advanced/typescript", active: false })
             ]
         })
     ]

@@ -1,0 +1,382 @@
+// Database Relations docs page
+import { DocsTemplate } from "../../template.tp"
+import { DocsSection, DocsDescription } from "@/components/molecules/docs-section.tp"
+import { DocsCodeSection } from "@/components/organisms/docs-code-section.tp"
+import { ConfigPreview } from "@/components/molecules/config-preview.tp"
+import { FeatureList } from "@/components/molecules/feature-list.tp"
+
+Page -> DocsTemplate({ children: [RelationsContent] })
+
+RelationsContent -> {
+    align: vertical
+    style: "space-y-8"
+    children: [
+        PageHeader,
+        OneToManySection,
+        ManyToManySection,
+        OneToOneSection,
+        SelfRelationSection,
+        IncludeSection
+    ]
+}
+
+PageHeader -> DocsSection({
+    id: "relations",
+    title: "Database Relations",
+    children: [HeaderDesc]
+})
+
+HeaderDesc -> DocsDescription({
+    text: "Define relationships between models. Topo supports one-to-one, one-to-many, and many-to-many relations with automatic foreign key management."
+})
+
+// One to Many
+OneToManySection -> DocsCodeSection({
+    title: "One-to-Many Relations",
+    description: "A parent has many children:",
+    filename: "one-to-many.tp",
+    code: `
+    // models/user.tp
+    User | Model {
+        id: uuid @primary
+        email: string @unique
+        name: string
+
+        // One user has many posts
+        posts: [Post] @relation("author")
+    }
+
+    // models/post.tp
+    Post | Model {
+        id: uuid @primary
+        title: string
+        content: text
+        createdAt: datetime @default(now)
+
+        // Each post belongs to one user
+        author: User @relation("author")
+        authorId: uuid @foreignKey(User.id)
+    }
+
+    // Generated SQL
+    CREATE TABLE users (
+        id UUID PRIMARY KEY,
+        email VARCHAR(255) UNIQUE,
+        name VARCHAR(255)
+    );
+
+    CREATE TABLE posts (
+        id UUID PRIMARY KEY,
+        title VARCHAR(255),
+        content TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        author_id UUID REFERENCES users(id)
+    );
+
+    // Query with relation
+    user: await db.users.findUnique({
+        where: { id: userId },
+        include: { posts: true }
+    })
+    // { id: "...", email: "...", posts: [{ id: "...", title: "..." }] }`,
+    preview: [FeatureList({
+        title: "One-to-many patterns:",
+        items: [
+            { icon: "v", text: "[Model] - Array of related records" },
+            { icon: "v", text: "@relation(name) - Link both sides" },
+            { icon: "v", text: "@foreignKey - Define the FK column" },
+            { icon: "v", text: "include: - Fetch related data" }
+        ]
+    })]
+})
+
+// Many to Many
+ManyToManySection -> DocsCodeSection({
+    title: "Many-to-Many Relations",
+    description: "Both models have many of each other:",
+    filename: "many-to-many.tp",
+    code: `
+    // models/post.tp
+    Post | Model {
+        id: uuid @primary
+        title: string
+
+        // Many posts have many tags
+        tags: [Tag] @relation("postTags")
+    }
+
+    // models/tag.tp
+    Tag | Model {
+        id: uuid @primary
+        name: string @unique
+
+        // Many tags belong to many posts
+        posts: [Post] @relation("postTags")
+    }
+
+    // Generated junction table
+    CREATE TABLE post_tags (
+        post_id UUID REFERENCES posts(id),
+        tag_id UUID REFERENCES tags(id),
+        PRIMARY KEY (post_id, tag_id)
+    );
+
+    // Create post with tags
+    post: await db.posts.create({
+        data: {
+            title: "My Post",
+            tags: {
+                connect: [
+                    { id: tag1Id },
+                    { id: tag2Id }
+                ]
+            }
+        }
+    })
+
+    // Or create new tags
+    post: await db.posts.create({
+        data: {
+            title: "My Post",
+            tags: {
+                create: [
+                    { name: "javascript" },
+                    { name: "tutorial" }
+                ]
+            }
+        }
+    })
+
+    // Query posts with tags
+    posts: await db.posts.findMany({
+        include: { tags: true }
+    })`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "[Model]", desc: "Array on both sides" },
+            { label: "Junction table", desc: "Auto-generated" },
+            { label: "connect", desc: "Link existing records" },
+            { label: "create", desc: "Create and link new" }
+        ]
+    })]
+})
+
+// One to One
+OneToOneSection -> DocsCodeSection({
+    title: "One-to-One Relations",
+    description: "Each record has exactly one related record:",
+    filename: "one-to-one.tp",
+    code: `
+    // models/user.tp
+    User | Model {
+        id: uuid @primary
+        email: string @unique
+
+        // One user has one profile
+        profile: Profile? @relation("userProfile")
+    }
+
+    // models/profile.tp
+    Profile | Model {
+        id: uuid @primary
+        bio: text
+        avatar: string?
+        website: string?
+
+        // Profile belongs to one user
+        user: User @relation("userProfile")
+        userId: uuid @unique @foreignKey(User.id)
+    }
+
+    // Note: @unique on foreignKey enforces one-to-one
+
+    // Create user with profile
+    user: await db.users.create({
+        data: {
+            email: "john@example.com",
+            profile: {
+                create: {
+                    bio: "Developer",
+                    avatar: "/avatars/john.jpg"
+                }
+            }
+        },
+        include: { profile: true }
+    })
+
+    // Update profile through user
+    await db.users.update({
+        where: { id: userId },
+        data: {
+            profile: {
+                update: {
+                    bio: "Senior Developer"
+                }
+            }
+        }
+    })`,
+    preview: [FeatureList({
+        title: "One-to-one patterns:",
+        items: [
+            { icon: "v", text: "Model? - Optional relation" },
+            { icon: "v", text: "@unique on FK - Enforces 1:1" },
+            { icon: "v", text: "create: - Nested creation" },
+            { icon: "v", text: "update: - Nested update" }
+        ]
+    })]
+})
+
+// Self Relations
+SelfRelationSection -> DocsCodeSection({
+    title: "Self Relations",
+    description: "Model relates to itself:",
+    filename: "self-relation.tp",
+    code: `
+    // Hierarchical data (tree structure)
+    // models/category.tp
+    Category | Model {
+        id: uuid @primary
+        name: string
+
+        // Parent category (nullable for root)
+        parent: Category? @relation("categoryHierarchy", references: "children")
+        parentId: uuid? @foreignKey(Category.id)
+
+        // Child categories
+        children: [Category] @relation("categoryHierarchy", references: "parent")
+    }
+
+    // Query category tree
+    categories: await db.categories.findMany({
+        where: { parentId: null },  // Root categories
+        include: {
+            children: {
+                include: {
+                    children: true  // Two levels deep
+                }
+            }
+        }
+    })
+
+    // Following/Followers pattern
+    // models/user.tp
+    User | Model {
+        id: uuid @primary
+        name: string
+
+        // Users this user follows
+        following: [User] @relation("follows")
+
+        // Users following this user
+        followers: [User] @relation("follows")
+    }
+
+    // Follow a user
+    await db.users.update({
+        where: { id: currentUserId },
+        data: {
+            following: {
+                connect: { id: targetUserId }
+            }
+        }
+    })
+
+    // Get followers count
+    followers: await db.users.count({
+        where: {
+            following: {
+                some: { id: userId }
+            }
+        }
+    })`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "Hierarchy", desc: "Parent-child trees" },
+            { label: "References", desc: "Specify relation fields" },
+            { label: "Nested include", desc: "Load multiple levels" },
+            { label: "Social graph", desc: "Following/followers" }
+        ]
+    })]
+})
+
+// Include and Select
+IncludeSection -> DocsCodeSection({
+    title: "Loading Relations",
+    description: "Control which relations to fetch:",
+    filename: "include.tp",
+    code: `
+    // include - Load full related records
+    user: await db.users.findUnique({
+        where: { id: userId },
+        include: {
+            posts: true,
+            profile: true
+        }
+    })
+
+    // Nested includes
+    user: await db.users.findUnique({
+        where: { id: userId },
+        include: {
+            posts: {
+                include: {
+                    tags: true,
+                    comments: {
+                        include: { author: true }
+                    }
+                }
+            }
+        }
+    })
+
+    // include with filtering
+    user: await db.users.findUnique({
+        where: { id: userId },
+        include: {
+            posts: {
+                where: { published: true },
+                orderBy: { createdAt: "desc" },
+                take: 5
+            }
+        }
+    })
+
+    // select - Choose specific fields
+    user: await db.users.findUnique({
+        where: { id: userId },
+        select: {
+            name: true,
+            email: true,
+            posts: {
+                select: {
+                    id: true,
+                    title: true
+                }
+            }
+        }
+    })
+    // { name: "John", email: "...", posts: [{ id: "...", title: "..." }] }
+
+    // _count - Get relation counts
+    user: await db.users.findUnique({
+        where: { id: userId },
+        include: {
+            _count: {
+                select: {
+                    posts: true,
+                    followers: true
+                }
+            }
+        }
+    })
+    // { ..., _count: { posts: 15, followers: 100 } }`,
+    preview: [FeatureList({
+        title: "Loading patterns:",
+        items: [
+            { icon: "v", text: "include: true - Load all fields" },
+            { icon: "v", text: "Nested includes - Multiple levels" },
+            { icon: "v", text: "where/orderBy - Filter relations" },
+            { icon: "v", text: "_count - Just get counts" }
+        ]
+    })]
+})

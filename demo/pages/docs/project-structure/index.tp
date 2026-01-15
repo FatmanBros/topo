@@ -1,0 +1,210 @@
+// Project Structure docs page
+import { DocsTemplate } from "../template.tp"
+import { DocsSection, DocsDescription } from "@/components/molecules/docs-section.tp"
+import { DocsCodeSection } from "@/components/organisms/docs-code-section.tp"
+import { ConfigPreview } from "@/components/molecules/config-preview.tp"
+import { FeatureList } from "@/components/molecules/feature-list.tp"
+
+Page -> DocsTemplate({ children: [ProjectStructureContent] })
+
+ProjectStructureContent -> {
+    align: vertical
+    style: "space-y-8"
+    children: [
+        PageHeader,
+        OverviewSection,
+        PagesSection,
+        ComponentsSection,
+        ServicesSection,
+        ConfigSection
+    ]
+}
+
+PageHeader -> DocsSection({
+    id: "project-structure",
+    title: "Project Structure",
+    children: [HeaderDesc]
+})
+
+HeaderDesc -> DocsDescription({
+    text: "Understanding the topo project structure helps you organize your code effectively. This guide explains the purpose of each directory and file."
+})
+
+// Overview
+OverviewSection -> DocsCodeSection({
+    title: "Directory Overview",
+    description: "A typical topo project has the following structure:",
+    filename: "my-app/",
+    code: `
+    my-app/
+    ├── pages/              # File-based routing
+    │   ├── index.tp        # Home page (/)
+    │   ├── about/
+    │   │   └── index.tp    # About page (/about)
+    │   └── dashboard/
+    │       ├── index.tp    # Dashboard (/dashboard)
+    │       └── template.tp # Shared layout
+    │
+    ├── components/         # Reusable components
+    │   ├── atoms/          # Basic UI elements
+    │   ├── molecules/      # Composed components
+    │   ├── organisms/      # Complex sections
+    │   └── templates/      # Page layouts
+    │
+    ├── services/           # API service definitions
+    │   └── user-api.tp     # User API client
+    │
+    ├── routes.tp           # Route definitions & guards
+    ├── http.setup.tp       # HTTP client configuration
+    ├── topo.config.json    # Project configuration
+    └── package.json        # Dependencies`,
+    preview: [FeatureList({
+        title: "Key directories:",
+        items: [
+            { icon: "v", text: "pages/ - File-based routing, each file = route" },
+            { icon: "v", text: "components/ - Atomic Design structure" },
+            { icon: "v", text: "services/ - Client-side API definitions" },
+            { icon: "v", text: "Config files at root level" }
+        ]
+    })]
+})
+
+// Pages
+PagesSection -> DocsCodeSection({
+    title: "Pages Directory",
+    description: "The pages directory defines your application routes. File and folder names map directly to URLs:",
+    filename: "pages/",
+    code: `
+    pages/
+    ├── index.tp              # /
+    ├── login.tp              # /login
+    ├── users/
+    │   ├── index.tp          # /users
+    │   └── [id]/
+    │       └── index.tp      # /users/:id (dynamic)
+    └── docs/
+        ├── index.tp          # /docs
+        ├── template.tp       # Shared layout (not a route)
+        └── [...slug]/
+            └── index.tp      # /docs/* (catch-all)`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "index.tp", desc: "Entry point for directory route" },
+            { label: "template.tp", desc: "Shared layout, not a route" },
+            { label: "[param]/", desc: "Dynamic route segment" },
+            { label: "[...slug]/", desc: "Catch-all route" }
+        ]
+    })]
+})
+
+// Components
+ComponentsSection -> DocsCodeSection({
+    title: "Components Directory",
+    description: "Components follow Atomic Design principles for maximum reusability:",
+    filename: "components/",
+    code: `
+    components/
+    ├── atoms/              # Smallest UI units
+    │   ├── button.tp       # Button component
+    │   ├── text.tp         # Text component
+    │   └── icon.tp         # Icon component
+    │
+    ├── molecules/          # Combinations of atoms
+    │   ├── form-field.tp   # Label + Input + Error
+    │   ├── nav-item.tp     # Icon + Text link
+    │   └── card.tp         # Card with header/body
+    │
+    ├── organisms/          # Complex UI sections
+    │   ├── header.tp       # Site header
+    │   ├── sidebar.tp      # Navigation sidebar
+    │   └── login-form.tp   # Complete login form
+    │
+    └── templates/          # Page layouts
+        ├── default.tp      # Default layout
+        └── dashboard.tp    # Dashboard layout`,
+    preview: [FeatureList({
+        title: "Atomic Design levels:",
+        items: [
+            { icon: "v", text: "Atoms: type: button, type: text only here" },
+            { icon: "v", text: "Molecules: Combine atoms into functional units" },
+            { icon: "v", text: "Organisms: Complete sections with logic" },
+            { icon: "v", text: "Templates: Page-level layouts" }
+        ]
+    })]
+})
+
+// Services
+ServicesSection -> DocsCodeSection({
+    title: "Services Directory",
+    description: "Services define client-side API interfaces:",
+    filename: "services/",
+    code: `
+    services/
+    ├── user-api.tp         # User CRUD operations
+    ├── auth-api.tp         # Authentication
+    └── product-api.tp      # Product management
+
+    // Example: services/user-api.tp
+    Service UserApi {
+        getAll: GET "/api/users"
+        getById(id): GET "/api/users/{id}"
+        create(data): POST "/api/users"
+        update(id, data): PUT "/api/users/{id}"
+        delete(id): DELETE "/api/users/{id}"
+    }`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "Service", desc: "Defines API endpoints" },
+            { label: "GET/POST/PUT/DELETE", desc: "HTTP methods" },
+            { label: "{param}", desc: "URL parameters" },
+            { label: "Auto-generated", desc: "Type-safe client code" }
+        ]
+    })]
+})
+
+// Config
+ConfigSection -> DocsCodeSection({
+    title: "Configuration Files",
+    description: "Root-level configuration files control project behavior:",
+    filename: "topo.config.json",
+    code: `
+    // topo.config.json
+    {
+        "name": "my-app",
+        "build": {
+            "output": "dist",
+            "mode": "spa",
+            "basePath": "/app"
+        },
+        "dev": {
+            "port": 3000,
+            "open": true
+        },
+        "paths": {
+            "pages": "pages",
+            "components": "components"
+        }
+    }
+
+    // routes.tp - Route definitions
+    Routes {
+        home: "/" -> { title: "Home" }
+        login: "/login" -> { title: "Login" }
+        dashboard: "/dashboard", [AuthGuard]
+    }
+
+    // http.setup.tp - HTTP client config
+    Http {
+        baseUrl: "/api"
+        headers: {
+            "Content-Type": "application/json"
+        }
+    }`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "topo.config.json", desc: "Build and dev settings" },
+            { label: "routes.tp", desc: "Route guards and metadata" },
+            { label: "http.setup.tp", desc: "API client configuration" }
+        ]
+    })]
+})

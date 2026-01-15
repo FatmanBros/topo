@@ -1,0 +1,261 @@
+// Props & Events docs page
+import { DocsTemplate } from "../../template.tp"
+import { DocsSection, DocsDescription } from "@/components/molecules/docs-section.tp"
+import { DocsCodeSection } from "@/components/organisms/docs-code-section.tp"
+import { ConfigPreview } from "@/components/molecules/config-preview.tp"
+import { FeatureList } from "@/components/molecules/feature-list.tp"
+
+Page -> DocsTemplate({ children: [PropsContent] })
+
+PropsContent -> {
+    align: vertical
+    style: "space-y-8"
+    children: [
+        PageHeader,
+        BasicPropsSection,
+        DefaultPropsSection,
+        DestructuringSection,
+        EventsSection,
+        CallbacksSection
+    ]
+}
+
+PageHeader -> DocsSection({
+    id: "props",
+    title: "Props & Events",
+    children: [HeaderDesc]
+})
+
+HeaderDesc -> DocsDescription({
+    text: "Props allow you to pass data to components. Events enable child-to-parent communication. Learn how to use both effectively."
+})
+
+// Basic Props
+BasicPropsSection -> DocsCodeSection({
+    title: "Passing Props",
+    description: "Pass props when using a component:",
+    filename: "example.tp",
+    code: `
+    // Define a component that accepts props
+    Greeting(props) -> {
+        type: text
+        content: "Hello, " + props.name + "!"
+    }
+
+    // Use the component with props
+    Page -> {
+        children: [
+            Greeting({ name: "World" }),
+            Greeting({ name: "Topo" })
+        ]
+    }
+
+    // Props can be any type
+    UserCard(props) -> {
+        children: [
+            Avatar({ src: props.user.avatar }),
+            Text({ text: props.user.name }),
+            Badge({ count: props.notifications })
+        ]
+    }`,
+    preview: [FeatureList({
+        title: "Props basics:",
+        items: [
+            { icon: "v", text: "Props are passed as an object" },
+            { icon: "v", text: "Access via props.propertyName" },
+            { icon: "v", text: "Any value type: string, number, object, array" },
+            { icon: "v", text: "Props are read-only in the component" }
+        ]
+    })]
+})
+
+// Default Props
+DefaultPropsSection -> DocsCodeSection({
+    title: "Default Values",
+    description: "Provide default values for optional props:",
+    filename: "button.tp",
+    code: `
+    // Using default parameter syntax
+    Button(props = {}) -> {
+        type: button
+        content: props.text || "Click me"
+        style: props.variant == "primary"
+            ? "bg-blue-500 text-white"
+            : "bg-gray-200 text-gray-800"
+        disabled: props.disabled || false
+    }
+
+    // With explicit defaults
+    Card(props) -> {
+        title: props.title || "Untitled"
+        padding: props.padding ?? 4
+        rounded: props.rounded ?? true
+        children: props.children
+    }
+
+    // Usage
+    Page -> {
+        children: [
+            Button(),                          // Uses all defaults
+            Button({ text: "Submit" }),        // Custom text
+            Button({ text: "Save", variant: "primary" })
+        ]
+    }`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "|| default", desc: "Fallback for falsy values" },
+            { label: "?? default", desc: "Fallback only for null/undefined" },
+            { label: "props = {}", desc: "Empty object default" }
+        ]
+    })]
+})
+
+// Destructuring
+DestructuringSection -> DocsCodeSection({
+    title: "Destructuring Props",
+    description: "Destructure props for cleaner code:",
+    filename: "avatar.tp",
+    code: `
+    // Destructure in parameter
+    Avatar({ src, size, alt }) -> {
+        type: image
+        src: src
+        alt: alt || "Avatar"
+        style: size == "lg" ? "w-16 h-16" : "w-10 h-10"
+    }
+
+    // With defaults
+    Badge({ text, color = "gray", rounded = true }) -> {
+        type: span
+        content: text
+        style: [
+            "px-2 py-1 text-sm",
+            "bg-" + color + "-100 text-" + color + "-800",
+            rounded ? "rounded-full" : "rounded"
+        ].join(" ")
+    }
+
+    // Rest props
+    Input({ label, ...inputProps }) -> {
+        children: [
+            Label({ text: label }),
+            TextInput(inputProps)  // Pass remaining props
+        ]
+    }`,
+    preview: [FeatureList({
+        title: "Destructuring patterns:",
+        items: [
+            { icon: "v", text: "{ prop1, prop2 } - Extract specific props" },
+            { icon: "v", text: "{ prop = default } - With defaults" },
+            { icon: "v", text: "{ ...rest } - Collect remaining props" }
+        ]
+    })]
+})
+
+// Events
+EventsSection -> DocsCodeSection({
+    title: "Event Handling",
+    description: "Handle DOM events with event props:",
+    filename: "interactive.tp",
+    code: `
+    // onClick handler
+    ClickCounter | {
+        State { count: 0 }
+        Actions { Increment }
+        Reducers {
+            on Increment { count: state.count + 1 }
+        }
+    }
+
+    CounterButton -> {
+        type: button
+        content: "Clicked: " + $ClickCounter.count
+        onClick: ClickCounter.Increment
+    }
+
+    // Event with parameters
+    ItemList -> {
+        children: items.for(item => {
+            ListItem({
+                text: item.name,
+                onClick: () => handleSelect(item.id)
+            })
+        })
+    }
+
+    // Common events
+    Form -> {
+        type: form
+        onSubmit: handleSubmit
+        children: [
+            Input({ onChange: handleChange }),
+            Button({ type: "submit" })
+        ]
+    }`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "onClick", desc: "Click event" },
+            { label: "onChange", desc: "Input change" },
+            { label: "onSubmit", desc: "Form submission" },
+            { label: "onKeyDown", desc: "Keyboard event" }
+        ]
+    })]
+})
+
+// Callbacks
+CallbacksSection -> DocsCodeSection({
+    title: "Callback Props",
+    description: "Pass callbacks for child-to-parent communication:",
+    filename: "modal.tp",
+    code: `
+    // Parent passes callback
+    Page | {
+        State { showModal: false }
+        Actions { OpenModal, CloseModal }
+        Reducers {
+            on OpenModal { showModal: true }
+            on CloseModal { showModal: false }
+        }
+    }
+
+    PageContent -> {
+        children: [
+            Button({
+                text: "Open",
+                onClick: Page.OpenModal
+            }),
+            $Page.showModal ? Modal({
+                onClose: Page.CloseModal,
+                onConfirm: handleConfirm
+            }) : null
+        ]
+    }
+
+    // Child calls callback
+    Modal(props) -> {
+        children: [
+            ModalHeader({ onClose: props.onClose }),
+            ModalBody,
+            ModalFooter({
+                onCancel: props.onClose,
+                onConfirm: props.onConfirm
+            })
+        ]
+    }
+
+    ModalFooter(props) -> {
+        children: [
+            Button({ text: "Cancel", onClick: props.onCancel }),
+            Button({ text: "Confirm", onClick: props.onConfirm })
+        ]
+    }`,
+    preview: [FeatureList({
+        title: "Callback patterns:",
+        items: [
+            { icon: "v", text: "onClose, onConfirm - Action callbacks" },
+            { icon: "v", text: "onChange, onSelect - Value callbacks" },
+            { icon: "v", text: "Pass Store actions as callbacks" },
+            { icon: "v", text: "Bubble events up the component tree" }
+        ]
+    })]
+})

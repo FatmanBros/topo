@@ -1,0 +1,382 @@
+// Error Handling docs page
+import { DocsTemplate } from "../../template.tp"
+import { DocsSection, DocsDescription } from "@/components/molecules/docs-section.tp"
+import { DocsCodeSection } from "@/components/organisms/docs-code-section.tp"
+import { ConfigPreview } from "@/components/molecules/config-preview.tp"
+import { FeatureList } from "@/components/molecules/feature-list.tp"
+
+Page -> DocsTemplate({ children: [ErrorsContent] })
+
+ErrorsContent -> {
+    align: vertical
+    style: "space-y-8"
+    children: [
+        PageHeader,
+        BasicErrorsSection,
+        HttpErrorsSection,
+        GlobalHandlerSection,
+        RetryPatternSection,
+        ErrorUISection
+    ]
+}
+
+PageHeader -> DocsSection({
+    id: "errors",
+    title: "Error Handling",
+    children: [HeaderDesc]
+})
+
+HeaderDesc -> DocsDescription({
+    text: "Handle HTTP errors gracefully with try/catch, error states, global handlers, and retry patterns."
+})
+
+// Basic Error Handling
+BasicErrorsSection -> DocsCodeSection({
+    title: "Basic Error Handling",
+    description: "Handle errors in store effects with try/catch:",
+    filename: "basic-errors.tp",
+    code: `
+    UserStore | {
+        State {
+            user: null
+            isLoading: false
+            error: null
+        }
+
+        Actions {
+            LoadUser(id)
+            SetUser(user)
+            SetError(error)
+            SetLoading(loading)
+            ClearError
+        }
+
+        Reducers {
+            on SetUser(user) { user: user, isLoading: false, error: null }
+            on SetError(error) { error: error, isLoading: false }
+            on SetLoading(loading) { isLoading: loading }
+            on ClearError { error: null }
+        }
+
+        Effects {
+            on LoadUser(id) {
+                dispatch: SetLoading(true)
+                dispatch: ClearError
+
+                try {
+                    user: await UserService.getById(id)
+                    dispatch: SetUser(user)
+                } catch(e) {
+                    dispatch: SetError(e.message)
+                }
+            }
+        }
+    }
+
+    // Display error in component
+    UserProfile -> {
+        children: [
+            $UserStore.error
+                ? ErrorAlert({ message: $UserStore.error })
+                : null,
+            $UserStore.isLoading
+                ? Spinner()
+                : UserDetails({ user: $UserStore.user })
+        ]
+    }`,
+    preview: [FeatureList({
+        title: "Error handling basics:",
+        items: [
+            { icon: "v", text: "try/catch in effects" },
+            { icon: "v", text: "error state in store" },
+            { icon: "v", text: "dispatch: SetError(message)" },
+            { icon: "v", text: "Display errors in UI" }
+        ]
+    })]
+})
+
+// HTTP Error Types
+HttpErrorsSection -> DocsCodeSection({
+    title: "HTTP Error Types",
+    description: "Handle different HTTP status codes:",
+    filename: "http-errors.tp",
+    code: `
+    // HTTP errors include status code
+    FormStore | {
+        Effects {
+            on Submit(data) {
+                try {
+                    await FormService.submit(data)
+                    dispatch: SubmitSuccess
+                } catch(e) {
+                    // Check specific error types
+                    if (e.status == 400) {
+                        // Bad request - validation errors
+                        dispatch: SetValidationErrors(e.data.errors)
+                    } else if (e.status == 401) {
+                        // Unauthorized
+                        dispatch: AuthStore.Logout
+                        navigate: "/login"
+                    } else if (e.status == 403) {
+                        // Forbidden
+                        dispatch: SetError("You don't have permission")
+                    } else if (e.status == 404) {
+                        // Not found
+                        dispatch: SetError("Resource not found")
+                    } else if (e.status == 409) {
+                        // Conflict
+                        dispatch: SetError("This item already exists")
+                    } else if (e.status == 422) {
+                        // Unprocessable entity
+                        dispatch: SetValidationErrors(e.data.errors)
+                    } else if (e.status >= 500) {
+                        // Server error
+                        dispatch: SetError("Server error. Please try again later.")
+                    } else {
+                        // Network or unknown error
+                        dispatch: SetError(e.message || "An error occurred")
+                    }
+                }
+            }
+        }
+    }
+
+    // Error object structure
+    // {
+    //   status: 400,
+    //   message: "Bad Request",
+    //   data: { errors: { email: "Invalid email format" } }
+    // }`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "400", desc: "Bad request / Validation" },
+            { label: "401", desc: "Unauthorized" },
+            { label: "403", desc: "Forbidden" },
+            { label: "404", desc: "Not found" },
+            { label: "500+", desc: "Server errors" }
+        ]
+    })]
+})
+
+// Global Error Handler
+GlobalHandlerSection -> DocsCodeSection({
+    title: "Global Error Handler",
+    description: "Handle errors globally in the HTTP client:",
+    filename: "global-handler.tp",
+    code: `
+    // services/http.tp
+    http | {
+        baseUrl: "/api"
+
+        onError: async (error) => {
+            // Log all errors
+            console.error("API Error:", {
+                url: error.config.url,
+                status: error.status,
+                message: error.message
+            })
+
+            // Handle auth errors globally
+            if (error.status == 401) {
+                // Try token refresh
+                if (error.config.url != "/auth/refresh") {
+                    try {
+                        await AuthStore.RefreshToken()
+                        // Retry original request
+                        return await http.request(error.config)
+                    } catch(refreshError) {
+                        // Refresh failed
+                        dispatch: AuthStore.Logout
+                        navigate: "/login"
+                        return
+                    }
+                }
+            }
+
+            // Show toast for server errors
+            if (error.status >= 500) {
+                dispatch: ToastStore.Show({
+                    type: "error",
+                    message: "Server error. Please try again."
+                })
+            }
+
+            // Show maintenance page
+            if (error.status == 503) {
+                navigate: "/maintenance"
+                return
+            }
+
+            // Rethrow for local handling
+            throw error
+        }
+    }
+
+    // App-level error boundary
+    AppErrorBoundary | {
+        State { hasError: false, error: null }
+
+        onError: (error) => {
+            dispatch: SetError(error)
+            // Report to error tracking service
+            ErrorTracker.captureException(error)
+        }
+    }`,
+    preview: [FeatureList({
+        title: "Global handling:",
+        items: [
+            { icon: "v", text: "onError interceptor" },
+            { icon: "v", text: "Auto token refresh on 401" },
+            { icon: "v", text: "Toast notifications for errors" },
+            { icon: "v", text: "Error tracking integration" }
+        ]
+    })]
+})
+
+// Retry Pattern
+RetryPatternSection -> DocsCodeSection({
+    title: "Retry Patterns",
+    description: "Automatically retry failed requests:",
+    filename: "retry.tp",
+    code: `
+    // Built-in retry configuration
+    http | {
+        retry: {
+            attempts: 3,
+            delay: 1000,        // 1 second between retries
+            backoff: "exponential",  // 1s, 2s, 4s
+            statusCodes: [408, 429, 500, 502, 503, 504]
+        }
+    }
+
+    // Manual retry in effects
+    DataStore | {
+        Effects {
+            on LoadData {
+                maxRetries: 3
+                attempt: 0
+
+                while (attempt < maxRetries) {
+                    try {
+                        data: await DataService.get()
+                        dispatch: SetData(data)
+                        return  // Success, exit loop
+                    } catch(e) {
+                        attempt = attempt + 1
+
+                        if (attempt >= maxRetries) {
+                            dispatch: SetError("Failed after " + maxRetries + " attempts")
+                            return
+                        }
+
+                        // Wait before retry (exponential backoff)
+                        await delay(Math.pow(2, attempt) * 1000)
+                    }
+                }
+            }
+        }
+    }
+
+    // Retry with user confirmation
+    UploadStore | {
+        State { lastError: null }
+
+        Effects {
+            on Upload(file) {
+                try {
+                    await FileService.upload(file)
+                    dispatch: UploadSuccess
+                } catch(e) {
+                    dispatch: SetLastError(e)
+                    // Show retry dialog in UI
+                }
+            }
+
+            on RetryUpload {
+                // User clicked retry
+                dispatch: Upload(state.pendingFile)
+            }
+        }
+    }`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "attempts", desc: "Number of retries" },
+            { label: "delay", desc: "Wait between retries" },
+            { label: "backoff", desc: "Exponential delay increase" },
+            { label: "Manual retry", desc: "User-triggered retry" }
+        ]
+    })]
+})
+
+// Error UI
+ErrorUISection -> DocsCodeSection({
+    title: "Error UI Components",
+    description: "Display errors to users effectively:",
+    filename: "error-ui.tp",
+    code: `
+    // Inline error message
+    ErrorMessage(props) -> {
+        style: "text-red-600 text-sm mt-1"
+        children: [
+            Icon({ name: "alert-circle", size: "sm" }),
+            Text({ text: props.message })
+        ]
+    }
+
+    // Error alert box
+    ErrorAlert(props) -> {
+        style: "bg-red-50 border border-red-200 rounded-lg p-4"
+        children: [
+            Heading({ text: props.title || "Error", level: 4 }),
+            Text({ text: props.message }),
+            props.onRetry
+                ? Button({
+                    text: "Try Again",
+                    onClick: props.onRetry,
+                    variant: "secondary"
+                })
+                : null
+        ]
+    }
+
+    // Full page error
+    ErrorPage(props) -> {
+        style: "min-h-screen flex items-center justify-center"
+        children: [
+            Card({
+                children: [
+                    Icon({ name: "alert-triangle", size: "lg" }),
+                    Heading({ text: props.title || "Something went wrong" }),
+                    Text({ text: props.message }),
+                    Button({
+                        text: "Go Home",
+                        onClick: () => navigate("/")
+                    })
+                ]
+            })
+        ]
+    }
+
+    // Usage in components
+    UserList -> {
+        children: [
+            $UserStore.error
+                ? ErrorAlert({
+                    message: $UserStore.error,
+                    onRetry: UserStore.LoadUsers
+                })
+                : $UserStore.isLoading
+                    ? Spinner()
+                    : UserListContent
+        ]
+    }`,
+    preview: [FeatureList({
+        title: "Error UI patterns:",
+        items: [
+            { icon: "v", text: "Inline messages for forms" },
+            { icon: "v", text: "Alert boxes with retry" },
+            { icon: "v", text: "Full page errors" },
+            { icon: "v", text: "Conditional rendering" }
+        ]
+    })]
+})

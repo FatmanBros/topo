@@ -1,0 +1,368 @@
+// Performance Optimization docs page
+import { DocsTemplate } from "../../template.tp"
+import { DocsSection, DocsDescription } from "@/components/molecules/docs-section.tp"
+import { DocsCodeSection } from "@/components/organisms/docs-code-section.tp"
+import { ConfigPreview } from "@/components/molecules/config-preview.tp"
+import { FeatureList } from "@/components/molecules/feature-list.tp"
+
+Page -> DocsTemplate({ children: [PerformanceContent] })
+
+PerformanceContent -> {
+    align: vertical
+    style: "space-y-8"
+    children: [
+        PageHeader,
+        MemoizationSection,
+        LazyLoadingSection,
+        VirtualizationSection,
+        BundleSizeSection,
+        ProfilingSection
+    ]
+}
+
+PageHeader -> DocsSection({
+    id: "performance",
+    title: "Performance Optimization",
+    children: [HeaderDesc]
+})
+
+HeaderDesc -> DocsDescription({
+    text: "Optimize your Topo application for speed. Learn about memoization, lazy loading, virtualization, bundle optimization, and profiling."
+})
+
+// Memoization
+MemoizationSection -> DocsCodeSection({
+    title: "Memoization",
+    description: "Prevent unnecessary re-renders:",
+    filename: "memoization.tp",
+    code: `
+    // Computed values with memo
+    ProductList | {
+        State {
+            products: []
+            filter: ""
+            sortBy: "name"
+        }
+
+        // Memoized computed value
+        // Only recalculates when dependencies change
+        filteredProducts: memo(() => {
+            return state.products
+                .filter(p => p.name.includes(state.filter))
+                .sort((a, b) => a[state.sortBy] > b[state.sortBy] ? 1 : -1)
+        }, [state.products, state.filter, state.sortBy])
+    }
+
+    // Component memoization
+    ExpensiveChart: memo((props) => {
+        // Only re-renders when props.data changes
+        style: "w-full h-64"
+        children: [Chart({ data: props.data })]
+    })
+
+    // Usage
+    Dashboard -> {
+        children: [
+            ExpensiveChart({ data: $DataStore.chartData })
+        ]
+    }
+
+    // Memoize event handlers
+    ItemList(props) -> {
+        // Handler created once, not on every render
+        handleClick: useCallback((id) => {
+            dispatch: SelectItem(id)
+        }, [])
+
+        children: props.items.for(item => {
+            Item({
+                key: item.id,
+                data: item,
+                onClick: () => handleClick(item.id)
+            })
+        })
+    }`,
+    preview: [FeatureList({
+        title: "Memoization patterns:",
+        items: [
+            { icon: "v", text: "memo() for computed values" },
+            { icon: "v", text: "Dependency array for invalidation" },
+            { icon: "v", text: "Component memoization" },
+            { icon: "v", text: "useCallback for handlers" }
+        ]
+    })]
+})
+
+// Lazy Loading
+LazyLoadingSection -> DocsCodeSection({
+    title: "Lazy Loading",
+    description: "Load components and data on demand:",
+    filename: "lazy-loading.tp",
+    code: `
+    // Lazy load components
+    AdminDashboard: lazy(() => import("./AdminDashboard.tp"))
+    SettingsPanel: lazy(() => import("./SettingsPanel.tp"))
+
+    // Usage with Suspense
+    App -> {
+        children: [
+            Suspense({
+                fallback: Spinner(),
+                children: [
+                    route.isAdmin ? AdminDashboard() : null,
+                    route.isSettings ? SettingsPanel() : null
+                ]
+            })
+        ]
+    }
+
+    // Lazy load images
+    LazyImage(props) -> {
+        loading: "lazy"
+        src: props.src
+        alt: props.alt
+        style: "w-full h-auto"
+    }
+
+    // Intersection Observer for lazy data
+    InfiniteList | {
+        State {
+            items: []
+            page: 1
+            hasMore: true
+        }
+
+        Effects {
+            on LoadMore {
+                if (!state.hasMore) return
+
+                newItems: await Api.getItems({ page: state.page })
+                dispatch: AppendItems(newItems)
+
+                if (newItems.length < 20) {
+                    dispatch: SetHasMore(false)
+                }
+            }
+        }
+    }
+
+    InfiniteScroll -> {
+        children: [
+            ItemsList({ items: $InfiniteList.items }),
+            IntersectionTrigger({
+                onVisible: InfiniteList.LoadMore,
+                enabled: $InfiniteList.hasMore
+            })
+        ]
+    }`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "lazy()", desc: "Dynamic imports" },
+            { label: "Suspense", desc: "Loading fallback" },
+            { label: "loading=\"lazy\"", desc: "Native image lazy" },
+            { label: "Intersection", desc: "Load on scroll" }
+        ]
+    })]
+})
+
+// Virtualization
+VirtualizationSection -> DocsCodeSection({
+    title: "List Virtualization",
+    description: "Render only visible items for large lists:",
+    filename: "virtualization.tp",
+    code: `
+    // Virtual list component
+    VirtualList(props) -> {
+        // Only render items in viewport
+        containerHeight: 600
+        itemHeight: 50
+        overscan: 5  // Extra items above/below
+
+        // Calculate visible range
+        scrollTop: useScroll()
+        startIndex: Math.floor(scrollTop / itemHeight) - overscan
+        endIndex: startIndex + Math.ceil(containerHeight / itemHeight) + overscan * 2
+
+        visibleItems: props.items.slice(
+            Math.max(0, startIndex),
+            Math.min(props.items.length, endIndex)
+        )
+
+        style: "overflow-auto"
+        height: containerHeight
+        children: [
+            // Spacer for scroll height
+            Spacer({ height: props.items.length * itemHeight }),
+            // Positioned visible items
+            ...visibleItems.for((item, i) => {
+                VirtualItem({
+                    key: item.id,
+                    style: "absolute top-" + ((startIndex + i) * itemHeight) + "px",
+                    children: [props.renderItem(item)]
+                })
+            })
+        ]
+    }
+
+    // Usage
+    UserList -> {
+        children: [
+            VirtualList({
+                items: $UserStore.users,  // 10,000+ users
+                renderItem: (user) => UserRow({ user })
+            })
+        ]
+    }
+
+    // Built-in virtualized grid
+    VirtualGrid(props) -> {
+        columns: 4
+        rowHeight: 200
+        // ... similar logic
+    }`,
+    preview: [FeatureList({
+        title: "Virtualization benefits:",
+        items: [
+            { icon: "v", text: "Render only visible items" },
+            { icon: "v", text: "Smooth scrolling for 10K+ items" },
+            { icon: "v", text: "Reduced memory usage" },
+            { icon: "v", text: "Faster initial render" }
+        ]
+    })]
+})
+
+// Bundle Size
+BundleSizeSection -> DocsCodeSection({
+    title: "Bundle Optimization",
+    description: "Keep your bundle size small:",
+    filename: "bundle.tp",
+    code: `
+    // Analyze bundle
+    $ topo build --analyze
+
+    // Output shows:
+    // - Bundle size breakdown
+    // - Largest dependencies
+    // - Duplicate packages
+
+    // Code splitting by route
+    // Each page is its own chunk
+    pages/
+    ├── index.tp          # main chunk
+    ├── dashboard/
+    │   └── index.tp      # dashboard chunk
+    └── admin/
+        └── index.tp      # admin chunk
+
+    // Tree shaking - import only what you need
+    // Good: Named imports
+    import { Button, Card } from "@/components"
+
+    // Bad: Import entire library
+    import * as Components from "@/components"
+
+    // Dynamic imports for heavy libraries
+    ChartComponent -> {
+        init: async () => {
+            // Load chart library only when needed
+            ChartLib: await import("heavy-chart-library")
+            // ...
+        }
+    }
+
+    // Optimize images
+    // Use modern formats (WebP, AVIF)
+    // Serve appropriate sizes
+
+    Image({
+        srcset: [
+            { src: "/img/hero-400.webp", width: 400 },
+            { src: "/img/hero-800.webp", width: 800 },
+            { src: "/img/hero-1200.webp", width: 1200 }
+        ],
+        sizes: "(max-width: 600px) 400px, (max-width: 1000px) 800px, 1200px"
+    })`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "--analyze", desc: "Bundle analysis" },
+            { label: "Code splitting", desc: "Per-route chunks" },
+            { label: "Tree shaking", desc: "Remove unused code" },
+            { label: "Image optimization", desc: "Modern formats" }
+        ]
+    })]
+})
+
+// Profiling
+ProfilingSection -> DocsCodeSection({
+    title: "Performance Profiling",
+    description: "Measure and identify bottlenecks:",
+    filename: "profiling.tp",
+    code: `
+    // Development performance overlay
+    $ topo dev --perf
+
+    // Shows:
+    // - Component render times
+    // - Re-render counts
+    // - Memory usage
+
+    // Measure specific operations
+    ProfiledComponent -> {
+        init: () => {
+            console.time("data-load")
+            // ... load data
+            console.timeEnd("data-load")
+        }
+    }
+
+    // Performance marks
+    DataStore | {
+        Effects {
+            on LoadData {
+                performance.mark("load-start")
+
+                data: await Api.getData()
+
+                performance.mark("load-end")
+                performance.measure("data-load", "load-start", "load-end")
+
+                dispatch: SetData(data)
+            }
+        }
+    }
+
+    // Browser DevTools integration
+    // 1. Open DevTools > Performance tab
+    // 2. Record during interaction
+    // 3. Analyze flame graph
+
+    // React-style Profiler component
+    Profiler({
+        id: "user-list",
+        onRender: (id, phase, duration) => {
+            if (duration > 16) {
+                console.warn("Slow render:", id, duration + "ms")
+            }
+        },
+        children: [UserList]
+    })
+
+    // Lighthouse CI
+    // Add to CI/CD pipeline
+    // topo.config.ts
+    lighthouse: {
+        performance: 90,
+        accessibility: 100,
+        bestPractices: 90,
+        seo: 90
+    }`,
+    preview: [FeatureList({
+        title: "Profiling tools:",
+        items: [
+            { icon: "v", text: "--perf flag for dev overlay" },
+            { icon: "v", text: "console.time() for timing" },
+            { icon: "v", text: "Browser DevTools profiler" },
+            { icon: "v", text: "Lighthouse CI integration" }
+        ]
+    })]
+})

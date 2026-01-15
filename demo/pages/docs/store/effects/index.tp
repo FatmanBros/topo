@@ -1,0 +1,349 @@
+// Effects docs page
+import { DocsTemplate } from "../../template.tp"
+import { DocsSection, DocsDescription } from "@/components/molecules/docs-section.tp"
+import { DocsCodeSection } from "@/components/organisms/docs-code-section.tp"
+import { ConfigPreview } from "@/components/molecules/config-preview.tp"
+import { FeatureList } from "@/components/molecules/feature-list.tp"
+
+Page -> DocsTemplate({ children: [EffectsContent] })
+
+EffectsContent -> {
+    align: vertical
+    style: "space-y-8"
+    children: [
+        PageHeader,
+        BasicEffectsSection,
+        AsyncEffectsSection,
+        ErrorHandlingSection,
+        ChainedEffectsSection,
+        NavigationEffectsSection
+    ]
+}
+
+PageHeader -> DocsSection({
+    id: "effects",
+    title: "Effects",
+    children: [HeaderDesc]
+})
+
+HeaderDesc -> DocsDescription({
+    text: "Effects handle side effects: API calls, navigation, timers, and other operations that interact with the outside world."
+})
+
+// Basic Effects
+BasicEffectsSection -> DocsCodeSection({
+    title: "Effect Basics",
+    description: "Effects run when their trigger action is dispatched:",
+    filename: "effects.tp",
+    code: `
+    NotificationStore | {
+        State {
+            message: ""
+            visible: false
+        }
+
+        Actions {
+            Show(message)
+            Hide
+            AutoHide
+        }
+
+        Reducers {
+            on Show(message) { message: message, visible: true }
+            on Hide { visible: false }
+        }
+
+        Effects {
+            // Effect triggered by Show action
+            on Show {
+                // Wait 3 seconds
+                await delay(3000)
+                // Then dispatch Hide
+                dispatch: Hide
+            }
+
+            // Effect can access state
+            on AutoHide {
+                if (state.visible) {
+                    await delay(3000)
+                    dispatch: Hide
+                }
+            }
+        }
+    }`,
+    preview: [FeatureList({
+        title: "Effect features:",
+        items: [
+            { icon: "v", text: "on Action - Trigger on dispatch" },
+            { icon: "v", text: "state.field - Access current state" },
+            { icon: "v", text: "dispatch: Action - Dispatch new action" },
+            { icon: "v", text: "await - Wait for async operations" }
+        ]
+    })]
+})
+
+// Async Effects
+AsyncEffectsSection -> DocsCodeSection({
+    title: "Async Operations",
+    description: "Handle API calls and other async operations:",
+    filename: "async-effects.tp",
+    code: `
+    ProductStore | {
+        State {
+            products: []
+            selectedProduct: null
+            isLoading: false
+        }
+
+        Actions {
+            LoadProducts
+            LoadProduct(id)
+            SetProducts(products)
+            SetProduct(product)
+            SetLoading(loading)
+        }
+
+        Reducers {
+            on SetProducts(products) { products: products, isLoading: false }
+            on SetProduct(product) { selectedProduct: product, isLoading: false }
+            on SetLoading(loading) { isLoading: loading }
+        }
+
+        Effects {
+            // Fetch list
+            on LoadProducts {
+                dispatch: SetLoading(true)
+                products: await ProductApi.getAll()
+                dispatch: SetProducts(products)
+            }
+
+            // Fetch single item
+            on LoadProduct(id) {
+                dispatch: SetLoading(true)
+                product: await ProductApi.getById(id)
+                dispatch: SetProduct(product)
+            }
+
+            // Parallel fetching
+            on LoadDashboard {
+                dispatch: SetLoading(true)
+                [products, stats, recent]: await Promise.all([
+                    ProductApi.getAll(),
+                    StatsApi.get(),
+                    ActivityApi.getRecent()
+                ])
+                dispatch: SetDashboardData(products, stats, recent)
+            }
+        }
+    }`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "await", desc: "Wait for promise" },
+            { label: "Promise.all", desc: "Parallel requests" },
+            { label: "Service.method()", desc: "Call API service" },
+            { label: "Destructuring", desc: "[a, b] = await ..." }
+        ]
+    })]
+})
+
+// Error Handling
+ErrorHandlingSection -> DocsCodeSection({
+    title: "Error Handling",
+    description: "Handle errors in effects with try/catch:",
+    filename: "error-handling.tp",
+    code: `
+    AuthStore | {
+        State {
+            user: null
+            error: null
+            isLoading: false
+        }
+
+        Actions {
+            Login(email, password)
+            LoginSuccess(user)
+            LoginError(error)
+            Logout
+        }
+
+        Reducers {
+            on Login { isLoading: true, error: null }
+            on LoginSuccess(user) { user: user, isLoading: false }
+            on LoginError(error) { error: error, isLoading: false }
+            on Logout { user: null }
+        }
+
+        Effects {
+            on Login(email, password) {
+                try {
+                    user: await AuthApi.login(email, password)
+                    dispatch: LoginSuccess(user)
+                    navigate: "/dashboard"
+                } catch(e) {
+                    dispatch: LoginError(e.message)
+                }
+            }
+
+            on Logout {
+                try {
+                    await AuthApi.logout()
+                } catch(e) {
+                    // Ignore logout errors
+                    console.warn("Logout error:", e)
+                } finally {
+                    // Always clear local state
+                    localStorage.removeItem("token")
+                }
+                navigate: "/login"
+            }
+        }
+    }`,
+    preview: [FeatureList({
+        title: "Error handling:",
+        items: [
+            { icon: "v", text: "try/catch for error handling" },
+            { icon: "v", text: "dispatch: ErrorAction(e.message)" },
+            { icon: "v", text: "finally for cleanup" },
+            { icon: "v", text: "navigate: for redirects" }
+        ]
+    })]
+})
+
+// Chained Effects
+ChainedEffectsSection -> DocsCodeSection({
+    title: "Chained Effects",
+    description: "Chain multiple effects together:",
+    filename: "chained.tp",
+    code: `
+    OrderStore | {
+        State {
+            order: null
+            payment: null
+            status: "idle"
+        }
+
+        Actions {
+            CreateOrder(items)
+            ProcessPayment(orderId)
+            ConfirmOrder(orderId)
+            OrderComplete(order)
+            OrderFailed(error)
+        }
+
+        Reducers {
+            on CreateOrder { status: "creating" }
+            on ProcessPayment { status: "processing_payment" }
+            on ConfirmOrder { status: "confirming" }
+            on OrderComplete(order) { order: order, status: "complete" }
+            on OrderFailed(error) { status: "failed", error: error }
+        }
+
+        Effects {
+            // Step 1: Create order
+            on CreateOrder(items) {
+                try {
+                    order: await OrderApi.create(items)
+                    dispatch: ProcessPayment(order.id)
+                } catch(e) {
+                    dispatch: OrderFailed(e.message)
+                }
+            }
+
+            // Step 2: Process payment
+            on ProcessPayment(orderId) {
+                try {
+                    payment: await PaymentApi.charge(orderId)
+                    dispatch: ConfirmOrder(orderId)
+                } catch(e) {
+                    dispatch: OrderFailed(e.message)
+                }
+            }
+
+            // Step 3: Confirm
+            on ConfirmOrder(orderId) {
+                try {
+                    order: await OrderApi.confirm(orderId)
+                    dispatch: OrderComplete(order)
+                } catch(e) {
+                    dispatch: OrderFailed(e.message)
+                }
+            }
+        }
+    }`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "dispatch: NextAction", desc: "Chain to next step" },
+            { label: "Status tracking", desc: "Track progress in state" },
+            { label: "Error at any step", desc: "Catch handles all" },
+            { label: "Rollback", desc: "Handle failures gracefully" }
+        ]
+    })]
+})
+
+// Navigation Effects
+NavigationEffectsSection -> DocsCodeSection({
+    title: "Navigation in Effects",
+    description: "Navigate after async operations:",
+    filename: "navigation.tp",
+    code: `
+    FormStore | {
+        State {
+            data: {}
+            isSaving: false
+            savedId: null
+        }
+
+        Actions {
+            Save(data)
+            SaveSuccess(id)
+            SaveError(error)
+        }
+
+        Effects {
+            on Save(data) {
+                try {
+                    result: await Api.save(data)
+                    dispatch: SaveSuccess(result.id)
+                    // Navigate to detail page
+                    navigate: "/items/" + result.id
+                } catch(e) {
+                    dispatch: SaveError(e.message)
+                }
+            }
+        }
+    }
+
+    // Conditional navigation
+    AuthStore | {
+        Effects {
+            on CheckAuth {
+                user: await AuthApi.getCurrentUser()
+                if (user) {
+                    dispatch: SetUser(user)
+                    // Redirect to intended page or dashboard
+                    navigate: state.redirectTo || "/dashboard"
+                } else {
+                    navigate: "/login"
+                }
+            }
+        }
+    }
+
+    // Navigate with query params
+    SearchStore | {
+        Effects {
+            on Search {
+                navigate: "/search?q=" + encodeURIComponent(state.query)
+            }
+        }
+    }`,
+    preview: [FeatureList({
+        title: "Navigation patterns:",
+        items: [
+            { icon: "v", text: "navigate: \"/path\" - Go to page" },
+            { icon: "v", text: "navigate: .routeName - Use Routes" },
+            { icon: "v", text: "Dynamic paths with variables" },
+            { icon: "v", text: "Query params for search" }
+        ]
+    })]
+})

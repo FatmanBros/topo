@@ -1,0 +1,339 @@
+// Navigation docs page
+import { DocsTemplate } from "../../template.tp"
+import { DocsSection, DocsDescription } from "@/components/molecules/docs-section.tp"
+import { DocsCodeSection } from "@/components/organisms/docs-code-section.tp"
+import { ConfigPreview } from "@/components/molecules/config-preview.tp"
+import { FeatureList } from "@/components/molecules/feature-list.tp"
+
+Page -> DocsTemplate({ children: [NavigationContent] })
+
+NavigationContent -> {
+    align: vertical
+    style: "space-y-8"
+    children: [
+        PageHeader,
+        LinkComponentSection,
+        ProgrammaticSection,
+        NavigationInEffectsSection,
+        QueryParamsSection,
+        GuardsSection
+    ]
+}
+
+PageHeader -> DocsSection({
+    id: "navigation",
+    title: "Navigation",
+    children: [HeaderDesc]
+})
+
+HeaderDesc -> DocsDescription({
+    text: "Navigate between pages using Link components or programmatic navigation. Learn about route parameters, query strings, and navigation guards."
+})
+
+// Link Component
+LinkComponentSection -> DocsCodeSection({
+    title: "Link Component",
+    description: "Use Link for declarative navigation:",
+    filename: "links.tp",
+    code: `
+    // Basic link
+    Link({ to: "/about", text: "About Us" })
+
+    // Type-safe link using route name
+    Link({ to: .about, text: "About Us" })
+
+    // Link with parameters
+    Link({
+        to: .userDetail(user.id),
+        text: user.name
+    })
+
+    // Link with children (custom content)
+    Link({
+        to: .home,
+        children: [
+            Icon({ name: "home" }),
+            Text({ text: "Home" })
+        ]
+    })
+
+    // Active link styling
+    NavLink({
+        to: .dashboard,
+        text: "Dashboard",
+        activeClass: "bg-blue-500 text-white",
+        class: "px-4 py-2 rounded"
+    })
+
+    // Navigation menu
+    NavMenu -> {
+        children: [
+            NavLink({ to: .home, text: "Home" }),
+            NavLink({ to: .products, text: "Products" }),
+            NavLink({ to: .about, text: "About" }),
+            NavLink({ to: .contact, text: "Contact" })
+        ]
+    }`,
+    preview: [FeatureList({
+        title: "Link features:",
+        items: [
+            { icon: "v", text: "to: .routeName - Type-safe routes" },
+            { icon: "v", text: "to: \"/path\" - Direct path" },
+            { icon: "v", text: "NavLink for active styling" },
+            { icon: "v", text: "Children for custom content" }
+        ]
+    })]
+})
+
+// Programmatic Navigation
+ProgrammaticSection -> DocsCodeSection({
+    title: "Programmatic Navigation",
+    description: "Navigate from code using the navigate function:",
+    filename: "programmatic.tp",
+    code: `
+    // Navigate on button click
+    Button({
+        text: "Go to Dashboard",
+        onClick: () => navigate(.dashboard)
+    })
+
+    // Navigate with parameters
+    SelectUser -> {
+        onClick: () => navigate(.userDetail(selectedId))
+    }
+
+    // Navigate to path string
+    SearchButton -> {
+        onClick: () => navigate("/search?q=" + query)
+    }
+
+    // Replace history (no back button)
+    LogoutButton -> {
+        onClick: () => {
+            logout()
+            navigate(.login, { replace: true })
+        }
+    }
+
+    // Go back
+    BackButton -> {
+        onClick: () => navigate(-1)
+    }
+
+    // Go forward
+    ForwardButton -> {
+        onClick: () => navigate(1)
+    }`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "navigate(.route)", desc: "Go to named route" },
+            { label: "navigate(\"/path\")", desc: "Go to path" },
+            { label: "{ replace: true }", desc: "Replace history" },
+            { label: "navigate(-1)", desc: "Go back" }
+        ]
+    })]
+})
+
+// Navigation in Effects
+NavigationInEffectsSection -> DocsCodeSection({
+    title: "Navigation in Effects",
+    description: "Navigate after async operations:",
+    filename: "effect-nav.tp",
+    code: `
+    AuthStore | {
+        Effects {
+            on Login(credentials) {
+                try {
+                    user: await AuthApi.login(credentials)
+                    dispatch: SetUser(user)
+
+                    // Navigate after successful login
+                    navigate: "/dashboard"
+                } catch(e) {
+                    dispatch: SetError(e.message)
+                }
+            }
+
+            on Logout {
+                await AuthApi.logout()
+                dispatch: ClearUser
+
+                // Redirect to login
+                navigate: "/login"
+            }
+        }
+    }
+
+    FormStore | {
+        Effects {
+            on Submit(data) {
+                try {
+                    result: await Api.save(data)
+                    dispatch: SaveSuccess(result)
+
+                    // Navigate to detail page with new ID
+                    navigate: "/items/" + result.id
+                } catch(e) {
+                    dispatch: SaveError(e.message)
+                }
+            }
+        }
+    }
+
+    // Conditional navigation
+    CheckoutStore | {
+        Effects {
+            on ProcessPayment {
+                result: await PaymentApi.charge(state.cart)
+
+                if (result.success) {
+                    dispatch: OrderComplete(result.order)
+                    navigate: "/order-confirmation/" + result.order.id
+                } else {
+                    dispatch: PaymentFailed(result.error)
+                    // Stay on page, show error
+                }
+            }
+        }
+    }`,
+    preview: [FeatureList({
+        title: "Effect navigation:",
+        items: [
+            { icon: "v", text: "navigate: \"/path\" in effects" },
+            { icon: "v", text: "After successful async operations" },
+            { icon: "v", text: "Conditional navigation" },
+            { icon: "v", text: "Dynamic paths with variables" }
+        ]
+    })]
+})
+
+// Query Parameters
+QueryParamsSection -> DocsCodeSection({
+    title: "Query Parameters",
+    description: "Work with URL query strings:",
+    filename: "query-params.tp",
+    code: `
+    // Navigate with query params
+    SearchButton -> {
+        onClick: () => navigate("/search?q=" + encodeURIComponent(query))
+    }
+
+    // Multiple query params
+    FilterButton -> {
+        onClick: () => {
+            params: new URLSearchParams({
+                q: searchQuery,
+                category: selectedCategory,
+                sort: sortOrder,
+                page: currentPage
+            })
+            navigate("/products?" + params.toString())
+        }
+    }
+
+    // Access query params in page
+    // pages/search/index.tp
+    SearchPage | {
+        State { results: [], query: "" }
+
+        Effects {
+            on Load {
+                // Access query params
+                query: queryParams.get("q") || ""
+                if (query) {
+                    results: await SearchApi.search(query)
+                    dispatch: SetResults(results)
+                }
+            }
+        }
+    }
+
+    Page -> {
+        init: SearchPage.Load
+        children: [
+            SearchInput({ value: $SearchPage.query }),
+            ResultsList({ items: $SearchPage.results })
+        ]
+    }
+
+    // Update query without page reload
+    FilterComponent -> {
+        onFilterChange: (filters) => {
+            updateQuery({ ...filters })
+        }
+    }`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "?key=value", desc: "Query string format" },
+            { label: "queryParams.get()", desc: "Read params in page" },
+            { label: "URLSearchParams", desc: "Build query strings" },
+            { label: "updateQuery()", desc: "Update without reload" }
+        ]
+    })]
+})
+
+// Navigation Guards
+GuardsSection -> DocsCodeSection({
+    title: "Navigation Guards",
+    description: "Protect routes with authentication and authorization:",
+    filename: "guards.tp",
+    code: `
+    // Route guards in routes.tp
+    Routes {
+        // Public routes
+        home: "/"
+        login: "/login"
+        register: "/register"
+
+        // Protected routes - require authentication
+        dashboard: "/dashboard" -> DashboardRoutes
+            | guard: isAuthenticated
+            | redirect: "/login"
+
+        // Admin only routes
+        admin: "/admin" -> AdminRoutes
+            | guard: isAdmin
+            | redirect: "/dashboard"
+    }
+
+    // Define guard functions
+    isAuthenticated -> {
+        return $AuthStore.user != null
+    }
+
+    isAdmin -> {
+        return $AuthStore.user?.role == "admin"
+    }
+
+    // Alternative: Check in component init
+    ProtectedPage -> {
+        init: () => {
+            if (!$AuthStore.isAuthenticated) {
+                // Save intended destination
+                dispatch: AuthStore.SetRedirectTo(location.pathname)
+                navigate: "/login"
+            }
+        }
+        children: [ProtectedContent]
+    }
+
+    // After login, redirect to saved destination
+    AuthStore | {
+        Effects {
+            on LoginSuccess(user) {
+                redirect: state.redirectTo || "/dashboard"
+                dispatch: ClearRedirectTo
+                navigate: redirect
+            }
+        }
+    }`,
+    preview: [FeatureList({
+        title: "Guard patterns:",
+        items: [
+            { icon: "v", text: "guard: function - Route protection" },
+            { icon: "v", text: "redirect: path - Fallback route" },
+            { icon: "v", text: "Role-based access control" },
+            { icon: "v", text: "Save & restore redirect" }
+        ]
+    })]
+})

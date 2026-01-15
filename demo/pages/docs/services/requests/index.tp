@@ -1,0 +1,386 @@
+// Making Requests docs page
+import { DocsTemplate } from "../../template.tp"
+import { DocsSection, DocsDescription } from "@/components/molecules/docs-section.tp"
+import { DocsCodeSection } from "@/components/organisms/docs-code-section.tp"
+import { ConfigPreview } from "@/components/molecules/config-preview.tp"
+import { FeatureList } from "@/components/molecules/feature-list.tp"
+
+Page -> DocsTemplate({ children: [RequestsContent] })
+
+RequestsContent -> {
+    align: vertical
+    style: "space-y-8"
+    children: [
+        PageHeader,
+        GetRequestSection,
+        PostRequestSection,
+        QueryParamsSection,
+        FileUploadSection,
+        ParallelRequestsSection
+    ]
+}
+
+PageHeader -> DocsSection({
+    id: "requests",
+    title: "Making Requests",
+    children: [HeaderDesc]
+})
+
+HeaderDesc -> DocsDescription({
+    text: "Learn how to make HTTP requests with different methods, query parameters, request bodies, and file uploads."
+})
+
+// GET Requests
+GetRequestSection -> DocsCodeSection({
+    title: "GET Requests",
+    description: "Fetch data from the server:",
+    filename: "get-requests.tp",
+    code: `
+    import { http } from "@/services/http.tp"
+
+    ProductService {
+        // Simple GET
+        getAll: async () => {
+            return await http.get("/products")
+        }
+
+        // GET with path parameter
+        getById: async (id) => {
+            return await http.get("/products/" + id)
+        }
+
+        // GET with query parameters
+        search: async (query) => {
+            return await http.get("/products/search?q=" + encodeURIComponent(query))
+        }
+
+        // GET with multiple params
+        getFiltered: async (filters) => {
+            params: new URLSearchParams(filters)
+            return await http.get("/products?" + params.toString())
+        }
+    }
+
+    // Usage in store effects
+    ProductStore | {
+        Effects {
+            on LoadProducts {
+                products: await ProductService.getAll()
+                dispatch: SetProducts(products)
+            }
+
+            on LoadProduct(id) {
+                product: await ProductService.getById(id)
+                dispatch: SetProduct(product)
+            }
+        }
+    }`,
+    preview: [FeatureList({
+        title: "GET request patterns:",
+        items: [
+            { icon: "v", text: "http.get(url) - Basic fetch" },
+            { icon: "v", text: "Path params: /resource/{id}" },
+            { icon: "v", text: "Query string: ?key=value" },
+            { icon: "v", text: "URLSearchParams for complex queries" }
+        ]
+    })]
+})
+
+// POST Requests
+PostRequestSection -> DocsCodeSection({
+    title: "POST, PUT, PATCH, DELETE",
+    description: "Modify data on the server:",
+    filename: "post-requests.tp",
+    code: `
+    UserService {
+        // POST - Create new resource
+        create: async (userData) => {
+            return await http.post("/users", userData)
+            // Request body: { name: "John", email: "john@example.com" }
+        }
+
+        // PUT - Replace entire resource
+        replace: async (id, userData) => {
+            return await http.put("/users/" + id, userData)
+        }
+
+        // PATCH - Partial update
+        update: async (id, changes) => {
+            return await http.patch("/users/" + id, changes)
+            // Only sends changed fields: { name: "New Name" }
+        }
+
+        // DELETE - Remove resource
+        delete: async (id) => {
+            return await http.delete("/users/" + id)
+        }
+    }
+
+    // Complex request bodies
+    OrderService {
+        create: async (order) => {
+            return await http.post("/orders", {
+                items: order.items.map(i => ({
+                    productId: i.product.id,
+                    quantity: i.quantity
+                })),
+                shippingAddress: order.address,
+                paymentMethod: order.payment.method,
+                notes: order.notes || null
+            })
+        }
+    }
+
+    // Store usage
+    UserFormStore | {
+        Effects {
+            on Submit {
+                try {
+                    if (state.isEditing) {
+                        await UserService.update(state.userId, state.formData)
+                    } else {
+                        await UserService.create(state.formData)
+                    }
+                    dispatch: SubmitSuccess
+                    navigate: "/users"
+                } catch(e) {
+                    dispatch: SubmitError(e.message)
+                }
+            }
+        }
+    }`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "POST", desc: "Create new resource" },
+            { label: "PUT", desc: "Replace entire resource" },
+            { label: "PATCH", desc: "Partial update" },
+            { label: "DELETE", desc: "Remove resource" }
+        ]
+    })]
+})
+
+// Query Parameters
+QueryParamsSection -> DocsCodeSection({
+    title: "Query Parameters",
+    description: "Build complex query strings:",
+    filename: "query-params.tp",
+    code: `
+    ProductService {
+        // Search with filters
+        search: async (options) => {
+            params: new URLSearchParams()
+
+            // Required parameter
+            params.append("q", options.query)
+
+            // Optional parameters
+            if (options.category) {
+                params.append("category", options.category)
+            }
+            if (options.minPrice != null) {
+                params.append("minPrice", options.minPrice)
+            }
+            if (options.maxPrice != null) {
+                params.append("maxPrice", options.maxPrice)
+            }
+
+            // Array parameters
+            if (options.tags && options.tags.length > 0) {
+                options.tags.forEach(tag => {
+                    params.append("tags[]", tag)
+                })
+            }
+
+            // Pagination
+            params.append("page", options.page || 1)
+            params.append("limit", options.limit || 20)
+
+            // Sort
+            if (options.sortBy) {
+                params.append("sortBy", options.sortBy)
+                params.append("sortOrder", options.sortOrder || "asc")
+            }
+
+            return await http.get("/products/search?" + params.toString())
+            // /products/search?q=phone&category=electronics&page=1&limit=20
+        }
+    }
+
+    // Store with pagination
+    ProductListStore | {
+        State {
+            products: []
+            page: 1
+            totalPages: 1
+            filters: {}
+        }
+
+        Effects {
+            on Search(query) {
+                result: await ProductService.search({
+                    query: query,
+                    page: state.page,
+                    ...state.filters
+                })
+                dispatch: SetProducts(result.items)
+                dispatch: SetTotalPages(result.totalPages)
+            }
+        }
+    }`,
+    preview: [FeatureList({
+        title: "Query param handling:",
+        items: [
+            { icon: "v", text: "URLSearchParams builder" },
+            { icon: "v", text: "Optional parameters" },
+            { icon: "v", text: "Array params: tags[]" },
+            { icon: "v", text: "Pagination & sorting" }
+        ]
+    })]
+})
+
+// File Upload
+FileUploadSection -> DocsCodeSection({
+    title: "File Uploads",
+    description: "Upload files using multipart form data:",
+    filename: "file-upload.tp",
+    code: `
+    FileService {
+        // Single file upload
+        upload: async (file) => {
+            formData: new FormData()
+            formData.append("file", file)
+
+            return await http.post("/files/upload", formData, {
+                headers: {
+                    "Content-Type": "multipart/form-data"
+                }
+            })
+        }
+
+        // Multiple files
+        uploadMultiple: async (files) => {
+            formData: new FormData()
+            files.forEach((file, index) => {
+                formData.append("files", file)
+            })
+
+            return await http.post("/files/upload-multiple", formData, {
+                headers: { "Content-Type": "multipart/form-data" }
+            })
+        }
+
+        // File with metadata
+        uploadWithMeta: async (file, metadata) => {
+            formData: new FormData()
+            formData.append("file", file)
+            formData.append("title", metadata.title)
+            formData.append("description", metadata.description)
+            formData.append("tags", JSON.stringify(metadata.tags))
+
+            return await http.post("/files/upload", formData, {
+                headers: { "Content-Type": "multipart/form-data" }
+            })
+        }
+    }
+
+    // Upload with progress
+    FileUploadStore | {
+        State {
+            progress: 0
+            uploading: false
+        }
+
+        Effects {
+            on Upload(file) {
+                dispatch: SetUploading(true)
+
+                result: await http.post("/files/upload", formData, {
+                    onProgress: (percent) => {
+                        dispatch: SetProgress(percent)
+                    }
+                })
+
+                dispatch: SetUploading(false)
+                dispatch: UploadComplete(result)
+            }
+        }
+    }`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "FormData", desc: "Multipart form data" },
+            { label: "Single/Multiple", desc: "One or many files" },
+            { label: "With metadata", desc: "Add fields to upload" },
+            { label: "onProgress", desc: "Track upload progress" }
+        ]
+    })]
+})
+
+// Parallel Requests
+ParallelRequestsSection -> DocsCodeSection({
+    title: "Parallel Requests",
+    description: "Make multiple requests concurrently:",
+    filename: "parallel.tp",
+    code: `
+    DashboardService {
+        // Load all dashboard data at once
+        loadAll: async () => {
+            // Parallel execution with Promise.all
+            [stats, activities, notifications]: await Promise.all([
+                http.get("/dashboard/stats"),
+                http.get("/dashboard/activities"),
+                http.get("/notifications/unread")
+            ])
+
+            return { stats, activities, notifications }
+        }
+    }
+
+    // In store
+    DashboardStore | {
+        Effects {
+            on LoadDashboard {
+                dispatch: SetLoading(true)
+
+                // All requests run in parallel
+                data: await DashboardService.loadAll()
+
+                dispatch: SetStats(data.stats)
+                dispatch: SetActivities(data.activities)
+                dispatch: SetNotifications(data.notifications)
+                dispatch: SetLoading(false)
+            }
+        }
+    }
+
+    // Promise.allSettled for partial failures
+    DataService {
+        loadWithFallbacks: async () => {
+            results: await Promise.allSettled([
+                http.get("/critical-data"),
+                http.get("/optional-data"),
+                http.get("/nice-to-have")
+            ])
+
+            return {
+                critical: results[0].status == "fulfilled"
+                    ? results[0].value
+                    : null,
+                optional: results[1].status == "fulfilled"
+                    ? results[1].value
+                    : [],
+                extra: results[2].status == "fulfilled"
+                    ? results[2].value
+                    : null
+            }
+        }
+    }`,
+    preview: [FeatureList({
+        title: "Parallel patterns:",
+        items: [
+            { icon: "v", text: "Promise.all - Wait for all" },
+            { icon: "v", text: "Destructure results" },
+            { icon: "v", text: "Promise.allSettled - Handle failures" },
+            { icon: "v", text: "Faster loading for dashboards" }
+        ]
+    })]
+})

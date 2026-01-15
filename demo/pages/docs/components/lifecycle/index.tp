@@ -1,0 +1,290 @@
+// Lifecycle docs page
+import { DocsTemplate } from "../../template.tp"
+import { DocsSection, DocsDescription } from "@/components/molecules/docs-section.tp"
+import { DocsCodeSection } from "@/components/organisms/docs-code-section.tp"
+import { ConfigPreview } from "@/components/molecules/config-preview.tp"
+import { FeatureList } from "@/components/molecules/feature-list.tp"
+
+Page -> DocsTemplate({ children: [LifecycleContent] })
+
+LifecycleContent -> {
+    align: vertical
+    style: "space-y-8"
+    children: [
+        PageHeader,
+        OverviewSection,
+        InitSection,
+        DestroySection,
+        EffectsSection,
+        TimingSection
+    ]
+}
+
+PageHeader -> DocsSection({
+    id: "lifecycle",
+    title: "Component Lifecycle",
+    children: [HeaderDesc]
+})
+
+HeaderDesc -> DocsDescription({
+    text: "Components have lifecycle hooks that let you run code at specific moments: when mounted, when data changes, and when unmounted."
+})
+
+// Overview
+OverviewSection -> DocsCodeSection({
+    title: "Lifecycle Overview",
+    description: "The component lifecycle flows through these stages:",
+    filename: "lifecycle.tp",
+    code: `
+    // 1. Component Created
+    //    - Props received
+    //    - Store initialized
+
+    // 2. Mount (init)
+    //    - Component added to DOM
+    //    - init action dispatched
+    //    - Data fetching starts
+
+    // 3. Update
+    //    - State changes trigger re-render
+    //    - Effects run on action dispatch
+
+    // 4. Unmount (destroy)
+    //    - Component removed from DOM
+    //    - destroy action dispatched
+    //    - Cleanup (timers, subscriptions)`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "init:", desc: "Runs when component mounts" },
+            { label: "destroy:", desc: "Runs when component unmounts" },
+            { label: "Effects", desc: "Run on state changes" }
+        ]
+    })]
+})
+
+// Init
+InitSection -> DocsCodeSection({
+    title: "Init (Mount)",
+    description: "The init property dispatches an action when the component mounts:",
+    filename: "user-profile.tp",
+    code: `
+    // Store with load action
+    UserProfile | {
+        State {
+            user: null
+            isLoading: true
+        }
+        Actions {
+            Load(id)
+            SetUser(user)
+        }
+        Reducers {
+            on Load { isLoading: true }
+            on SetUser(user) { user: user, isLoading: false }
+        }
+        Effects {
+            on Load(id) {
+                user: await UserApi.getById(id)
+                dispatch: SetUser(user)
+            }
+        }
+    }
+
+    // Component with init
+    ProfilePage -> {
+        init: UserProfile.Load(props.userId)
+        children: [
+            $UserProfile.isLoading
+                ? Spinner()
+                : UserDetails({ user: $UserProfile.user })
+        ]
+    }
+
+    // Init with multiple actions
+    DashboardPage -> {
+        init: [
+            DashboardStore.LoadStats,
+            DashboardStore.LoadRecentActivity,
+            NotificationStore.FetchUnread
+        ]
+        children: [Dashboard]
+    }`,
+    preview: [FeatureList({
+        title: "Init patterns:",
+        items: [
+            { icon: "v", text: "Dispatch action on mount" },
+            { icon: "v", text: "Pass parameters from props" },
+            { icon: "v", text: "Multiple actions as array" },
+            { icon: "v", text: "Triggers Effect for async work" }
+        ]
+    })]
+})
+
+// Destroy
+DestroySection -> DocsCodeSection({
+    title: "Destroy (Unmount)",
+    description: "The destroy property runs cleanup when the component unmounts:",
+    filename: "timer.tp",
+    code: `
+    // Store with cleanup
+    TimerStore | {
+        State {
+            seconds: 0
+            intervalId: null
+        }
+        Actions {
+            Start
+            Stop
+            Tick
+        }
+        Reducers {
+            on Start(id) { intervalId: id }
+            on Stop { intervalId: null, seconds: 0 }
+            on Tick { seconds: state.seconds + 1 }
+        }
+        Effects {
+            on Start {
+                id: setInterval(() => {
+                    dispatch: Tick
+                }, 1000)
+                dispatch: Start(id)
+            }
+            on Stop {
+                clearInterval(state.intervalId)
+            }
+        }
+    }
+
+    // Component with destroy
+    TimerWidget -> {
+        init: TimerStore.Start
+        destroy: TimerStore.Stop
+        children: [
+            Text({ text: "Elapsed: " + $TimerStore.seconds + "s" })
+        ]
+    }
+
+    // Cleanup subscriptions
+    RealtimeChat -> {
+        init: ChatStore.Connect
+        destroy: ChatStore.Disconnect
+        children: [MessageList, MessageInput]
+    }`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "destroy:", desc: "Action to dispatch on unmount" },
+            { label: "Timers", desc: "Clear intervals/timeouts" },
+            { label: "WebSocket", desc: "Close connections" },
+            { label: "Subscriptions", desc: "Unsubscribe from events" }
+        ]
+    })]
+})
+
+// Effects
+EffectsSection -> DocsCodeSection({
+    title: "Effects on State Changes",
+    description: "Effects run automatically when their trigger action is dispatched:",
+    filename: "search.tp",
+    code: `
+    SearchStore | {
+        State {
+            query: ""
+            results: []
+            isSearching: false
+        }
+        Actions {
+            SetQuery(query)
+            Search
+            SetResults(results)
+        }
+        Reducers {
+            on SetQuery(query) { query: query }
+            on Search { isSearching: true }
+            on SetResults(results) { results: results, isSearching: false }
+        }
+        Effects {
+            // Effect runs when Search is dispatched
+            on Search {
+                results: await SearchApi.search(state.query)
+                dispatch: SetResults(results)
+            }
+
+            // Debounced search on query change
+            on SetQuery {
+                // Wait for user to stop typing
+                await delay(300)
+                dispatch: Search
+            }
+        }
+    }
+
+    SearchBox -> {
+        children: [
+            Input({
+                value: $SearchStore.query,
+                onChange: (e) => SearchStore.SetQuery(e.target.value)
+            }),
+            $SearchStore.isSearching
+                ? Spinner()
+                : ResultsList({ items: $SearchStore.results })
+        ]
+    }`,
+    preview: [FeatureList({
+        title: "Effect triggers:",
+        items: [
+            { icon: "v", text: "on Action - Runs when action dispatched" },
+            { icon: "v", text: "Access state inside effect" },
+            { icon: "v", text: "dispatch: to trigger other actions" },
+            { icon: "v", text: "Async operations with await" }
+        ]
+    })]
+})
+
+// Timing
+TimingSection -> DocsCodeSection({
+    title: "Lifecycle Timing",
+    description: "Understanding when each lifecycle hook runs:",
+    filename: "timing.tp",
+    code: `
+    // Execution order:
+    // 1. Parent renders
+    // 2. Child component created
+    // 3. Child init dispatched
+    // 4. Effect executes (async)
+    // 5. State updates trigger re-render
+    // 6. On unmount: destroy dispatched
+
+    ParentPage -> {
+        children: [
+            showChild ? ChildComponent() : null
+        ]
+    }
+
+    ChildComponent -> {
+        // init runs AFTER component is in DOM
+        init: ChildStore.Initialize
+        // destroy runs BEFORE component is removed
+        destroy: ChildStore.Cleanup
+        children: [Content]
+    }
+
+    // Common pattern: Conditional rendering
+    TabPanel -> {
+        children: [
+            activeTab == "users"
+                ? UsersTab()      // init when shown
+                : null,           // destroy when hidden
+            activeTab == "settings"
+                ? SettingsTab()
+                : null
+        ]
+    }`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "init", desc: "After mount, before paint" },
+            { label: "Effects", desc: "After state change" },
+            { label: "destroy", desc: "Before unmount" },
+            { label: "Conditional", desc: "Mount/unmount on show/hide" }
+        ]
+    })]
+})

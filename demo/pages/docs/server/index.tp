@@ -1,0 +1,166 @@
+// Server API Overview docs page
+import { DocsTemplate } from "../template.tp"
+import { DocsSection, DocsDescription } from "@/components/molecules/docs-section.tp"
+import { DocsCodeSection } from "@/components/organisms/docs-code-section.tp"
+import { ConfigPreview } from "@/components/molecules/config-preview.tp"
+import { FeatureList } from "@/components/molecules/feature-list.tp"
+
+Page -> DocsTemplate({ children: [ServerContent] })
+
+ServerContent -> {
+    align: vertical
+    style: "space-y-8"
+    children: [
+        PageHeader,
+        OverviewSection,
+        FileStructureSection,
+        QuickStartSection
+    ]
+}
+
+PageHeader -> DocsSection({
+    id: "server",
+    title: "Server API",
+    children: [HeaderDesc]
+})
+
+HeaderDesc -> DocsDescription({
+    text: "Build backend APIs with Topo. Define routes, handlers, middleware, and connect to databases - all with the same familiar syntax."
+})
+
+// Overview
+OverviewSection -> DocsCodeSection({
+    title: "Server Overview",
+    description: "Topo's server-side architecture:",
+    filename: "overview.tp",
+    code: `
+    // Server-side structure
+    //
+    // Request ──> Router ──> Middleware ──> Handler ──> Response
+    //                              │
+    //                              └── Database
+    //                                  Validation
+    //                                  Business Logic
+
+    // api/ directory contains server code
+    api/
+    ├── routes.tp         # API route definitions
+    ├── middleware/       # Auth, logging, etc.
+    │   ├── auth.tp
+    │   └── cors.tp
+    ├── handlers/         # Request handlers
+    │   ├── users.tp
+    │   └── products.tp
+    └── models/           # Database models
+        ├── user.tp
+        └── product.tp`,
+    preview: [FeatureList({
+        title: "Server features:",
+        items: [
+            { icon: "v", text: "File-based API routing" },
+            { icon: "v", text: "Middleware support" },
+            { icon: "v", text: "Database integration" },
+            { icon: "v", text: "Type-safe handlers" }
+        ]
+    })]
+})
+
+// File Structure
+FileStructureSection -> DocsCodeSection({
+    title: "API File Structure",
+    description: "Organize your server code:",
+    filename: "structure.tp",
+    code: `
+    // File-based API routing
+    api/
+    ├── index.tp              → GET /api
+    ├── users/
+    │   ├── index.tp          → GET /api/users
+    │   │                       POST /api/users
+    │   └── [id]/
+    │       └── index.tp      → GET /api/users/:id
+    │                           PUT /api/users/:id
+    │                           DELETE /api/users/:id
+    ├── products/
+    │   ├── index.tp          → /api/products
+    │   ├── [id]/
+    │   │   └── index.tp      → /api/products/:id
+    │   └── search/
+    │       └── index.tp      → /api/products/search
+    └── auth/
+        ├── login/
+        │   └── index.tp      → POST /api/auth/login
+        └── register/
+            └── index.tp      → POST /api/auth/register
+
+    // Each file exports handlers for HTTP methods
+    // api/users/index.tp
+    export GET: async (req) => {
+        // Handle GET /api/users
+    }
+
+    export POST: async (req) => {
+        // Handle POST /api/users
+    }`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "api/", desc: "Server code root" },
+            { label: "index.tp", desc: "Route handler file" },
+            { label: "[param]", desc: "Dynamic route segment" },
+            { label: "export GET", desc: "HTTP method handler" }
+        ]
+    })]
+})
+
+// Quick Start
+QuickStartSection -> DocsCodeSection({
+    title: "Quick Start",
+    description: "Create your first API endpoint:",
+    filename: "quickstart.tp",
+    code: `
+    // 1. Create api/hello/index.tp
+    export GET: async (req) => {
+        return {
+            message: "Hello from Topo API!",
+            timestamp: new Date().toISOString()
+        }
+    }
+
+    // 2. Run the dev server
+    // $ topo dev
+
+    // 3. Test with curl
+    // $ curl http://localhost:3000/api/hello
+    // {"message":"Hello from Topo API!","timestamp":"..."}
+
+    // Create a users endpoint
+    // api/users/index.tp
+    import { db } from "@/api/db.tp"
+
+    export GET: async (req) => {
+        users: await db.users.findMany()
+        return { users }
+    }
+
+    export POST: async (req) => {
+        data: await req.json()
+
+        // Validate
+        if (!data.email || !data.name) {
+            return { error: "Missing required fields" }, 400
+        }
+
+        // Create user
+        user: await db.users.create({ data })
+        return { user }, 201
+    }`,
+    preview: [FeatureList({
+        title: "Quick start steps:",
+        items: [
+            { icon: "v", text: "Create file in api/ directory" },
+            { icon: "v", text: "Export HTTP method handlers" },
+            { icon: "v", text: "Run topo dev" },
+            { icon: "v", text: "Test your endpoints" }
+        ]
+    })]
+})

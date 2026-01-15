@@ -1,0 +1,341 @@
+// Server Database docs page
+import { DocsTemplate } from "../../template.tp"
+import { DocsSection, DocsDescription } from "@/components/molecules/docs-section.tp"
+import { DocsCodeSection } from "@/components/organisms/docs-code-section.tp"
+import { ConfigPreview } from "@/components/molecules/config-preview.tp"
+import { FeatureList } from "@/components/molecules/feature-list.tp"
+
+Page -> DocsTemplate({ children: [DatabaseContent] })
+
+DatabaseContent -> {
+    align: vertical
+    style: "space-y-8"
+    children: [
+        PageHeader,
+        ConnectionSection,
+        QueriesSection,
+        TransactionsSection,
+        MigrationsSection
+    ]
+}
+
+PageHeader -> DocsSection({
+    id: "server-database",
+    title: "Database in Handlers",
+    children: [HeaderDesc]
+})
+
+HeaderDesc -> DocsDescription({
+    text: "Access your database from API handlers. Use the db client to query data, run transactions, and manage database operations."
+})
+
+// Connection
+ConnectionSection -> DocsCodeSection({
+    title: "Database Connection",
+    description: "Initialize and use the database client:",
+    filename: "db.tp",
+    code: `
+    // api/db.tp - Database client configuration
+    import { createDb } from "@topo/db"
+
+    db: createDb({
+        provider: "postgresql",
+        url: env.DATABASE_URL,
+        // Connection pool settings
+        pool: {
+            min: 2,
+            max: 10
+        },
+        // Query logging in development
+        log: env.isDev ? ["query", "error"] : ["error"]
+    })
+
+    export { db }
+
+    // Usage in handlers
+    // api/users/index.tp
+    import { db } from "../db.tp"
+
+    export GET: async (req) => {
+        users: await db.users.findMany()
+        return { users }
+    }
+
+    // The db client is a singleton
+    // Connection is reused across requests`,
+    preview: [FeatureList({
+        title: "Database setup:",
+        items: [
+            { icon: "v", text: "Connection string from env" },
+            { icon: "v", text: "Connection pooling" },
+            { icon: "v", text: "Query logging" },
+            { icon: "v", text: "Singleton pattern" }
+        ]
+    })]
+})
+
+// Queries
+QueriesSection -> DocsCodeSection({
+    title: "Database Queries",
+    description: "Common query patterns in handlers:",
+    filename: "queries.tp",
+    code: `
+    import { db } from "../db.tp"
+
+    // List with pagination
+    export GET: async (req) => {
+        page: parseInt(req.query.get("page") || "1")
+        limit: parseInt(req.query.get("limit") || "20")
+        skip: (page - 1) * limit
+
+        [users, total]: await Promise.all([
+            db.users.findMany({
+                skip: skip,
+                take: limit,
+                orderBy: { createdAt: "desc" }
+            }),
+            db.users.count()
+        ])
+
+        return {
+            users,
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit)
+            }
+        }
+    }
+
+    // Get single record
+    export GET: async (req, { params }) => {
+        user: await db.users.findUnique({
+            where: { id: params.id },
+            include: {
+                posts: true,
+                profile: true
+            }
+        })
+
+        if (!user) {
+            return { error: "User not found" }, 404
+        }
+
+        return { user }
+    }
+
+    // Create record
+    export POST: async (req) => {
+        data: await req.json()
+
+        user: await db.users.create({
+            data: {
+                email: data.email,
+                name: data.name,
+                profile: {
+                    create: {
+                        bio: data.bio
+                    }
+                }
+            }
+        })
+
+        return { user }, 201
+    }
+
+    // Update record
+    export PUT: async (req, { params }) => {
+        data: await req.json()
+
+        user: await db.users.update({
+            where: { id: params.id },
+            data: data
+        })
+
+        return { user }
+    }
+
+    // Delete record
+    export DELETE: async (req, { params }) => {
+        await db.users.delete({
+            where: { id: params.id }
+        })
+
+        return null, 204
+    }`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "findMany", desc: "List with pagination" },
+            { label: "findUnique", desc: "Get by ID" },
+            { label: "create", desc: "Insert new record" },
+            { label: "update/delete", desc: "Modify records" }
+        ]
+    })]
+})
+
+// Transactions
+TransactionsSection -> DocsCodeSection({
+    title: "Transactions",
+    description: "Use transactions for atomic operations:",
+    filename: "transactions.tp",
+    code: `
+    import { db } from "../db.tp"
+
+    // Transfer funds example
+    export POST: async (req) => {
+        data: await req.json()
+        { fromId, toId, amount } = data
+
+        // Transaction ensures all or nothing
+        result: await db.transaction(async (tx) => {
+            // Deduct from sender
+            from: await tx.accounts.update({
+                where: { id: fromId },
+                data: { balance: { decrement: amount } }
+            })
+
+            // Check sufficient funds
+            if (from.balance < 0) {
+                throw new Error("Insufficient funds")
+            }
+
+            // Add to receiver
+            to: await tx.accounts.update({
+                where: { id: toId },
+                data: { balance: { increment: amount } }
+            })
+
+            // Create transaction record
+            transfer: await tx.transfers.create({
+                data: {
+                    fromId, toId, amount,
+                    createdAt: new Date()
+                }
+            })
+
+            return { from, to, transfer }
+        })
+
+        return { result }
+    }
+
+    // Order creation with inventory
+    export POST: async (req) => {
+        data: await req.json()
+
+        order: await db.transaction(async (tx) => {
+            // Create order
+            order: await tx.orders.create({
+                data: {
+                    userId: req.user.id,
+                    status: "pending"
+                }
+            })
+
+            // Create order items and update inventory
+            for (item of data.items) {
+                // Check inventory
+                product: await tx.products.findUnique({
+                    where: { id: item.productId }
+                })
+
+                if (product.stock < item.quantity) {
+                    throw new Error("Insufficient stock for " + product.name)
+                }
+
+                // Create order item
+                await tx.orderItems.create({
+                    data: {
+                        orderId: order.id,
+                        productId: item.productId,
+                        quantity: item.quantity,
+                        price: product.price
+                    }
+                })
+
+                // Decrement stock
+                await tx.products.update({
+                    where: { id: item.productId },
+                    data: { stock: { decrement: item.quantity } }
+                })
+            }
+
+            return order
+        })
+
+        return { order }, 201
+    }`,
+    preview: [FeatureList({
+        title: "Transaction features:",
+        items: [
+            { icon: "v", text: "db.transaction() wrapper" },
+            { icon: "v", text: "All or nothing execution" },
+            { icon: "v", text: "Auto rollback on error" },
+            { icon: "v", text: "Consistent data state" }
+        ]
+    })]
+})
+
+// Migrations
+MigrationsSection -> DocsCodeSection({
+    title: "Running Migrations",
+    description: "Manage database schema with migrations:",
+    filename: "migrations.tp",
+    code: `
+    // Create a new migration
+    // $ topo db migrate create add_users_table
+
+    // migrations/001_add_users_table.sql
+    -- Up
+    CREATE TABLE users (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        email VARCHAR(255) UNIQUE NOT NULL,
+        name VARCHAR(255) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE INDEX idx_users_email ON users(email);
+
+    -- Down
+    DROP TABLE users;
+
+    // Run pending migrations
+    // $ topo db migrate
+
+    // Rollback last migration
+    // $ topo db migrate rollback
+
+    // Check migration status
+    // $ topo db migrate status
+
+    // In API handler, ensure db is ready
+    // api/health/index.tp
+    import { db } from "../db.tp"
+
+    export GET: async (req) => {
+        try {
+            // Simple query to check connection
+            await db.raw("SELECT 1")
+
+            return {
+                status: "healthy",
+                database: "connected"
+            }
+        } catch(e) {
+            return {
+                status: "unhealthy",
+                database: "disconnected",
+                error: e.message
+            }, 503
+        }
+    }`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "migrate create", desc: "Create migration file" },
+            { label: "migrate", desc: "Run pending migrations" },
+            { label: "migrate rollback", desc: "Undo last migration" },
+            { label: "Health check", desc: "Verify connection" }
+        ]
+    })]
+})

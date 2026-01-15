@@ -1,0 +1,242 @@
+// Slots docs page
+import { DocsTemplate } from "../../template.tp"
+import { DocsSection, DocsDescription } from "@/components/molecules/docs-section.tp"
+import { DocsCodeSection } from "@/components/organisms/docs-code-section.tp"
+import { ConfigPreview } from "@/components/molecules/config-preview.tp"
+import { FeatureList } from "@/components/molecules/feature-list.tp"
+
+Page -> DocsTemplate({ children: [SlotsContent] })
+
+SlotsContent -> {
+    align: vertical
+    style: "space-y-8"
+    children: [
+        PageHeader,
+        BasicSlotsSection,
+        NamedSlotsSection,
+        SlotPropsSection,
+        LayoutPatternsSection
+    ]
+}
+
+PageHeader -> DocsSection({
+    id: "slots",
+    title: "Slots & Children",
+    children: [HeaderDesc]
+})
+
+HeaderDesc -> DocsDescription({
+    text: "Slots allow components to accept and render child content. This enables flexible, composable component patterns."
+})
+
+// Basic Slots
+BasicSlotsSection -> DocsCodeSection({
+    title: "Children Prop",
+    description: "The children prop passes content into a component:",
+    filename: "card.tp",
+    code: `
+    // Component that renders children
+    Card(props) -> {
+        style: "bg-white rounded-lg shadow p-4"
+        children: props.children
+    }
+
+    // Using the component
+    Page -> {
+        children: [
+            Card({
+                children: [
+                    Heading({ text: "Welcome" }),
+                    Text({ text: "This is card content." })
+                ]
+            })
+        ]
+    }
+
+    // Shorthand syntax
+    Container(props) -> {
+        style: "max-w-4xl mx-auto"
+        children: props.children
+    }
+
+    Layout -> Container([
+        Header,
+        MainContent,
+        Footer
+    ])`,
+    preview: [FeatureList({
+        title: "Children basics:",
+        items: [
+            { icon: "v", text: "props.children - Access child content" },
+            { icon: "v", text: "Single child or array of children" },
+            { icon: "v", text: "Children can be any component" },
+            { icon: "v", text: "Shorthand: Component([child1, child2])" }
+        ]
+    })]
+})
+
+// Named Slots
+NamedSlotsSection -> DocsCodeSection({
+    title: "Named Slots",
+    description: "Use named props for multiple content areas:",
+    filename: "modal.tp",
+    code: `
+    // Modal with header, body, footer slots
+    Modal(props) -> {
+        style: "fixed inset-0 flex items-center justify-center"
+        children: [
+            Overlay,
+            ModalContainer([
+                ModalHeader({ children: props.header }),
+                ModalBody({ children: props.body }),
+                ModalFooter({ children: props.footer })
+            ])
+        ]
+    }
+
+    // Using named slots
+    ConfirmDialog -> Modal({
+        header: [
+            Heading({ text: "Confirm Action" }),
+            CloseButton
+        ],
+        body: [
+            Text({ text: "Are you sure you want to proceed?" })
+        ],
+        footer: [
+            Button({ text: "Cancel", variant: "secondary" }),
+            Button({ text: "Confirm", variant: "primary" })
+        ]
+    })
+
+    // Card with title and actions
+    CardWithActions(props) -> {
+        children: [
+            CardHeader([
+                props.title,
+                CardActions({ children: props.actions })
+            ]),
+            CardBody({ children: props.children })
+        ]
+    }`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "header:", desc: "Content for header slot" },
+            { label: "body:", desc: "Content for body slot" },
+            { label: "footer:", desc: "Content for footer slot" },
+            { label: "actions:", desc: "Content for actions area" }
+        ]
+    })]
+})
+
+// Slot Props
+SlotPropsSection -> DocsCodeSection({
+    title: "Render Props Pattern",
+    description: "Pass data to children using render functions:",
+    filename: "list.tp",
+    code: `
+    // List component with render prop
+    DataList(props) -> {
+        init: props.store.Load
+        children: [
+            $props.store.isLoading
+                ? Spinner()
+                : $props.store.items.for(item => {
+                    props.renderItem(item)
+                })
+        ]
+    }
+
+    // Using render prop
+    UserList -> DataList({
+        store: UsersStore,
+        renderItem: (user) => UserCard({
+            name: user.name,
+            avatar: user.avatar,
+            onClick: () => selectUser(user.id)
+        })
+    })
+
+    // Generic table with render
+    Table(props) -> {
+        type: table
+        children: [
+            TableHeader({ columns: props.columns }),
+            TableBody({
+                children: props.data.for(row => {
+                    TableRow({
+                        children: props.columns.for(col => {
+                            TableCell({ content: props.renderCell(row, col) })
+                        })
+                    })
+                })
+            })
+        ]
+    }`,
+    preview: [FeatureList({
+        title: "Render props:",
+        items: [
+            { icon: "v", text: "renderItem: (item) => Component" },
+            { icon: "v", text: "Pass data from parent to render function" },
+            { icon: "v", text: "Enables customizable list rendering" },
+            { icon: "v", text: "Alternative to complex slot configurations" }
+        ]
+    })]
+})
+
+// Layout Patterns
+LayoutPatternsSection -> DocsCodeSection({
+    title: "Layout Composition",
+    description: "Compose layouts using slots for maximum flexibility:",
+    filename: "layouts.tp",
+    code: `
+    // Page layout with slots
+    PageLayout(props) -> {
+        style: "min-h-screen flex flex-col"
+        children: [
+            props.header || DefaultHeader,
+            Main({
+                style: "flex-1",
+                children: props.children
+            }),
+            props.footer || DefaultFooter
+        ]
+    }
+
+    // Dashboard layout
+    DashboardLayout(props) -> {
+        style: "flex min-h-screen"
+        children: [
+            Sidebar({ children: props.sidebar }),
+            MainArea([
+                TopBar({ children: props.topbar }),
+                Content({ children: props.children })
+            ])
+        ]
+    }
+
+    // Using dashboard layout
+    DashboardPage -> DashboardLayout({
+        sidebar: [NavMenu, QuickActions],
+        topbar: [SearchBox, UserMenu],
+        children: [DashboardContent]
+    })
+
+    // Nested layouts
+    DocsLayout(props) -> PageLayout({
+        header: DocsHeader,
+        children: [
+            DocsSidebar,
+            DocsContent({ children: props.children })
+        ],
+        footer: DocsFooter
+    })`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "Default slots", desc: "props.slot || DefaultComponent" },
+            { label: "Composition", desc: "Nest layouts for complex pages" },
+            { label: "Flexible", desc: "Override any section" },
+            { label: "Reusable", desc: "Same layout, different content" }
+        ]
+    })]
+})

@@ -1,0 +1,215 @@
+// Route Metadata docs page
+import { DocsTemplate } from "../../template.tp"
+import { DocsSection, DocsDescription } from "@/components/molecules/docs-section.tp"
+import { DocsCodeSection } from "@/components/organisms/docs-code-section.tp"
+import { ConfigPreview } from "@/components/molecules/config-preview.tp"
+import { FeatureList } from "@/components/molecules/feature-list.tp"
+
+Page -> DocsTemplate({ children: [MetadataContent] })
+
+MetadataContent -> {
+    align: vertical
+    style: "space-y-8"
+    children: [
+        PageHeader,
+        TitleSection,
+        DescriptionSection,
+        DynamicMetaSection,
+        SEOSection
+    ]
+}
+
+PageHeader -> DocsSection({
+    id: "metadata",
+    title: "Route Metadata",
+    children: [HeaderDesc]
+})
+
+HeaderDesc -> DocsDescription({
+    text: "Add metadata like page titles and descriptions to routes. Metadata is automatically applied when navigating between pages."
+})
+
+// Title
+TitleSection -> DocsCodeSection({
+    title: "Page Titles",
+    description: "Set the browser title for each route:",
+    filename: "routes.tp",
+    code: `
+    // Add title with arrow syntax
+    Routes {
+        home: "/" -> { title: "Home" }
+        about: "/about" -> { title: "About Us" }
+        contact: "/contact" -> { title: "Contact" }
+
+        // Nested routes with titles
+        dashboard: "/dashboard" -> DashboardRoutes
+    }
+
+    DashboardRoutes {
+        overview: "/" -> { title: "Dashboard" }
+        projects: "/projects" -> { title: "Projects" }
+        settings: "/settings" -> { title: "Settings" }
+    }
+
+    // Title is automatically set when navigating
+    // document.title = "Home" when visiting /
+    // document.title = "Projects" when visiting /dashboard/projects`,
+    preview: [FeatureList({
+        title: "Title features:",
+        items: [
+            { icon: "v", text: "-> { title: \"...\" } syntax" },
+            { icon: "v", text: "Auto-applies on navigation" },
+            { icon: "v", text: "Works with nested routes" },
+            { icon: "v", text: "Updates browser tab title" }
+        ]
+    })]
+})
+
+// Description
+DescriptionSection -> DocsCodeSection({
+    title: "Meta Description",
+    description: "Add meta descriptions for SEO:",
+    filename: "meta-description.tp",
+    code: `
+    Routes {
+        home: "/" -> {
+            title: "Home",
+            description: "Welcome to our application"
+        }
+
+        about: "/about" -> {
+            title: "About Us",
+            description: "Learn more about our company and mission"
+        }
+
+        products: "/products" -> {
+            title: "Products",
+            description: "Browse our product catalog"
+        }
+    }
+
+    // Generated meta tag
+    // <meta name="description" content="Welcome to our application">
+
+    // Description updates on navigation just like title`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "title", desc: "Browser tab title" },
+            { label: "description", desc: "Meta description tag" },
+            { label: "Auto-update", desc: "Changes on navigation" }
+        ]
+    })]
+})
+
+// Dynamic Metadata
+DynamicMetaSection -> DocsCodeSection({
+    title: "Dynamic Metadata",
+    description: "Set metadata based on page data:",
+    filename: "dynamic-meta.tp",
+    code: `
+    // For dynamic routes, set title in the page component
+    Routes {
+        // Static title as fallback
+        userDetail(id): "/users/{id}" -> { title: "User Profile" }
+        blogPost(slug): "/blog/{slug}" -> { title: "Blog Post" }
+    }
+
+    // In page component, update title after loading data
+    // pages/users/[id]/index.tp
+    UserDetailPage | {
+        State { user: null }
+        Actions { SetUser(user) }
+
+        Effects {
+            on Load(id) {
+                user: await UserApi.getById(id)
+                dispatch: SetUser(user)
+
+                // Update title with user's name
+                setTitle(user.name + " | User Profile")
+            }
+        }
+    }
+
+    // pages/blog/[slug]/index.tp
+    BlogPostPage | {
+        Effects {
+            on Load(slug) {
+                post: await BlogApi.getBySlug(slug)
+                dispatch: SetPost(post)
+
+                // Update title and description
+                setTitle(post.title)
+                setDescription(post.excerpt)
+            }
+        }
+    }
+
+    Page -> {
+        init: BlogPostPage.Load(params.slug)
+        children: [PostContent]
+    }`,
+    preview: [FeatureList({
+        title: "Dynamic meta:",
+        items: [
+            { icon: "v", text: "setTitle(title) - Update page title" },
+            { icon: "v", text: "setDescription(desc) - Update meta" },
+            { icon: "v", text: "Call after data loads" },
+            { icon: "v", text: "Static fallback in routes.tp" }
+        ]
+    })]
+})
+
+// SEO
+SEOSection -> DocsCodeSection({
+    title: "SEO Best Practices",
+    description: "Optimize routes for search engines:",
+    filename: "seo.tp",
+    code: `
+    // 1. Always set meaningful titles
+    Routes {
+        home: "/" -> { title: "AppName - Build Better Apps" }
+        pricing: "/pricing" -> {
+            title: "Pricing - AppName",
+            description: "Simple, transparent pricing for teams of all sizes"
+        }
+    }
+
+    // 2. Use descriptive URLs
+    // Good: /blog/how-to-build-components
+    // Bad:  /blog/12345
+
+    // 3. Include keywords naturally
+    Routes {
+        docs: "/documentation" -> {
+            title: "Documentation - Learn AppName",
+            description: "Comprehensive guides and API reference for AppName"
+        }
+    }
+
+    // 4. Dynamic pages should set complete metadata
+    ProductPage | {
+        Effects {
+            on Load(id) {
+                product: await ProductApi.getById(id)
+
+                // Full metadata for product pages
+                setTitle(product.name + " | AppName Store")
+                setDescription(product.shortDescription)
+
+                // Optional: Set Open Graph tags
+                setMeta("og:title", product.name)
+                setMeta("og:description", product.shortDescription)
+                setMeta("og:image", product.imageUrl)
+            }
+        }
+    }`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "Unique titles", desc: "Each page has distinct title" },
+            { label: "150-160 chars", desc: "Description length" },
+            { label: "Keywords", desc: "Natural placement" },
+            { label: "setMeta()", desc: "Custom meta tags" }
+        ]
+    })]
+})

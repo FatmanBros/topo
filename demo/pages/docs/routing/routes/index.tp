@@ -1,0 +1,272 @@
+// Routes Configuration docs page
+import { DocsTemplate } from "../../template.tp"
+import { DocsSection, DocsDescription } from "@/components/molecules/docs-section.tp"
+import { DocsCodeSection } from "@/components/organisms/docs-code-section.tp"
+import { ConfigPreview } from "@/components/molecules/config-preview.tp"
+import { FeatureList } from "@/components/molecules/feature-list.tp"
+
+Page -> DocsTemplate({ children: [RoutesContent] })
+
+RoutesContent -> {
+    align: vertical
+    style: "space-y-8"
+    children: [
+        PageHeader,
+        BasicRoutesSection,
+        DynamicRoutesSection,
+        NestedRoutesSection,
+        FileBasedSection,
+        RouteGroupsSection
+    ]
+}
+
+PageHeader -> DocsSection({
+    id: "routes",
+    title: "Route Configuration",
+    children: [HeaderDesc]
+})
+
+HeaderDesc -> DocsDescription({
+    text: "Define your application's routes in routes.tp. Topo supports both explicit route definitions and file-based routing."
+})
+
+// Basic Routes
+BasicRoutesSection -> DocsCodeSection({
+    title: "Basic Routes",
+    description: "Define routes in your routes.tp file:",
+    filename: "routes.tp",
+    code: `
+    // routes.tp - Application routing configuration
+    Routes {
+        // Simple routes: name: "path"
+        home: "/"
+        about: "/about"
+        contact: "/contact"
+
+        // Routes are matched to pages in pages/ directory
+        // home: "/" -> pages/index.tp
+        // about: "/about" -> pages/about/index.tp
+    }
+
+    // Usage in components
+    Nav -> {
+        children: [
+            Link({ to: .home, text: "Home" }),
+            Link({ to: .about, text: "About" }),
+            Link({ to: .contact, text: "Contact" })
+        ]
+    }
+
+    // Navigate programmatically
+    Button({
+        text: "Go Home",
+        onClick: () => navigate(.home)
+    })`,
+    preview: [FeatureList({
+        title: "Route basics:",
+        items: [
+            { icon: "v", text: "name: \"/path\" syntax" },
+            { icon: "v", text: ".routeName for type-safe links" },
+            { icon: "v", text: "Auto-maps to pages/ directory" },
+            { icon: "v", text: "navigate(.route) for programmatic nav" }
+        ]
+    })]
+})
+
+// Dynamic Routes
+DynamicRoutesSection -> DocsCodeSection({
+    title: "Dynamic Routes",
+    description: "Define routes with parameters:",
+    filename: "dynamic-routes.tp",
+    code: `
+    Routes {
+        // Single parameter
+        userDetail(id): "/users/{id}"
+
+        // Multiple parameters
+        postComment(postId, commentId): "/posts/{postId}/comments/{commentId}"
+
+        // Optional parameter with default
+        productList(category = "all"): "/products/{category}"
+    }
+
+    // Usage
+    UserLink -> Link({
+        to: .userDetail(user.id),
+        text: user.name
+    })
+
+    // In page component, access params
+    // pages/users/[id]/index.tp
+    UserDetailPage -> {
+        // params.id is available
+        init: UserStore.LoadUser(params.id)
+        children: [UserProfile]
+    }
+
+    // Navigate with parameters
+    Button({
+        onClick: () => navigate(.postComment(postId, commentId))
+    })`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "{param}", desc: "URL parameter placeholder" },
+            { label: "route(param)", desc: "Pass param to route" },
+            { label: "params.name", desc: "Access in page component" },
+            { label: "[param]", desc: "File-based dynamic segment" }
+        ]
+    })]
+})
+
+// Nested Routes
+NestedRoutesSection -> DocsCodeSection({
+    title: "Nested Routes",
+    description: "Organize routes into groups with shared prefixes:",
+    filename: "nested-routes.tp",
+    code: `
+    Routes {
+        home: "/"
+        login: "/login"
+
+        // Nested route group
+        dashboard: "/dashboard" -> DashboardRoutes
+        docs: "/docs" -> DocsRoutes
+    }
+
+    // Define sub-routes
+    DashboardRoutes {
+        overview: "/"              // /dashboard
+        projects: "/projects"      // /dashboard/projects
+        team: "/team"              // /dashboard/team
+        settings: "/settings"      // /dashboard/settings
+    }
+
+    DocsRoutes {
+        index: "/"                 // /docs
+        gettingStarted: "/getting-started"
+        components: "/components" -> ComponentRoutes
+        api: "/api"
+    }
+
+    ComponentRoutes {
+        basics: "/basics"          // /docs/components/basics
+        props: "/props"            // /docs/components/props
+        events: "/events"          // /docs/components/events
+    }
+
+    // Usage
+    Link({ to: .dashboard.projects })  // /dashboard/projects
+    Link({ to: .docs.components.props })  // /docs/components/props`,
+    preview: [FeatureList({
+        title: "Nested route features:",
+        items: [
+            { icon: "v", text: "-> SubRoutes for grouping" },
+            { icon: "v", text: "Shared URL prefixes" },
+            { icon: "v", text: "Multi-level nesting" },
+            { icon: "v", text: ".parent.child.route access" }
+        ]
+    })]
+})
+
+// File-Based Routing
+FileBasedSection -> DocsCodeSection({
+    title: "File-Based Routing",
+    description: "Routes can be auto-generated from file structure:",
+    filename: "file-structure.tp",
+    code: `
+    // File structure creates routes automatically
+    pages/
+    ├── index.tp              → /
+    ├── about/
+    │   └── index.tp          → /about
+    ├── users/
+    │   ├── index.tp          → /users
+    │   └── [id]/
+    │       └── index.tp      → /users/:id
+    ├── blog/
+    │   ├── index.tp          → /blog
+    │   └── [slug]/
+    │       └── index.tp      → /blog/:slug
+    └── dashboard/
+        ├── index.tp          → /dashboard
+        ├── projects/
+        │   └── index.tp      → /dashboard/projects
+        └── settings/
+            └── index.tp      → /dashboard/settings
+
+    // Special files (not routes)
+    pages/
+    └── dashboard/
+        ├── index.tp          → Route
+        ├── template.tp       → Layout only (not a route)
+        ├── store.tp          → Store definition (not a route)
+        └── components/       → Directory ignored
+            └── widget.tp
+
+    // Access dynamic params in page
+    // pages/users/[id]/index.tp
+    Page -> {
+        init: UserStore.Load(params.id)
+        children: [UserDetail]
+    }`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "index.tp", desc: "Route entry point" },
+            { label: "[param]", desc: "Dynamic segment directory" },
+            { label: "template.tp", desc: "Not a route (layout)" },
+            { label: "components/", desc: "Ignored directory" }
+        ]
+    })]
+})
+
+// Route Groups
+RouteGroupsSection -> DocsCodeSection({
+    title: "Route Groups & Layouts",
+    description: "Group routes to share layouts without affecting URLs:",
+    filename: "route-groups.tp",
+    code: `
+    // Use template.tp for shared layouts
+    pages/
+    ├── (auth)/                  # Group - no URL impact
+    │   ├── template.tp          # Shared auth layout
+    │   ├── login/
+    │   │   └── index.tp         # /login
+    │   └── register/
+    │       └── index.tp         # /register
+    ├── (dashboard)/             # Another group
+    │   ├── template.tp          # Dashboard layout
+    │   ├── overview/
+    │   │   └── index.tp         # /overview
+    │   └── settings/
+    │       └── index.tp         # /settings
+    └── index.tp                 # /
+
+    // template.tp applies to all routes in group
+    // (auth)/template.tp
+    AuthLayout(props) -> {
+        style: "min-h-screen flex items-center justify-center bg-gray-50"
+        children: [
+            Card({
+                style: "w-full max-w-md",
+                children: props.children
+            })
+        ]
+    }
+
+    // (dashboard)/template.tp
+    DashboardLayout(props) -> {
+        children: [
+            Sidebar,
+            Main({ children: props.children })
+        ]
+    }`,
+    preview: [FeatureList({
+        title: "Route groups:",
+        items: [
+            { icon: "v", text: "(group)/ - No URL impact" },
+            { icon: "v", text: "template.tp for shared layout" },
+            { icon: "v", text: "Organize by feature or auth level" },
+            { icon: "v", text: "Nested layouts supported" }
+        ]
+    })]
+})

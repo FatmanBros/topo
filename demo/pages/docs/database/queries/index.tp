@@ -1,0 +1,413 @@
+// Database Queries docs page
+import { DocsTemplate } from "../../template.tp"
+import { DocsSection, DocsDescription } from "@/components/molecules/docs-section.tp"
+import { DocsCodeSection } from "@/components/organisms/docs-code-section.tp"
+import { ConfigPreview } from "@/components/molecules/config-preview.tp"
+import { FeatureList } from "@/components/molecules/feature-list.tp"
+
+Page -> DocsTemplate({ children: [QueriesContent] })
+
+QueriesContent -> {
+    align: vertical
+    style: "space-y-8"
+    children: [
+        PageHeader,
+        FindSection,
+        FilterSection,
+        CreateUpdateSection,
+        AggregateSection,
+        RawQuerySection
+    ]
+}
+
+PageHeader -> DocsSection({
+    id: "queries",
+    title: "Database Queries",
+    children: [HeaderDesc]
+})
+
+HeaderDesc -> DocsDescription({
+    text: "Query your database with a fluent API. Find records, filter with conditions, create and update data, and run aggregations."
+})
+
+// Find Operations
+FindSection -> DocsCodeSection({
+    title: "Finding Records",
+    description: "Query single or multiple records:",
+    filename: "find.tp",
+    code: `
+    // Find unique record by ID or unique field
+    user: await db.users.findUnique({
+        where: { id: userId }
+    })
+    // Returns User or null
+
+    user: await db.users.findUnique({
+        where: { email: "john@example.com" }
+    })
+
+    // Find first matching record
+    post: await db.posts.findFirst({
+        where: { published: true },
+        orderBy: { createdAt: "desc" }
+    })
+    // Returns first published post or null
+
+    // Find many records
+    users: await db.users.findMany()
+    // Returns all users
+
+    // With pagination
+    users: await db.users.findMany({
+        skip: 20,
+        take: 10,
+        orderBy: { name: "asc" }
+    })
+
+    // findUniqueOrThrow - Error if not found
+    user: await db.users.findUniqueOrThrow({
+        where: { id: userId }
+    })
+    // Throws if user doesn't exist
+
+    // Count records
+    total: await db.users.count()
+
+    total: await db.users.count({
+        where: { role: "admin" }
+    })`,
+    preview: [FeatureList({
+        title: "Find methods:",
+        items: [
+            { icon: "v", text: "findUnique - By ID/unique field" },
+            { icon: "v", text: "findFirst - First match" },
+            { icon: "v", text: "findMany - Multiple records" },
+            { icon: "v", text: "count - Number of records" }
+        ]
+    })]
+})
+
+// Filtering
+FilterSection -> DocsCodeSection({
+    title: "Filtering & Conditions",
+    description: "Build complex query conditions:",
+    filename: "filters.tp",
+    code: `
+    // Exact match
+    users: await db.users.findMany({
+        where: { role: "admin" }
+    })
+
+    // Multiple conditions (AND)
+    users: await db.users.findMany({
+        where: {
+            role: "admin",
+            active: true
+        }
+    })
+
+    // OR conditions
+    users: await db.users.findMany({
+        where: {
+            OR: [
+                { role: "admin" },
+                { role: "moderator" }
+            ]
+        }
+    })
+
+    // NOT condition
+    users: await db.users.findMany({
+        where: {
+            NOT: { role: "banned" }
+        }
+    })
+
+    // Comparison operators
+    products: await db.products.findMany({
+        where: {
+            price: { gte: 10, lte: 100 },  // 10 <= price <= 100
+            stock: { gt: 0 },               // stock > 0
+            rating: { gte: 4 }              // rating >= 4
+        }
+    })
+
+    // String operations
+    users: await db.users.findMany({
+        where: {
+            name: { contains: "john" },           // LIKE %john%
+            email: { startsWith: "admin" },       // LIKE admin%
+            email: { endsWith: "@company.com" }   // LIKE %@company.com
+        }
+    })
+
+    // Case insensitive
+    users: await db.users.findMany({
+        where: {
+            name: { contains: "john", mode: "insensitive" }
+        }
+    })
+
+    // IN clause
+    users: await db.users.findMany({
+        where: {
+            id: { in: [id1, id2, id3] },
+            role: { in: ["admin", "moderator"] }
+        }
+    })
+
+    // Null checks
+    users: await db.users.findMany({
+        where: {
+            deletedAt: null,      // IS NULL
+            avatar: { not: null } // IS NOT NULL
+        }
+    })
+
+    // Date comparisons
+    posts: await db.posts.findMany({
+        where: {
+            createdAt: { gte: new Date("2024-01-01") },
+            publishedAt: { lte: new Date() }
+        }
+    })`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "AND/OR/NOT", desc: "Logical operators" },
+            { label: "gt/gte/lt/lte", desc: "Comparisons" },
+            { label: "contains/startsWith", desc: "String matching" },
+            { label: "in", desc: "Value in array" }
+        ]
+    })]
+})
+
+// Create and Update
+CreateUpdateSection -> DocsCodeSection({
+    title: "Create & Update",
+    description: "Insert and modify records:",
+    filename: "create-update.tp",
+    code: `
+    // Create single record
+    user: await db.users.create({
+        data: {
+            email: "john@example.com",
+            name: "John Doe",
+            role: "user"
+        }
+    })
+
+    // Create with relation
+    post: await db.posts.create({
+        data: {
+            title: "My Post",
+            content: "...",
+            author: {
+                connect: { id: userId }
+            },
+            tags: {
+                create: [
+                    { name: "javascript" }
+                ],
+                connect: [
+                    { id: existingTagId }
+                ]
+            }
+        }
+    })
+
+    // Create many
+    result: await db.users.createMany({
+        data: [
+            { email: "a@test.com", name: "A" },
+            { email: "b@test.com", name: "B" }
+        ]
+    })
+    // { count: 2 }
+
+    // Update single record
+    user: await db.users.update({
+        where: { id: userId },
+        data: { name: "New Name" }
+    })
+
+    // Update with increment/decrement
+    product: await db.products.update({
+        where: { id: productId },
+        data: {
+            stock: { decrement: 1 },
+            views: { increment: 1 }
+        }
+    })
+
+    // Update many
+    result: await db.users.updateMany({
+        where: { role: "guest" },
+        data: { active: false }
+    })
+
+    // Upsert (update or create)
+    user: await db.users.upsert({
+        where: { email: "john@example.com" },
+        create: {
+            email: "john@example.com",
+            name: "John"
+        },
+        update: {
+            name: "John Updated"
+        }
+    })
+
+    // Delete
+    await db.users.delete({
+        where: { id: userId }
+    })
+
+    // Delete many
+    result: await db.users.deleteMany({
+        where: { deletedAt: { not: null } }
+    })`,
+    preview: [FeatureList({
+        title: "Write operations:",
+        items: [
+            { icon: "v", text: "create/createMany - Insert" },
+            { icon: "v", text: "update/updateMany - Modify" },
+            { icon: "v", text: "upsert - Update or create" },
+            { icon: "v", text: "delete/deleteMany - Remove" }
+        ]
+    })]
+})
+
+// Aggregations
+AggregateSection -> DocsCodeSection({
+    title: "Aggregations",
+    description: "Calculate statistics across records:",
+    filename: "aggregate.tp",
+    code: `
+    // Count
+    total: await db.users.count()
+
+    activeCount: await db.users.count({
+        where: { active: true }
+    })
+
+    // Aggregate (min, max, avg, sum)
+    stats: await db.products.aggregate({
+        _avg: { price: true },
+        _min: { price: true },
+        _max: { price: true },
+        _sum: { stock: true },
+        _count: true
+    })
+    // { _avg: { price: 29.99 }, _min: { price: 5 }, ... }
+
+    // With filter
+    stats: await db.orders.aggregate({
+        where: { status: "completed" },
+        _sum: { total: true },
+        _avg: { total: true },
+        _count: true
+    })
+
+    // Group by
+    byCategory: await db.products.groupBy({
+        by: ["category"],
+        _count: true,
+        _avg: { price: true }
+    })
+    // [{ category: "electronics", _count: 50, _avg: { price: 299 } }, ...]
+
+    // Group by with filter
+    byMonth: await db.orders.groupBy({
+        by: ["status"],
+        where: {
+            createdAt: { gte: new Date("2024-01-01") }
+        },
+        _count: true,
+        _sum: { total: true },
+        orderBy: { _sum: { total: "desc" } }
+    })
+
+    // Having clause
+    topCategories: await db.products.groupBy({
+        by: ["category"],
+        _count: true,
+        having: {
+            _count: { gt: 10 }  // Only categories with >10 products
+        }
+    })`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "_count", desc: "Count records" },
+            { label: "_avg/_sum", desc: "Calculate totals" },
+            { label: "_min/_max", desc: "Find extremes" },
+            { label: "groupBy", desc: "Aggregate by field" }
+        ]
+    })]
+})
+
+// Raw Queries
+RawQuerySection -> DocsCodeSection({
+    title: "Raw SQL Queries",
+    description: "Execute raw SQL when needed:",
+    filename: "raw.tp",
+    code: `
+    // Simple raw query
+    result: await db.raw("SELECT * FROM users WHERE role = 'admin'")
+
+    // With parameters (prevent SQL injection!)
+    result: await db.raw(
+        "SELECT * FROM users WHERE email = $1",
+        [email]
+    )
+
+    // Complex query
+    stats: await db.raw(\`
+        SELECT
+            DATE_TRUNC('month', created_at) as month,
+            COUNT(*) as total,
+            SUM(amount) as revenue
+        FROM orders
+        WHERE created_at >= $1
+        GROUP BY month
+        ORDER BY month DESC
+    \`, [startDate])
+
+    // Raw with type
+    users: await db.raw<User[]>(
+        "SELECT * FROM users WHERE active = true"
+    )
+
+    // Execute (for INSERT/UPDATE/DELETE)
+    await db.execute(
+        "UPDATE products SET price = price * 1.1 WHERE category = $1",
+        ["electronics"]
+    )
+
+    // Raw inside transaction
+    await db.transaction(async (tx) => {
+        await tx.raw("LOCK TABLE inventory IN EXCLUSIVE MODE")
+
+        // ... other operations
+
+        await tx.raw(
+            "UPDATE inventory SET quantity = quantity - $1 WHERE product_id = $2",
+            [quantity, productId]
+        )
+    })
+
+    // Note: Prefer the query builder when possible
+    // Raw SQL is useful for:
+    // - Complex aggregations
+    // - Database-specific features
+    // - Performance optimization
+    // - Migrations`,
+    preview: [FeatureList({
+        title: "Raw SQL usage:",
+        items: [
+            { icon: "v", text: "db.raw() - Query with results" },
+            { icon: "v", text: "$1, $2 - Parameterized queries" },
+            { icon: "v", text: "db.execute() - No return value" },
+            { icon: "v", text: "Use sparingly - prefer ORM" }
+        ]
+    })]
+})

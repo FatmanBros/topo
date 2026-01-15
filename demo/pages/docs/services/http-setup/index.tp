@@ -1,0 +1,277 @@
+// HTTP Setup docs page
+import { DocsTemplate } from "../../template.tp"
+import { DocsSection, DocsDescription } from "@/components/molecules/docs-section.tp"
+import { DocsCodeSection } from "@/components/organisms/docs-code-section.tp"
+import { ConfigPreview } from "@/components/molecules/config-preview.tp"
+import { FeatureList } from "@/components/molecules/feature-list.tp"
+
+Page -> DocsTemplate({ children: [HttpSetupContent] })
+
+HttpSetupContent -> {
+    align: vertical
+    style: "space-y-8"
+    children: [
+        PageHeader,
+        BasicSetupSection,
+        ConfigurationSection,
+        InterceptorsSection,
+        AuthenticationSection
+    ]
+}
+
+PageHeader -> DocsSection({
+    id: "http-setup",
+    title: "HTTP Client Setup",
+    children: [HeaderDesc]
+})
+
+HeaderDesc -> DocsDescription({
+    text: "Configure a centralized HTTP client with base URL, default headers, interceptors, and authentication handling."
+})
+
+// Basic Setup
+BasicSetupSection -> DocsCodeSection({
+    title: "Basic HTTP Client",
+    description: "Create a reusable HTTP client:",
+    filename: "http.tp",
+    code: `
+    // services/http.tp
+    http | {
+        baseUrl: "/api"
+
+        // Default headers for all requests
+        headers: {
+            "Content-Type": "application/json"
+        }
+
+        // Available methods
+        // http.get(url)
+        // http.post(url, data)
+        // http.put(url, data)
+        // http.patch(url, data)
+        // http.delete(url)
+    }
+
+    export { http }
+
+    // Usage in services
+    import { http } from "./http.tp"
+
+    UserService {
+        getAll: async () => {
+            return await http.get("/users")
+            // Actual request: GET /api/users
+        }
+
+        create: async (data) => {
+            return await http.post("/users", data)
+            // Actual request: POST /api/users
+        }
+    }`,
+    preview: [FeatureList({
+        title: "HTTP client features:",
+        items: [
+            { icon: "v", text: "baseUrl - Prefix for all requests" },
+            { icon: "v", text: "headers - Default headers" },
+            { icon: "v", text: "GET, POST, PUT, PATCH, DELETE" },
+            { icon: "v", text: "Automatic JSON handling" }
+        ]
+    })]
+})
+
+// Configuration
+ConfigurationSection -> DocsCodeSection({
+    title: "Advanced Configuration",
+    description: "Configure timeouts, retries, and more:",
+    filename: "http-config.tp",
+    code: `
+    // services/http.tp
+    http | {
+        baseUrl: env.API_URL || "/api"
+
+        headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        }
+
+        // Request timeout (ms)
+        timeout: 30000
+
+        // Retry configuration
+        retry: {
+            attempts: 3,
+            delay: 1000,
+            // Retry on these status codes
+            statusCodes: [408, 429, 500, 502, 503, 504]
+        }
+
+        // Response handling
+        responseType: "json"  // "json" | "text" | "blob"
+    }
+
+    // Environment-specific configuration
+    // development
+    httpDev | {
+        baseUrl: "http://localhost:3000/api"
+        timeout: 60000  // Longer timeout for dev
+    }
+
+    // production
+    httpProd | {
+        baseUrl: "https://api.example.com"
+        timeout: 15000
+    }
+
+    // Export based on environment
+    export { http: env.isDev ? httpDev : httpProd }`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "timeout", desc: "Request timeout in ms" },
+            { label: "retry", desc: "Auto-retry failed requests" },
+            { label: "responseType", desc: "Expected response format" },
+            { label: "Environment", desc: "Different configs per env" }
+        ]
+    })]
+})
+
+// Interceptors
+InterceptorsSection -> DocsCodeSection({
+    title: "Request/Response Interceptors",
+    description: "Add interceptors to modify requests and responses:",
+    filename: "interceptors.tp",
+    code: `
+    http | {
+        baseUrl: "/api"
+
+        // Run before each request
+        onRequest: (config) => {
+            // Add timestamp
+            config.headers["X-Request-Time"] = Date.now()
+
+            // Log requests in development
+            if (env.isDev) {
+                console.log("Request:", config.method, config.url)
+            }
+
+            return config
+        }
+
+        // Run after each successful response
+        onResponse: (response) => {
+            // Log response time
+            if (env.isDev) {
+                console.log("Response:", response.status, response.url)
+            }
+
+            // Transform response data
+            return response.data
+        }
+
+        // Run on request errors
+        onError: (error) => {
+            // Log errors
+            console.error("HTTP Error:", error.message)
+
+            // Rethrow for handling in effects
+            throw error
+        }
+    }
+
+    // Compose multiple interceptors
+    http | {
+        interceptors: [
+            loggingInterceptor,
+            authInterceptor,
+            errorInterceptor
+        ]
+    }`,
+    preview: [FeatureList({
+        title: "Interceptors:",
+        items: [
+            { icon: "v", text: "onRequest - Modify outgoing requests" },
+            { icon: "v", text: "onResponse - Transform responses" },
+            { icon: "v", text: "onError - Handle errors globally" },
+            { icon: "v", text: "Compose multiple interceptors" }
+        ]
+    })]
+})
+
+// Authentication
+AuthenticationSection -> DocsCodeSection({
+    title: "Authentication Headers",
+    description: "Automatically add auth tokens to requests:",
+    filename: "auth-http.tp",
+    code: `
+    // services/http.tp
+    import { AuthStore } from "@/stores/auth.tp"
+
+    http | {
+        baseUrl: "/api"
+
+        headers: {
+            "Content-Type": "application/json"
+        }
+
+        // Add auth token to each request
+        onRequest: (config) => {
+            token: $AuthStore.token
+
+            if (token) {
+                config.headers["Authorization"] = "Bearer " + token
+            }
+
+            return config
+        }
+
+        // Handle 401 Unauthorized
+        onError: async (error) => {
+            if (error.status == 401) {
+                // Try to refresh token
+                try {
+                    await AuthStore.RefreshToken()
+                    // Retry original request
+                    return http.request(error.config)
+                } catch(refreshError) {
+                    // Refresh failed, logout
+                    dispatch: AuthStore.Logout
+                    navigate: "/login"
+                }
+            }
+
+            throw error
+        }
+    }
+
+    // Token storage
+    AuthStore | {
+        State {
+            token: localStorage.getItem("token")
+            refreshToken: localStorage.getItem("refreshToken")
+        }
+
+        Effects {
+            on Login(credentials) {
+                response: await http.post("/auth/login", credentials)
+                localStorage.setItem("token", response.token)
+                localStorage.setItem("refreshToken", response.refreshToken)
+                dispatch: SetTokens(response.token, response.refreshToken)
+            }
+
+            on RefreshToken {
+                response: await http.post("/auth/refresh", {
+                    refreshToken: state.refreshToken
+                })
+                localStorage.setItem("token", response.token)
+                dispatch: SetToken(response.token)
+            }
+        }
+    }`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "Bearer token", desc: "JWT in Authorization header" },
+            { label: "Auto-refresh", desc: "Renew expired tokens" },
+            { label: "401 handling", desc: "Redirect on auth failure" },
+            { label: "localStorage", desc: "Persist tokens" }
+        ]
+    })]
+})

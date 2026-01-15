@@ -1,0 +1,191 @@
+// Client Services Overview docs page
+import { DocsTemplate } from "../template.tp"
+import { DocsSection, DocsDescription } from "@/components/molecules/docs-section.tp"
+import { DocsCodeSection } from "@/components/organisms/docs-code-section.tp"
+import { ConfigPreview } from "@/components/molecules/config-preview.tp"
+import { FeatureList } from "@/components/molecules/feature-list.tp"
+
+Page -> DocsTemplate({ children: [ServicesContent] })
+
+ServicesContent -> {
+    align: vertical
+    style: "space-y-8"
+    children: [
+        PageHeader,
+        OverviewSection,
+        ServiceLayerSection,
+        IntegrationSection
+    ]
+}
+
+PageHeader -> DocsSection({
+    id: "services",
+    title: "Client Services",
+    children: [HeaderDesc]
+})
+
+HeaderDesc -> DocsDescription({
+    text: "Client services handle communication with backend APIs. Learn how to structure your API layer, make HTTP requests, and handle responses."
+})
+
+// Overview
+OverviewSection -> DocsCodeSection({
+    title: "Services Overview",
+    description: "Services encapsulate API communication:",
+    filename: "services.tp",
+    code: `
+    // Service layer architecture
+    //
+    // Components ──> Store ──> Service ──> Backend API
+    //                  │
+    //                  └── Effects call services
+    //                      for data fetching
+
+    // Example service structure
+    services/
+    ├── http.tp           # HTTP client configuration
+    ├── auth.tp           # AuthService
+    ├── users.tp          # UserService
+    ├── products.tp       # ProductService
+    └── orders.tp         # OrderService
+
+    // Services are plain modules with async functions
+    // that wrap HTTP calls to your API`,
+    preview: [FeatureList({
+        title: "Service layer benefits:",
+        items: [
+            { icon: "v", text: "Centralized API logic" },
+            { icon: "v", text: "Reusable across stores" },
+            { icon: "v", text: "Easy to test and mock" },
+            { icon: "v", text: "Type-safe responses" }
+        ]
+    })]
+})
+
+// Service Layer Pattern
+ServiceLayerSection -> DocsCodeSection({
+    title: "Creating Services",
+    description: "Define services as modules with API methods:",
+    filename: "user-service.tp",
+    code: `
+    // services/users.tp
+    import { http } from "./http.tp"
+
+    UserService {
+        getAll: async () => {
+            return await http.get("/api/users")
+        }
+
+        getById: async (id) => {
+            return await http.get("/api/users/" + id)
+        }
+
+        create: async (data) => {
+            return await http.post("/api/users", data)
+        }
+
+        update: async (id, data) => {
+            return await http.put("/api/users/" + id, data)
+        }
+
+        delete: async (id) => {
+            return await http.delete("/api/users/" + id)
+        }
+
+        // Complex operations
+        search: async (query, filters) => {
+            params: new URLSearchParams({
+                q: query,
+                ...filters
+            })
+            return await http.get("/api/users/search?" + params)
+        }
+    }
+
+    // Export for use in stores
+    export { UserService }`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "Async methods", desc: "All API calls are async" },
+            { label: "http.get/post", desc: "Use configured client" },
+            { label: "Clean interface", desc: "Service.method()" },
+            { label: "Export", desc: "Import in stores" }
+        ]
+    })]
+})
+
+// Integration with Stores
+IntegrationSection -> DocsCodeSection({
+    title: "Using Services in Stores",
+    description: "Call services from store effects:",
+    filename: "integration.tp",
+    code: `
+    import { UserService } from "@/services/users.tp"
+
+    UserStore | {
+        State {
+            users: []
+            selectedUser: null
+            isLoading: false
+            error: null
+        }
+
+        Actions {
+            LoadUsers
+            LoadUser(id)
+            CreateUser(data)
+            SetUsers(users)
+            SetUser(user)
+            SetError(error)
+            SetLoading(loading)
+        }
+
+        Reducers {
+            on SetUsers(users) { users: users, isLoading: false }
+            on SetUser(user) { selectedUser: user, isLoading: false }
+            on SetError(error) { error: error, isLoading: false }
+            on SetLoading(loading) { isLoading: loading, error: null }
+        }
+
+        Effects {
+            on LoadUsers {
+                dispatch: SetLoading(true)
+                try {
+                    users: await UserService.getAll()
+                    dispatch: SetUsers(users)
+                } catch(e) {
+                    dispatch: SetError(e.message)
+                }
+            }
+
+            on LoadUser(id) {
+                dispatch: SetLoading(true)
+                try {
+                    user: await UserService.getById(id)
+                    dispatch: SetUser(user)
+                } catch(e) {
+                    dispatch: SetError(e.message)
+                }
+            }
+
+            on CreateUser(data) {
+                dispatch: SetLoading(true)
+                try {
+                    user: await UserService.create(data)
+                    dispatch: LoadUsers  // Refresh list
+                } catch(e) {
+                    dispatch: SetError(e.message)
+                }
+            }
+        }
+    }`,
+    preview: [FeatureList({
+        title: "Integration patterns:",
+        items: [
+            { icon: "v", text: "Import service in store" },
+            { icon: "v", text: "Call service in effects" },
+            { icon: "v", text: "Handle loading/error states" },
+            { icon: "v", text: "Dispatch results to reducers" }
+        ]
+    })]
+})

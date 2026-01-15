@@ -1,0 +1,371 @@
+// TypeScript Integration docs page
+import { DocsTemplate } from "../../template.tp"
+import { DocsSection, DocsDescription } from "@/components/molecules/docs-section.tp"
+import { DocsCodeSection } from "@/components/organisms/docs-code-section.tp"
+import { ConfigPreview } from "@/components/molecules/config-preview.tp"
+import { FeatureList } from "@/components/molecules/feature-list.tp"
+
+Page -> DocsTemplate({ children: [TypeScriptContent] })
+
+TypeScriptContent -> {
+    align: vertical
+    style: "space-y-8"
+    children: [
+        PageHeader,
+        TypeAnnotationSection,
+        PropsTypingSection,
+        StoreTypingSection,
+        ApiTypingSection,
+        UtilityTypesSection
+    ]
+}
+
+PageHeader -> DocsSection({
+    id: "typescript",
+    title: "TypeScript Integration",
+    children: [HeaderDesc]
+})
+
+HeaderDesc -> DocsDescription({
+    text: "Topo has first-class TypeScript support. Add type safety to your components, stores, and API calls for better developer experience."
+})
+
+// Type Annotations
+TypeAnnotationSection -> DocsCodeSection({
+    title: "Basic Type Annotations",
+    description: "Add types to variables and functions:",
+    filename: "types.tp",
+    code: `
+    // Variable types
+    count: number = 0
+    name: string = "John"
+    active: boolean = true
+    items: string[] = ["a", "b", "c"]
+
+    // Object types
+    user: { id: string, name: string, email: string } = {
+        id: "1",
+        name: "John",
+        email: "john@example.com"
+    }
+
+    // Type aliases
+    type User = {
+        id: string
+        name: string
+        email: string
+        role: "admin" | "user"
+        createdAt: Date
+    }
+
+    currentUser: User = { ... }
+
+    // Function types
+    add: (a: number, b: number) => number = (a, b) => a + b
+
+    // Generic types
+    fetchData: <T>(url: string) => Promise<T> = async (url) => {
+        response: await fetch(url)
+        return response.json()
+    }
+
+    // Usage
+    user: await fetchData<User>("/api/user")`,
+    preview: [FeatureList({
+        title: "Type annotations:",
+        items: [
+            { icon: "v", text: "name: type = value" },
+            { icon: "v", text: "type alias for reuse" },
+            { icon: "v", text: "Union types with |" },
+            { icon: "v", text: "Generics with <T>" }
+        ]
+    })]
+})
+
+// Props Typing
+PropsTypingSection -> DocsCodeSection({
+    title: "Component Props Types",
+    description: "Type-safe component props:",
+    filename: "props-types.tp",
+    code: `
+    // Define props interface
+    interface ButtonProps {
+        text: string
+        onClick: () => void
+        variant?: "primary" | "secondary" | "danger"
+        disabled?: boolean
+        icon?: string
+    }
+
+    // Component with typed props
+    Button(props: ButtonProps) -> {
+        style: props.variant == "primary"
+            ? "bg-blue-500 text-white"
+            : "bg-gray-200"
+        disabled: props.disabled || false
+        onClick: props.onClick
+        children: [
+            props.icon ? Icon({ name: props.icon }) : null,
+            Text({ text: props.text })
+        ]
+    }
+
+    // With children prop
+    interface CardProps {
+        title: string
+        subtitle?: string
+        children: Component[]
+    }
+
+    Card(props: CardProps) -> {
+        children: [
+            CardHeader({ title: props.title, subtitle: props.subtitle }),
+            CardBody({ children: props.children })
+        ]
+    }
+
+    // Generic component
+    interface ListProps<T> {
+        items: T[]
+        renderItem: (item: T) => Component
+        keyExtractor: (item: T) => string
+    }
+
+    List<T>(props: ListProps<T>) -> {
+        children: props.items.for(item => {
+            ListItem({
+                key: props.keyExtractor(item),
+                children: [props.renderItem(item)]
+            })
+        })
+    }
+
+    // Usage with type inference
+    UserList -> List({
+        items: users,
+        renderItem: (user) => UserCard({ user }),
+        keyExtractor: (user) => user.id
+    })`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "interface", desc: "Define props shape" },
+            { label: "optional?", desc: "Optional properties" },
+            { label: "Generic<T>", desc: "Reusable components" },
+            { label: "Type inference", desc: "Auto-detect types" }
+        ]
+    })]
+})
+
+// Store Typing
+StoreTypingSection -> DocsCodeSection({
+    title: "Store Types",
+    description: "Type-safe state management:",
+    filename: "store-types.tp",
+    code: `
+    // Define state interface
+    interface UserState {
+        users: User[]
+        selectedUser: User | null
+        isLoading: boolean
+        error: string | null
+    }
+
+    // Define action payloads
+    interface UserActions {
+        LoadUsers: void
+        SetUsers: User[]
+        SelectUser: string  // userId
+        SetError: string
+        ClearError: void
+    }
+
+    // Typed store
+    UserStore | Store<UserState, UserActions> {
+        State {
+            users: []
+            selectedUser: null
+            isLoading: false
+            error: null
+        }
+
+        Actions {
+            LoadUsers
+            SetUsers(users: User[])
+            SelectUser(userId: string)
+            SetError(message: string)
+            ClearError
+        }
+
+        Reducers {
+            on SetUsers(users: User[]) {
+                users: users
+                isLoading: false
+            }
+
+            on SelectUser(userId: string) {
+                selectedUser: state.users.find(u => u.id == userId) || null
+            }
+        }
+
+        Effects {
+            on LoadUsers {
+                try {
+                    users: await UserService.getAll()
+                    dispatch: SetUsers(users)
+                } catch(e: Error) {
+                    dispatch: SetError(e.message)
+                }
+            }
+        }
+    }
+
+    // Typed state access
+    Component -> {
+        // $UserStore.users is typed as User[]
+        // $UserStore.selectedUser is typed as User | null
+        children: [
+            $UserStore.selectedUser
+                ? UserDetail({ user: $UserStore.selectedUser })
+                : UserList({ users: $UserStore.users })
+        ]
+    }`,
+    preview: [FeatureList({
+        title: "Store typing:",
+        items: [
+            { icon: "v", text: "State interface" },
+            { icon: "v", text: "Typed action payloads" },
+            { icon: "v", text: "Store<State, Actions>" },
+            { icon: "v", text: "Auto-complete in IDE" }
+        ]
+    })]
+})
+
+// API Typing
+ApiTypingSection -> DocsCodeSection({
+    title: "API Response Types",
+    description: "Type your API calls:",
+    filename: "api-types.tp",
+    code: `
+    // API response types
+    interface ApiResponse<T> {
+        data: T
+        status: number
+        message?: string
+    }
+
+    interface PaginatedResponse<T> {
+        items: T[]
+        total: number
+        page: number
+        pageSize: number
+        totalPages: number
+    }
+
+    // Service with typed methods
+    interface UserService {
+        getAll: () => Promise<User[]>
+        getById: (id: string) => Promise<User>
+        create: (data: CreateUserInput) => Promise<User>
+        update: (id: string, data: UpdateUserInput) => Promise<User>
+        delete: (id: string) => Promise<void>
+        search: (query: string) => Promise<PaginatedResponse<User>>
+    }
+
+    // Implementation
+    UserService: UserService = {
+        getAll: async () => {
+            response: await http.get<User[]>("/api/users")
+            return response
+        },
+
+        getById: async (id: string) => {
+            return await http.get<User>("/api/users/" + id)
+        },
+
+        create: async (data: CreateUserInput) => {
+            return await http.post<User>("/api/users", data)
+        },
+
+        search: async (query: string) => {
+            return await http.get<PaginatedResponse<User>>(
+                "/api/users/search?q=" + encodeURIComponent(query)
+            )
+        }
+    }
+
+    // Usage - fully typed
+    users: await UserService.getAll()  // User[]
+    user: await UserService.getById("123")  // User
+    result: await UserService.search("john")  // PaginatedResponse<User>`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "Response<T>", desc: "Typed responses" },
+            { label: "Service interface", desc: "Contract definition" },
+            { label: "http.get<T>()", desc: "Generic fetch" },
+            { label: "Full inference", desc: "IDE support" }
+        ]
+    })]
+})
+
+// Utility Types
+UtilityTypesSection -> DocsCodeSection({
+    title: "Utility Types",
+    description: "Built-in TypeScript helpers:",
+    filename: "utility-types.tp",
+    code: `
+    interface User {
+        id: string
+        name: string
+        email: string
+        password: string
+        createdAt: Date
+        updatedAt: Date
+    }
+
+    // Partial - all properties optional
+    type UpdateUserInput = Partial<User>
+    // { id?: string, name?: string, ... }
+
+    // Pick - select specific properties
+    type UserProfile = Pick<User, "id" | "name" | "email">
+    // { id: string, name: string, email: string }
+
+    // Omit - exclude properties
+    type CreateUserInput = Omit<User, "id" | "createdAt" | "updatedAt">
+    // { name: string, email: string, password: string }
+
+    // Required - make all properties required
+    type RequiredUser = Required<User>
+
+    // Readonly - immutable properties
+    type ImmutableUser = Readonly<User>
+
+    // Record - map types
+    type UserRoles = Record<string, "admin" | "user" | "guest">
+    // { [key: string]: "admin" | "user" | "guest" }
+
+    // Extract / Exclude for union types
+    type Status = "pending" | "active" | "inactive" | "banned"
+    type ActiveStatuses = Extract<Status, "pending" | "active">
+    // "pending" | "active"
+
+    // Custom utility type
+    type Nullable<T> = T | null
+    type AsyncResult<T> = Promise<T>
+
+    // Usage
+    interface FormState {
+        user: Nullable<User>
+        isValid: boolean
+        errors: Partial<Record<keyof User, string>>
+    }`,
+    preview: [FeatureList({
+        title: "Utility types:",
+        items: [
+            { icon: "v", text: "Partial<T> - All optional" },
+            { icon: "v", text: "Pick<T, K> - Select fields" },
+            { icon: "v", text: "Omit<T, K> - Exclude fields" },
+            { icon: "v", text: "Record<K, V> - Map type" }
+        ]
+    })]
+})

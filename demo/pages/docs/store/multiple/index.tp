@@ -1,0 +1,292 @@
+// Multiple Stores docs page
+import { DocsTemplate } from "../../template.tp"
+import { DocsSection, DocsDescription } from "@/components/molecules/docs-section.tp"
+import { DocsCodeSection } from "@/components/organisms/docs-code-section.tp"
+import { ConfigPreview } from "@/components/molecules/config-preview.tp"
+import { FeatureList } from "@/components/molecules/feature-list.tp"
+
+Page -> DocsTemplate({ children: [MultipleStoresContent] })
+
+MultipleStoresContent -> {
+    align: vertical
+    style: "space-y-8"
+    children: [
+        PageHeader,
+        WhyMultipleSection,
+        OrganizationSection,
+        CommunicationSection,
+        SharedStateSection,
+        BestPracticesSection
+    ]
+}
+
+PageHeader -> DocsSection({
+    id: "multiple-stores",
+    title: "Multiple Stores",
+    children: [HeaderDesc]
+})
+
+HeaderDesc -> DocsDescription({
+    text: "Learn how to organize and manage multiple stores in your application. Each feature can have its own store for better separation of concerns."
+})
+
+// Why Multiple Stores
+WhyMultipleSection -> DocsCodeSection({
+    title: "Why Multiple Stores?",
+    description: "Instead of one giant store, split state by feature or domain:",
+    filename: "stores.tp",
+    code: `
+    // Instead of one massive AppStore...
+    // Split by feature domain:
+
+    // User authentication
+    AuthStore | {
+        State { user: null, isAuthenticated: false }
+        Actions { Login, Logout, RefreshToken }
+    }
+
+    // Shopping cart
+    CartStore | {
+        State { items: [], total: 0 }
+        Actions { AddItem, RemoveItem, Checkout }
+    }
+
+    // Product catalog
+    ProductStore | {
+        State { products: [], filters: {}, isLoading: false }
+        Actions { LoadProducts, SetFilters, Search }
+    }
+
+    // UI state
+    UIStore | {
+        State { theme: "light", sidebarOpen: true, modal: null }
+        Actions { ToggleTheme, ToggleSidebar, OpenModal, CloseModal }
+    }`,
+    preview: [FeatureList({
+        title: "Benefits:",
+        items: [
+            { icon: "v", text: "Separation of concerns" },
+            { icon: "v", text: "Easier testing in isolation" },
+            { icon: "v", text: "Better code organization" },
+            { icon: "v", text: "Smaller, focused reducers" }
+        ]
+    })]
+})
+
+// Organization
+OrganizationSection -> DocsCodeSection({
+    title: "Organizing Stores",
+    description: "Two common patterns for organizing stores:",
+    filename: "organization.tp",
+    code: `
+    // Pattern 1: Co-located with components
+    // Each page/feature has its own store
+
+    pages/
+    └── dashboard/
+        ├── index.tp
+        ├── store.tp          // DashboardStore
+        └── components/
+            ├── stats.tp      // Has StatCardsStore
+            └── activity.tp   // Has ActivityStore
+
+    // Pattern 2: Centralized stores folder
+    stores/
+    ├── auth.tp
+    ├── cart.tp
+    ├── products.tp
+    └── ui.tp
+
+    // Import where needed
+    import { AuthStore } from "@/stores/auth.tp"
+    import { CartStore } from "@/stores/cart.tp"
+
+    // Access state with $ prefix
+    Header -> {
+        children: [
+            $AuthStore.isAuthenticated
+                ? UserMenu({ user: $AuthStore.user })
+                : LoginButton,
+            CartIcon({ count: $CartStore.items.length })
+        ]
+    }`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "Co-located", desc: "Store near feature code" },
+            { label: "Centralized", desc: "All stores in one folder" },
+            { label: "Import", desc: "Use stores anywhere" },
+            { label: "$Store", desc: "Access any store's state" }
+        ]
+    })]
+})
+
+// Communication Between Stores
+CommunicationSection -> DocsCodeSection({
+    title: "Store Communication",
+    description: "Stores can dispatch actions to other stores:",
+    filename: "communication.tp",
+    code: `
+    // AuthStore handles login
+    AuthStore | {
+        State { user: null }
+        Actions { Login(credentials), LoginSuccess(user), Logout }
+
+        Effects {
+            on Login(credentials) {
+                try {
+                    user: await AuthApi.login(credentials)
+                    dispatch: LoginSuccess(user)
+
+                    // Notify other stores
+                    dispatch: CartStore.LoadUserCart(user.id)
+                    dispatch: NotificationStore.FetchUnread
+
+                    navigate: "/dashboard"
+                } catch(e) {
+                    dispatch: SetError(e.message)
+                }
+            }
+
+            on Logout {
+                // Clear other stores on logout
+                dispatch: CartStore.Clear
+                dispatch: NotificationStore.Clear
+                navigate: "/login"
+            }
+        }
+    }
+
+    // OrderStore coordinates checkout
+    OrderStore | {
+        Effects {
+            on CompleteOrder(order) {
+                // Update multiple stores
+                dispatch: CartStore.Clear
+                dispatch: NotificationStore.Show("Order placed!")
+                dispatch: UserStore.AddOrder(order.id)
+            }
+        }
+    }`,
+    preview: [FeatureList({
+        title: "Communication patterns:",
+        items: [
+            { icon: "v", text: "dispatch: OtherStore.Action" },
+            { icon: "v", text: "Cross-store effects" },
+            { icon: "v", text: "Coordinate complex flows" },
+            { icon: "v", text: "Keep stores loosely coupled" }
+        ]
+    })]
+})
+
+// Shared State
+SharedStateSection -> DocsCodeSection({
+    title: "Reading Other Stores",
+    description: "Access state from multiple stores in components and effects:",
+    filename: "shared.tp",
+    code: `
+    // Components can read any store
+    CheckoutSummary -> {
+        children: [
+            // Read from CartStore
+            CartItems({ items: $CartStore.items }),
+
+            // Read from UserStore
+            ShippingAddress({ address: $UserStore.address }),
+
+            // Read from PromoStore
+            $PromoStore.discount > 0
+                ? Discount({ amount: $PromoStore.discount })
+                : null,
+
+            // Combine multiple stores
+            Total({
+                subtotal: $CartStore.total,
+                discount: $PromoStore.discount,
+                shipping: $ShippingStore.cost
+            })
+        ]
+    }
+
+    // Effects can read other stores
+    OrderStore | {
+        Effects {
+            on PlaceOrder {
+                // Access state from multiple stores
+                order: await OrderApi.create({
+                    items: $CartStore.items,
+                    user: $AuthStore.user,
+                    shipping: $ShippingStore.selected,
+                    promo: $PromoStore.code
+                })
+                dispatch: OrderComplete(order)
+            }
+        }
+    }`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "$StoreName.field", desc: "Read any store's state" },
+            { label: "In components", desc: "Combine data for display" },
+            { label: "In effects", desc: "Access for API calls" },
+            { label: "Reactive", desc: "Updates when any store changes" }
+        ]
+    })]
+})
+
+// Best Practices
+BestPracticesSection -> DocsCodeSection({
+    title: "Best Practices",
+    description: "Guidelines for managing multiple stores:",
+    filename: "best-practices.tp",
+    code: `
+    // 1. Single Responsibility
+    // Each store manages one domain
+
+    // Good: Focused stores
+    AuthStore | { /* authentication only */ }
+    UserProfileStore | { /* profile data only */ }
+
+    // Bad: Mixed concerns
+    UserStore | { /* auth + profile + preferences + ... */ }
+
+    // 2. Minimize Cross-Store Dependencies
+    // Prefer passing data through components
+
+    // Good: Component coordinates
+    Page -> {
+        children: [
+            OrderForm({
+                user: $AuthStore.user,
+                cart: $CartStore.items,
+                onSubmit: OrderStore.Submit
+            })
+        ]
+    }
+
+    // 3. Use Effects for Side Effects
+    // Keep reducers pure, cross-store logic in effects
+
+    // 4. Initialize Stores at App Level
+    AppInit | {
+        Effects {
+            on Initialize {
+                // Load essential data on app start
+                dispatch: AuthStore.CheckSession
+                dispatch: ConfigStore.LoadSettings
+            }
+        }
+    }
+
+    App -> {
+        init: AppInit.Initialize
+        children: [Router]
+    }`,
+    preview: [FeatureList({
+        title: "Guidelines:",
+        items: [
+            { icon: "v", text: "One domain per store" },
+            { icon: "v", text: "Minimize store dependencies" },
+            { icon: "v", text: "Coordinate through effects" },
+            { icon: "v", text: "Initialize at app level" }
+        ]
+    })]
+})
