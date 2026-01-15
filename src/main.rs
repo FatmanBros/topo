@@ -66,6 +66,10 @@ enum Commands {
         /// SSR target: cloudflare, rust (default: cloudflare)
         #[arg(short, long)]
         target: Option<String>,
+
+        /// Verify build by checking for JS runtime errors (requires Playwright)
+        #[arg(long)]
+        verify: bool,
     },
 
     /// Build and start the server (alias: s)
@@ -169,7 +173,7 @@ fn main() -> Result<()> {
         Commands::Init => {
             scaffold::init_project()?;
         }
-        Commands::Build { input, output, mode, target } => {
+        Commands::Build { input, output, mode, target, verify } => {
             let config = Config::load_or_default();
             let build_config = config.build_config();
             let paths_config = config.paths_config();
@@ -184,6 +188,16 @@ fn main() -> Result<()> {
             let target = target.unwrap_or_else(|| "cloudflare".to_string());
 
             build::build_project(&input, &output, &mode, &target)?;
+
+            // Verify build if requested
+            if verify {
+                let base_path = config
+                    .build
+                    .as_ref()
+                    .and_then(|b| b.base_path.clone())
+                    .unwrap_or_default();
+                build::verify_build(&output, &base_path)?;
+            }
         }
         Commands::Start { port, no_open } => {
             let config = Config::load_or_default();

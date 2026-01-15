@@ -17,7 +17,9 @@ TestingContent -> {
         ComponentTestSection,
         MockingSection,
         AsyncTestSection,
-        TestRunnerSection
+        TestRunnerSection,
+        E2ETestSection,
+        BuildVerificationSection
     ]
 }
 
@@ -262,6 +264,90 @@ TestRunnerSection -> DocsCodeSection({
             { label: "--filter", desc: "Filter tests by name" },
             { label: "--watch", desc: "Re-run on file changes" },
             { label: "--coverage", desc: "Generate coverage report" }
+        ]
+    })]
+})
+
+// E2E Tests
+E2ETestSection -> DocsCodeSection({
+    title: "E2E Tests",
+    description: "Write end-to-end tests using the .test.tp format. Tests are compiled to Playwright specs:",
+    filename: "login.test.tp",
+    code: `
+    // Setup hook - runs before each test
+    BeforeEach {
+        goto: "/login"
+    }
+
+    test "shows login form" {
+        expect(text: "Email"): visible
+        expect(text: "Password"): visible
+        expect(submit): visible
+    }
+
+    test "validates empty email" {
+        click(submit)
+        expect(LoginForm.emailError): visible
+    }
+
+    test "successful login flow" {
+        fill(LoginForm.email, "user@example.com")
+        fill(LoginForm.password, "password123")
+        click(submit)
+        expect(page.url): "/dashboard"
+    }
+
+    // Skip unfinished tests
+    skip test "password reset" {
+        // TODO: implement
+    }`,
+    preview: [FeatureList({
+        title: "E2E test features:",
+        items: [
+            { icon: "v", text: "BeforeEach/AfterEach hooks" },
+            { icon: "v", text: "Page navigation (goto)" },
+            { icon: "v", text: "Form interactions (fill, click)" },
+            { icon: "v", text: "Store field selectors (Store.field)" },
+            { icon: "v", text: "Skip tests with 'skip test'" }
+        ]
+    })]
+})
+
+// Build Verification
+BuildVerificationSection -> DocsCodeSection({
+    title: "Build Verification",
+    description: "Catch JavaScript runtime errors at build time using the --verify flag. This launches a headless browser to detect errors like undefined references or initialization issues:",
+    filename: "terminal",
+    code: `
+    # Build with verification
+    topo build --verify
+
+    # Example output on success:
+    # ✓ Build complete: "dist/app.js"
+    # ...
+    # ✓ No JavaScript errors detected
+
+    # Example output on error:
+    # ❌ Build verification failed!
+    #
+    # JavaScript errors detected:
+    #
+    #   [runtime] Cannot access 'MyComponent' before initialization
+    #     ReferenceError: Cannot access 'MyComponent' before initialization
+    #     at http://localhost:3456/app.js:904:12`,
+    preview: [FeatureList({
+        title: "Build verification catches:",
+        items: [
+            { icon: "v", text: "Undefined variable references" },
+            { icon: "v", text: "'Cannot access X before initialization' errors" },
+            { icon: "v", text: "Runtime type errors" },
+            { icon: "v", text: "Module loading failures" }
+        ]
+    }), ConfigPreview({
+        items: [
+            { label: "--verify", desc: "Enable build verification" },
+            { label: "Requires", desc: "Playwright + Chromium" },
+            { label: "Auto-skip", desc: "If Playwright not installed" }
         ]
     })]
 })

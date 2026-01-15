@@ -508,8 +508,11 @@ impl JsCodegen {
         self.emit_line("  }");
         self.emit_line("}");
         self.emit_line("");
-        self.emit_line("// Export for SSR");
-        self.emit_line("export { renderPage };");
+        // Use UMD-style conditional export to work in both browser and Node.js
+        self.emit_line("// Export for SSR (Node.js) - browser script context ignores this");
+        self.emit_line("if (typeof module !== 'undefined' && module.exports) {");
+        self.emit_line("  module.exports = { renderPage };");
+        self.emit_line("}");
     }
 
     pub(super) fn emit_runtime_validators(&mut self) {

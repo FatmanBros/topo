@@ -706,8 +706,11 @@ impl JsCodegen {
         // Resolve component name - "Page" gets renamed based on file path to avoid conflicts
         let component_name = self.resolve_page_component_name(&comp.name);
 
-        // Check if this is a data-only component (no params, no type, no guards, no lifecycle)
+        // Check if this is a data-only component (no params, no type property, no guards, no lifecycle)
         // These should be generated as const objects instead of functions
+        // IMPORTANT: Components with "children" or "content" must be functions because:
+        // 1. They may reference other components that are defined later (no hoisting for const)
+        // 2. Function declarations are hoisted, avoiding "Cannot access X before initialization" errors
         let is_data_component = comp.params.is_empty()
             && comp.alias.is_none()
             && comp.guards.is_empty()
@@ -722,7 +725,10 @@ impl JsCodegen {
             let total_props = comp.properties.len();
             for (i, prop) in comp.properties.iter().enumerate() {
                 let comma = if i < total_props - 1 { "," } else { "" };
+                // Set current_property_key for proper quoting (e.g., align: vertical -> 'vertical')
+                self.current_property_key = Some(prop.key.clone());
                 let value = self.generate_expression(&prop.value);
+                self.current_property_key = None;
                 self.emit_line(&format!("{}: {}{}", prop.key, value, comma));
             }
 
