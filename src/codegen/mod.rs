@@ -508,6 +508,9 @@ impl JsCodegen {
             Declaration::Schema(_) => {
                 // Schema definitions are used for type inference, not code generation
             }
+            Declaration::Repository(_) => {
+                // Repository definitions are handled separately in server codegen
+            }
         }
     }
 

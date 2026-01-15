@@ -74,6 +74,9 @@ pub enum Declaration {
 
     /// Schema definition: `Schema { tables... }`
     Schema(SchemaDef),
+
+    /// Repository definition: `Name :: tableName { methods... }`
+    Repository(RepositoryDef),
 }
 
 // ============================================================================
@@ -990,6 +993,37 @@ pub struct SchemaDef {
 pub struct TableDef {
     pub name: String,
     pub columns: Vec<ColumnDef>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub relations: Vec<Relation>,
+}
+
+/// Table relation definitions
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "type")]
+pub enum Relation {
+    /// One-to-many: @hasMany(posts)
+    HasMany {
+        target: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        foreign_key: Option<String>,
+    },
+    /// One-to-one: @hasOne(profile)
+    HasOne {
+        target: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        foreign_key: Option<String>,
+    },
+    /// Many-to-one: @belongsTo(users)
+    BelongsTo {
+        target: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        foreign_key: Option<String>,
+    },
+    /// Many-to-many: @manyToMany(tags, post_tags)
+    ManyToMany {
+        target: String,
+        through: String,
+    },
 }
 
 /// Column definition within a table
@@ -1060,4 +1094,32 @@ pub struct SqlColumnType {
     pub name: String,
     pub column_type: ColumnType,
     pub nullable: bool,
+}
+
+// ============================================================================
+// Repository Definition
+// ============================================================================
+
+/// Repository definition: `UserRepository :: users { methods... }`
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RepositoryDef {
+    /// Repository name (e.g., "UserRepository")
+    pub name: String,
+    /// Target table name (e.g., "users")
+    pub table: String,
+    /// Custom methods
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub methods: Vec<RepositoryMethod>,
+}
+
+/// Repository method definition
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RepositoryMethod {
+    /// Method name
+    pub name: String,
+    /// Parameters
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub params: Vec<String>,
+    /// Method body (SQL template or expression)
+    pub body: Expression,
 }

@@ -593,7 +593,7 @@ impl Parser {
 
         self.expect(TokenKind::RBrace)?;
 
-        Ok(TableDef { name, columns })
+        Ok(TableDef { name, columns, relations: vec![] })
     }
 
     fn parse_column_def(&mut self) -> Result<ColumnDef, ParseError> {

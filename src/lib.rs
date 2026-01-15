@@ -9,7 +9,7 @@ pub mod info_server;
 pub mod sql_analyzer;
 
 pub use ast::*;
-pub use sql_analyzer::SqlAnalyzer;
+pub use sql_analyzer::{SqlAnalyzer, DdlGenerator, DbDialect};
 pub use config::{Config, I18nConfig};
 pub use lexer::Lexer;
 pub use parser::Parser;

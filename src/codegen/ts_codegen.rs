@@ -52,6 +52,7 @@ impl TsCodegen {
             Declaration::Routes(_) => {}      // Routes types are handled separately
             Declaration::Function(_) => {}    // Functions don't need type exports
             Declaration::Schema(_) => {}      // Schema is used for type inference, not type exports
+            Declaration::Repository(_) => {}  // Repository types are generated from schema
         }
     }
 
