@@ -30,6 +30,11 @@ pub fn format_parse_error(error: &ParseError, source: &str, file_path: Option<&P
 
             // Source context
             output.push_str(&format_source_context(source, *line, *column, found.len()));
+
+            // Add hint based on error pattern
+            if let Some(hint) = generate_hint(source, *line, expected, found) {
+                output.push_str(&hint);
+            }
         }
 
         ParseError::InvalidDefinitionOperator { line, column } => {
@@ -67,6 +72,76 @@ pub fn format_parse_error(error: &ParseError, source: &str, file_path: Option<&P
     }
 
     output
+}
+
+/// Generate a hint message based on error patterns
+fn generate_hint(source: &str, line: usize, expected: &str, found: &str) -> Option<String> {
+    let lines: Vec<&str> = source.lines().collect();
+    let line_idx = if line > 0 { line - 1 } else { 0 };
+    let source_line = lines.get(line_idx)?;
+
+    // Pattern: Arrow function () => or (param) => in event handler
+    if (found == ")" || found == "=>") && source_line.contains("() =>") {
+        // Extract the property name (e.g., onClick)
+        if let Some(colon_pos) = source_line.find(':') {
+            let prop_name = source_line[..colon_pos].trim();
+            // Extract the action call after =>
+            if let Some(arrow_pos) = source_line.find("=>") {
+                let action = source_line[arrow_pos + 2..].trim();
+                return Some(format!(
+                    "\n  \x1b[1;36mhint\x1b[0m: Arrow functions are not supported in topo\n\
+                       \x1b[1;32mhelp\x1b[0m: Try this instead:\n\
+                       \n\
+                           {}: {}\n",
+                    prop_name, action
+                ));
+            }
+        }
+        return Some(
+            "\n  \x1b[1;36mhint\x1b[0m: Arrow functions `() =>` are not supported in topo\n\
+               \x1b[1;32mhelp\x1b[0m: Use direct action call instead:\n\
+               \n\
+                   onClick: SomeAction(param)\n".to_string()
+        );
+    }
+
+    // Pattern: Arrow function with parameters (item) => or item =>
+    if found == "=>" && expected == "expression" {
+        return Some(
+            "\n  \x1b[1;36mhint\x1b[0m: Arrow function syntax is not supported here\n\
+               \x1b[1;32mhelp\x1b[0m: For iterations, use `.for()` method:\n\
+               \n\
+                   items.for(item => { ... })\n".to_string()
+        );
+    }
+
+    // Pattern: Using => instead of -> for component definition
+    if found == "=>" && (expected == "->" || expected == "|" || expected == "::") {
+        return Some(
+            "\n  \x1b[1;36mhint\x1b[0m: Use `->` for component definitions, not `=>`\n\
+               \x1b[1;32mhelp\x1b[0m: Try this instead:\n\
+               \n\
+                   MyComponent -> { ... }\n".to_string()
+        );
+    }
+
+    // Pattern: Computed property key [expr]
+    if found == "[" || (expected == ":" && source_line.contains('[')) {
+        return Some(
+            "\n  \x1b[1;36mhint\x1b[0m: Computed property keys `[key]` are not supported in topo\n\
+               \x1b[1;32mhelp\x1b[0m: Use a different approach or restructure your data\n".to_string()
+        );
+    }
+
+    // Pattern: Spread operator ...
+    if source_line.contains("...") && (expected == ":" || expected == "expression") {
+        return Some(
+            "\n  \x1b[1;36mhint\x1b[0m: Spread operator `...` usage may not be supported here\n\
+               \x1b[1;32mhelp\x1b[0m: Check if spread is valid in this context\n".to_string()
+        );
+    }
+
+    None
 }
 
 /// Format source context with line numbers and error marker
