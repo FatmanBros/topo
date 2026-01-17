@@ -75,10 +75,14 @@ jobs:
 
       - name: Prepare packages
         run: |
-          # Copy platform packages
+          # Copy platform packages (merge artifacts into existing npm package dirs)
           for pkg in topo-ui-linux-x64 topo-ui-darwin-arm64 topo-ui-darwin-x64 topo-ui-win32-x64; do
-            cp -r npm-packages/$pkg npm/$pkg
+            # Copy bin directory from artifacts to npm package
+            cp -r npm-packages/$pkg/bin/* npm/$pkg/bin/
             chmod +x npm/$pkg/bin/* 2>/dev/null || true
+            echo "Contents of npm/$pkg:"
+            ls -la npm/$pkg/
+            ls -la npm/$pkg/bin/
           done
 
       - name: Get version from tag
