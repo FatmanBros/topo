@@ -77,6 +77,8 @@ jobs:
         run: |
           # Copy platform packages (merge artifacts into existing npm package dirs)
           for pkg in topo-ui-linux-x64 topo-ui-darwin-arm64 topo-ui-darwin-x64 topo-ui-win32-x64; do
+            # Ensure bin directory exists
+            mkdir -p npm/$pkg/bin
             # Copy bin directory from artifacts to npm package
             cp -r npm-packages/$pkg/bin/* npm/$pkg/bin/
             chmod +x npm/$pkg/bin/* 2>/dev/null || true
