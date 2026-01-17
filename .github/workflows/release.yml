@@ -58,6 +58,9 @@ jobs:
   publish:
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
 
     steps:
       - uses: actions/checkout@v4
@@ -110,26 +113,20 @@ jobs:
           done
 
       - name: Publish platform packages
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           for pkg in topo-ui-linux-x64 topo-ui-darwin-arm64 topo-ui-darwin-x64 topo-ui-win32-x64; do
             cd npm/$pkg
-            npm publish --access public
+            npm publish --access public --provenance
             cd ../..
           done
 
       - name: Publish main package
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           cd npm/topo-ui
-          npm publish --access public
+          npm publish --access public --provenance
 
       - name: Publish components package
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           cd packages/components
           npm version ${{ steps.version.outputs.VERSION }} --no-git-tag-version --allow-same-version
-          npm publish --access public
+          npm publish --access public --provenance
