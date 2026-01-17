@@ -1,5 +1,6 @@
 pub mod ast;
 pub mod config;
+pub mod error;
 pub mod lexer;
 pub mod parser;
 pub mod codegen;
@@ -11,6 +12,7 @@ pub mod sql_analyzer;
 pub use ast::*;
 pub use sql_analyzer::{SqlAnalyzer, DdlGenerator, DbDialect};
 pub use config::{Config, I18nConfig};
+pub use error::{format_parse_error, format_lexer_error};
 pub use lexer::Lexer;
 pub use parser::Parser;
 pub use typecheck::TypeChecker;

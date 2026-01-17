@@ -1,11 +1,12 @@
 //! Import resolution for topo files
 
-use anyhow::{bail, Result};
+use anyhow::{bail, Context, Result};
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use topo::ast::{Declaration, Program};
+use topo::error::{format_parse_error, format_lexer_error};
 use topo::lexer::Lexer;
 use topo::parser::Parser as TopoParser;
 
@@ -82,11 +83,18 @@ pub fn resolve_imports(
     }
 
     // Parse the file
-    let source = fs::read_to_string(&file)?;
-    let mut lexer = Lexer::new(&source)?;
-    let tokens = lexer.tokenize()?;
+    let source = fs::read_to_string(&file)
+        .with_context(|| format!("Failed to read file: {}", file.display()))?;
+
+    let mut lexer = Lexer::new(&source)
+        .map_err(|e| anyhow::anyhow!("\n{}", format_lexer_error(&e.to_string(), &source, Some(&file))))?;
+
+    let tokens = lexer.tokenize()
+        .map_err(|e| anyhow::anyhow!("\n{}", format_lexer_error(&e.to_string(), &source, Some(&file))))?;
+
     let mut parser = TopoParser::new(tokens);
-    let program = parser.parse()?;
+    let program = parser.parse()
+        .map_err(|e| anyhow::anyhow!("\n{}", format_parse_error(&e, &source, Some(&file))))?;
 
     // Find imports in this file
     let imports: Vec<String> = program
