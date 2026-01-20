@@ -573,6 +573,43 @@ mod codegen_tests {
     }
 
     #[test]
+    fn test_generate_store_action_with_args() {
+        let source = r#"
+            QuestionsStep | {
+                State {
+                    selectedAnswer: null
+                }
+                Actions {
+                    SelectAnswer(value)
+                }
+                Reducers {
+                    on SelectAnswer(value) { selectedAnswer: value }
+                }
+            }
+
+            AnswerButton(value) -> {
+                type: "button"
+                click: QuestionsStep.SelectAnswer(value)
+                content: value
+            }
+        "#;
+
+        let js = parse_and_generate(source).expect("Failed to generate JS");
+        // Verify Store.Action(args) generates dispatch with args, NOT curried call
+        assert!(
+            js.contains("dispatch('QuestionsStep', 'SelectAnswer', value)"),
+            "Should generate dispatch with args as third parameter, not curried call: {}",
+            js
+        );
+        // Make sure the buggy pattern is NOT present
+        assert!(
+            !js.contains("dispatch('QuestionsStep', 'SelectAnswer')("),
+            "Should NOT generate curried dispatch call: {}",
+            js
+        );
+    }
+
+    #[test]
     fn test_generate_cross_store_dispatch() {
         let source = r#"
             Home | {

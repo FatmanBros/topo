@@ -232,6 +232,32 @@ impl JsCodegen {
                 format!("{}[{}]", obj, idx)
             }
             Expression::Call { callee, args } => {
+                // IMPORTANT: Check for Store.Action(args) pattern BEFORE generating callee
+                // This prevents the MemberAccess from being converted to `() => dispatch(...)`
+                // which would result in incorrect `() => dispatch(...)(args)`
+                if self.is_event_handler() {
+                    if let Expression::MemberAccess { object, property } = callee.as_ref() {
+                        if let Expression::Identifier { name: store } = object.as_ref() {
+                            // Check if this is a known store
+                            if self.store_state_fields.contains_key(store) || self.stores_with_components.contains(store) {
+                                let args_str: Vec<String> = args.iter().map(|a| self.generate_expression(a)).collect();
+                                // For input handlers, pass value as first argument
+                                if self.is_input_event_handler() {
+                                    if args_str.is_empty() {
+                                        return format!("(value) => dispatch('{}', '{}', value)", store, property);
+                                    } else {
+                                        return format!("(value) => dispatch('{}', '{}', value, {})", store, property, args_str.join(", "));
+                                    }
+                                } else if args_str.is_empty() {
+                                    return format!("() => dispatch('{}', '{}')", store, property);
+                                } else {
+                                    return format!("() => dispatch('{}', '{}', {})", store, property, args_str.join(", "));
+                                }
+                            }
+                        }
+                    }
+                }
+
                 let c = self.generate_expression(callee);
 
                 // Check for object-style props: ComponentName({ prop1: val1, prop2: val2 })
