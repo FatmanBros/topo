@@ -6,6 +6,54 @@ use crate::ast::*;
 use crate::lexer::TokenKind;
 use super::{Parser, ParseError};
 
+/// Dedent a multiline string by removing common leading whitespace.
+/// This is used for template literals (backtick strings) to allow
+/// nicely indented code in source files.
+fn dedent(s: &str) -> String {
+    let lines: Vec<&str> = s.lines().collect();
+
+    // Skip first line if empty (common pattern: `\n  content`)
+    let start = if lines.first().map(|l| l.trim().is_empty()).unwrap_or(false) {
+        1
+    } else {
+        0
+    };
+
+    // Skip last line if empty
+    let end = if lines.last().map(|l| l.trim().is_empty()).unwrap_or(false) {
+        lines.len().saturating_sub(1)
+    } else {
+        lines.len()
+    };
+
+    if start >= end {
+        return s.to_string();
+    }
+
+    let content_lines = &lines[start..end];
+
+    // Find minimum indentation (ignoring empty lines)
+    let min_indent = content_lines
+        .iter()
+        .filter(|line| !line.trim().is_empty())
+        .map(|line| line.len() - line.trim_start().len())
+        .min()
+        .unwrap_or(0);
+
+    // Remove the common indentation from each line
+    content_lines
+        .iter()
+        .map(|line| {
+            if line.len() >= min_indent {
+                &line[min_indent..]
+            } else {
+                line.trim_start()
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
 impl Parser {
     pub(super) fn expression(&mut self) -> Result<Expression, ParseError> {
         self.ternary()
@@ -331,6 +379,12 @@ impl Parser {
                 self.advance();
                 // Remove quotes from the lexeme
                 let value = token.lexeme[1..token.lexeme.len() - 1].to_string();
+                // Apply dedent for template literals (backtick strings)
+                let value = if token.lexeme.starts_with('`') {
+                    dedent(&value)
+                } else {
+                    value
+                };
                 Ok(Expression::String { value })
             }
             TokenKind::Number => {
@@ -544,5 +598,53 @@ impl Parser {
         parts.push(current_part);
 
         Ok(Expression::SqlTemplate { parts, expressions })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_dedent_basic() {
+        let input = r#"
+            line1
+            line2
+        "#;
+        let result = dedent(input);
+        assert_eq!(result, "line1\nline2");
+    }
+
+    #[test]
+    fn test_dedent_nested() {
+        let input = r#"
+            outer
+              inner
+            outer2
+        "#;
+        let result = dedent(input);
+        assert_eq!(result, "outer\n  inner\nouter2");
+    }
+
+    #[test]
+    fn test_dedent_preserves_relative_indent() {
+        let input = r#"
+            Component -> {
+              type: div
+              children: [
+                Child
+              ]
+            }
+        "#;
+        let result = dedent(input);
+        assert!(result.starts_with("Component -> {"));
+        assert!(result.contains("  type: div"));
+    }
+
+    #[test]
+    fn test_dedent_single_line() {
+        let input = "single line";
+        let result = dedent(input);
+        assert_eq!(result, "single line");
     }
 }

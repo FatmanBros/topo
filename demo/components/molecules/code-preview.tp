@@ -3,7 +3,7 @@ import { CodeBlock } from "./code-block.tp"
 import { Text } from "@packages/components/atoms/text.tp"
 
 CodePreview(props) -> {
-    style: "grid grid-cols-1 lg:grid-cols-2 gap-6 items-start"
+    style: "grid grid-cols-1 lg:grid-cols-5 gap-6 items-start"
     children: [
         CodePreviewCode({ filename: props.filename, code: props.code }),
         CodePreviewResult({ children: props.preview })
@@ -11,12 +11,12 @@ CodePreview(props) -> {
 }
 
 CodePreviewCode(props) -> {
-    style: "flex-1"
+    style: "lg:col-span-3"
     children: [CodeBlock({ filename: props.filename, code: props.code })]
 }
 
 CodePreviewResult(props) -> {
-    style: "flex-1 bg-gradient-to-br from-gray-50 to-pink-50 rounded-2xl p-6 border border-gray-100"
+    style: "lg:col-span-2 bg-gradient-to-br from-gray-50 to-pink-50 rounded-2xl p-6 border border-gray-100"
     align: vertical
     children: [
         PreviewLabel,
