@@ -406,6 +406,32 @@ impl JsCodegen {
             self.stores_with_components.insert(name.clone());
         }
 
+        // For same-name stores (named store with same-name component),
+        // also set up current_file_store context if not already set by anonymous store
+        if self.current_file_store_name.is_none() && !self.stores_with_components.is_empty() {
+            // Use the first same-name store as the file's "anonymous" store context
+            for decl in &program.declarations {
+                if let Declaration::Store(store) = decl {
+                    if let Some(name) = &store.name {
+                        if self.stores_with_components.contains(name) {
+                            self.current_file_store_name = Some(name.clone());
+                            if let Some(actions_block) = &store.actions {
+                                for action in &actions_block.actions {
+                                    self.current_file_store_actions.insert(action.name.clone());
+                                }
+                            }
+                            if let Some(state_block) = &store.state {
+                                for field in &state_block.fields {
+                                    self.current_file_store_fields.insert(field.key.clone());
+                                }
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
         // Generate theme CSS injection if theme is defined
         if !self.theme_values.is_empty() {
             self.emit_theme_css();

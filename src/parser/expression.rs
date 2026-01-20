@@ -497,6 +497,12 @@ impl Parser {
                 Ok(Expression::Object { members })
             }
             TokenKind::LParen => {
+                // Could be: parenthesized expression OR lambda/arrow function
+                // Check if this looks like a lambda: (params) =>
+                if self.is_lambda_start() {
+                    return self.parse_lambda();
+                }
+
                 // Parenthesized expression - check recursion
                 // Check BEFORE advancing to avoid stack buildup
                 self.enter_recursion()?;
@@ -598,6 +604,174 @@ impl Parser {
         parts.push(current_part);
 
         Ok(Expression::SqlTemplate { parts, expressions })
+    }
+
+    /// Check if current position looks like a lambda start: (params) =>
+    fn is_lambda_start(&self) -> bool {
+        // Save current position by cloning tokens iterator state
+        let mut lookahead = self.tokens[self.current..].iter().peekable();
+
+        // Check for '('
+        if lookahead.next().map(|t| &t.kind) != Some(&TokenKind::LParen) {
+            return false;
+        }
+
+        // Skip params: identifiers and commas until ')'
+        let mut paren_depth = 1;
+        while let Some(tok) = lookahead.next() {
+            match tok.kind {
+                TokenKind::LParen => paren_depth += 1,
+                TokenKind::RParen => {
+                    paren_depth -= 1;
+                    if paren_depth == 0 {
+                        // Check if next token is '=>'
+                        return lookahead.next().map(|t| &t.kind) == Some(&TokenKind::FatArrow);
+                    }
+                }
+                TokenKind::Identifier | TokenKind::Comma => continue,
+                _ => return false, // Not a valid param list
+            }
+        }
+        false
+    }
+
+    /// Parse lambda/arrow function: (params) => expr or (params) => { statements }
+    fn parse_lambda(&mut self) -> Result<Expression, ParseError> {
+        use crate::ast::LambdaBody;
+
+        self.advance(); // consume '('
+
+        // Parse parameter list
+        let mut params = Vec::new();
+        while !self.check(TokenKind::RParen) && !self.is_at_end() {
+            params.push(self.expect_identifier()?);
+            if !self.check(TokenKind::RParen) {
+                let _ = self.match_token(TokenKind::Comma);
+            }
+        }
+        self.expect(TokenKind::RParen)?;
+        self.expect(TokenKind::FatArrow)?;
+
+        // Parse body: either expression or block
+        let body = if self.check(TokenKind::LBrace) {
+            self.advance(); // consume '{'
+            let statements = self.parse_lambda_statements()?;
+            self.expect(TokenKind::RBrace)?;
+            LambdaBody::Block(statements)
+        } else {
+            let expr = self.expression()?;
+            LambdaBody::Expression(Box::new(expr))
+        };
+
+        Ok(Expression::Lambda { params, body })
+    }
+
+    /// Parse statements inside a lambda block
+    fn parse_lambda_statements(&mut self) -> Result<Vec<crate::ast::Statement>, ParseError> {
+        let mut stmts = Vec::new();
+
+        while !self.check(TokenKind::RBrace) && !self.is_at_end() {
+            // Parse a simple statement
+            let stmt = self.parse_lambda_statement()?;
+            stmts.push(stmt);
+        }
+
+        Ok(stmts)
+    }
+
+    /// Parse a single statement inside a lambda block
+    fn parse_lambda_statement(&mut self) -> Result<crate::ast::Statement, ParseError> {
+        use crate::ast::Statement;
+
+        // If statement
+        if self.check(TokenKind::If) {
+            self.advance();
+            return self.parse_lambda_if_statement();
+        }
+
+        // Dispatch statement: dispatch: Store.Action(args) or dispatch: Action(args)
+        if self.check(TokenKind::Dispatch) {
+            self.advance();
+            self.expect(TokenKind::Colon)?;
+            let first_ident = self.expect_identifier()?;
+
+            // Check for Store.Action pattern
+            let (store, action) = if self.check(TokenKind::Dot) {
+                self.advance();
+                let action_name = self.expect_identifier()?;
+                (Some(first_ident), action_name)
+            } else {
+                (None, first_ident)
+            };
+
+            let mut args = Vec::new();
+            if self.check(TokenKind::LParen) {
+                self.advance();
+                while !self.check(TokenKind::RParen) && !self.is_at_end() {
+                    args.push(self.expression()?);
+                    if !self.check(TokenKind::RParen) {
+                        let _ = self.match_token(TokenKind::Comma);
+                    }
+                }
+                self.expect(TokenKind::RParen)?;
+            }
+            return Ok(Statement::Dispatch { store, action, args });
+        }
+
+        // Navigate statement: navigate: "/path" or navigate: .route
+        if self.check(TokenKind::Navigate) {
+            self.advance();
+            self.expect(TokenKind::Colon)?;
+            let path = self.expression()?;
+            return Ok(Statement::Navigate { path });
+        }
+
+        // Expression statement (including method calls like e.preventDefault())
+        let expr = self.expression()?;
+        Ok(Statement::Expression(expr))
+    }
+
+    /// Parse if statement inside lambda block
+    fn parse_lambda_if_statement(&mut self) -> Result<crate::ast::Statement, ParseError> {
+        use crate::ast::Statement;
+
+        // Parse condition
+        let condition = if self.check(TokenKind::LParen) {
+            self.advance();
+            let cond = self.expression()?;
+            self.expect(TokenKind::RParen)?;
+            cond
+        } else {
+            self.expression()?
+        };
+
+        // Parse then block
+        self.expect(TokenKind::LBrace)?;
+        let then_block = self.parse_lambda_statements()?;
+        self.expect(TokenKind::RBrace)?;
+
+        // Parse optional else block
+        let else_block = if self.check(TokenKind::Else) {
+            self.advance();
+            if self.check(TokenKind::If) {
+                self.advance();
+                let nested_if = self.parse_lambda_if_statement()?;
+                Some(vec![nested_if])
+            } else {
+                self.expect(TokenKind::LBrace)?;
+                let block = self.parse_lambda_statements()?;
+                self.expect(TokenKind::RBrace)?;
+                Some(block)
+            }
+        } else {
+            None
+        };
+
+        Ok(Statement::If {
+            condition,
+            then_block,
+            else_block,
+        })
     }
 }
 

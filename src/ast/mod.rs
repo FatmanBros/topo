@@ -839,6 +839,22 @@ pub enum Expression {
         parts: Vec<String>,
         expressions: Vec<Expression>,
     },
+
+    /// Lambda/Arrow function: `(params) => expr` or `(params) => { statements }`
+    Lambda {
+        params: Vec<String>,
+        body: LambdaBody,
+    },
+}
+
+/// Lambda body can be either a single expression or a block of statements
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "type")]
+pub enum LambdaBody {
+    /// Single expression: `(x) => x + 1`
+    Expression(Box<Expression>),
+    /// Block of statements: `(x) => { if (x > 0) { return x } }`
+    Block(Vec<Statement>),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

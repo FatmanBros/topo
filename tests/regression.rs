@@ -766,6 +766,135 @@ mod codegen_tests {
             "Should contain store reference"
         );
     }
+
+    #[test]
+    fn test_generate_lambda_expression() {
+        let source = r#"
+            TestButton -> {
+                type: "button"
+                click: (e) => e.stopPropagation()
+            }
+        "#;
+
+        let js = parse_and_generate(source).expect("Failed to generate JS");
+        assert!(
+            js.contains("(e) =>") || js.contains("e.stopPropagation"),
+            "Should contain lambda expression: {}",
+            js
+        );
+    }
+
+    #[test]
+    fn test_generate_lambda_with_block_body() {
+        let source = r#"
+            TestInput -> {
+                type: "input"
+                keydown: (e) => {
+                    if (e.ctrlKey && e.key == "Enter") {
+                        e.preventDefault()
+                        dispatch: FormStore.Submit
+                    }
+                }
+            }
+        "#;
+
+        let js = parse_and_generate(source).expect("Failed to generate JS");
+        // Verify lambda with block body generates correct code
+        assert!(
+            js.contains("(e) => {"),
+            "Should contain lambda with block body: {}",
+            js
+        );
+        assert!(
+            js.contains("if ("),
+            "Should contain if statement inside lambda: {}",
+            js
+        );
+        assert!(
+            js.contains("e.preventDefault()"),
+            "Should contain method call inside lambda: {}",
+            js
+        );
+        assert!(
+            js.contains("dispatch('FormStore', 'Submit')"),
+            "Should contain dispatch inside lambda: {}",
+            js
+        );
+    }
+
+    #[test]
+    fn test_generate_lambda_with_else_block() {
+        let source = r#"
+            TestHandler -> {
+                type: "div"
+                click: (e) => {
+                    if (e.target.matches(".btn")) {
+                        dispatch: UI.HandleClick
+                    } else {
+                        e.stopPropagation()
+                    }
+                }
+            }
+        "#;
+
+        let js = parse_and_generate(source).expect("Failed to generate JS");
+        assert!(
+            js.contains("(e) => {"),
+            "Should contain lambda with block body: {}",
+            js
+        );
+        assert!(
+            js.contains("} else {"),
+            "Should contain else block inside lambda: {}",
+            js
+        );
+    }
+
+    #[test]
+    fn test_generate_same_name_store_component_with_lambda() {
+        let source = r#"
+            QuestionsStep | {
+                State {
+                    isLoading: false
+                    inputText: ""
+                }
+                Actions {
+                    Submit
+                }
+            }
+
+            QuestionsStep -> {
+                type: "div"
+                style: isLoading ? "opacity-50" : ""
+                keydown: (e) => {
+                    if (e.ctrlKey && e.key == "Enter" && inputText.trim() != "") {
+                        e.preventDefault()
+                        dispatch: Submit
+                    }
+                }
+            }
+        "#;
+
+        let js = parse_and_generate(source).expect("Failed to generate JS");
+        // Same-name pattern: isLoading should resolve to store field
+        assert!(
+            js.contains("_QuestionsStepStore.state.isLoading"),
+            "Should resolve isLoading to store state field: {}",
+            js
+        );
+        // inputText inside lambda should also resolve
+        assert!(
+            js.contains("_QuestionsStepStore.state.inputText"),
+            "Should resolve inputText inside lambda to store state field: {}",
+            js
+        );
+        // dispatch: Submit should resolve to same store
+        assert!(
+            js.contains("dispatch('QuestionsStep', 'Submit')"),
+            "Should resolve dispatch: Submit to same store: {}",
+            js
+        );
+    }
 }
 
 // ============================================================================

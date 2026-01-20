@@ -379,6 +379,108 @@ impl JsCodegen {
                 result.push('`');
                 result
             }
+            Expression::Lambda { params, body } => {
+                let params_str = params.join(", ");
+                // Save and clear event handler context - inside lambda body we're executing, not defining
+                let saved_property_key = self.current_property_key.take();
+                let result = match body {
+                    LambdaBody::Expression(expr) => {
+                        let body_str = self.generate_expression(expr);
+                        format!("({}) => {}", params_str, body_str)
+                    }
+                    LambdaBody::Block(statements) => {
+                        // Add lambda params to local_params for body generation
+                        for param in params {
+                            self.local_params.insert(param.clone());
+                        }
+                        let stmts_str = self.generate_lambda_statements(statements);
+                        // Remove lambda params after generation
+                        for param in params {
+                            self.local_params.remove(param);
+                        }
+                        format!("({}) => {{ {} }}", params_str, stmts_str)
+                    }
+                };
+                // Restore event handler context
+                self.current_property_key = saved_property_key;
+                result
+            }
+        }
+    }
+
+    /// Generate statements for Lambda block body
+    fn generate_lambda_statements(&mut self, statements: &[Statement]) -> String {
+        let mut parts = Vec::new();
+        for stmt in statements {
+            parts.push(self.generate_lambda_statement(stmt));
+        }
+        parts.join(" ")
+    }
+
+    /// Generate a single statement for Lambda body
+    fn generate_lambda_statement(&mut self, stmt: &Statement) -> String {
+        match stmt {
+            Statement::Assignment { name, value } => {
+                let val = self.generate_expression(value);
+                format!("const {} = {};", name, val)
+            }
+            Statement::Dispatch { store, action, args } => {
+                let args_str = args
+                    .iter()
+                    .map(|a| self.generate_expression(a))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                // If store is specified, use it; otherwise use current file store or fallback
+                let store_name = store.as_deref()
+                    .or(self.current_file_store_name.as_deref())
+                    .unwrap_or("_store");
+                if args_str.is_empty() {
+                    format!("dispatch('{}', '{}');", store_name, action)
+                } else {
+                    format!("dispatch('{}', '{}', {});", store_name, action, args_str)
+                }
+            }
+            Statement::Navigate { path } => {
+                if let Expression::RouteRef { .. } = path {
+                    let route_expr = self.generate_expression(path);
+                    format!("navigateWithGuards({});", route_expr)
+                } else {
+                    let path_expr = self.generate_expression(path);
+                    format!("navigate({});", path_expr)
+                }
+            }
+            Statement::TryCatch {
+                try_block,
+                catch_param,
+                catch_block,
+            } => {
+                let try_stmts = self.generate_lambda_statements(try_block);
+                let catch_stmts = self.generate_lambda_statements(catch_block);
+                format!("try {{ {} }} catch ({}) {{ {} }}", try_stmts, catch_param, catch_stmts)
+            }
+            Statement::If {
+                condition,
+                then_block,
+                else_block,
+            } => {
+                let cond = self.generate_expression(condition);
+                let then_stmts = self.generate_lambda_statements(then_block);
+                match else_block {
+                    Some(else_stmts) => {
+                        let else_str = self.generate_lambda_statements(else_stmts);
+                        format!("if ({}) {{ {} }} else {{ {} }}", cond, then_stmts, else_str)
+                    }
+                    None => format!("if ({}) {{ {} }}", cond, then_stmts),
+                }
+            }
+            Statement::Await { expr } => {
+                let e = self.generate_expression(expr);
+                format!("await {};", e)
+            }
+            Statement::Expression(expr) => {
+                let e = self.generate_expression(expr);
+                format!("{};", e)
+            }
         }
     }
 }
