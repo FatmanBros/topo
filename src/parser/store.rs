@@ -297,7 +297,17 @@ impl Parser {
         if self.check(TokenKind::Dispatch) {
             self.advance();
             self.expect(TokenKind::Colon)?;
-            let action = self.expect_identifier()?;
+            let first_ident = self.expect_identifier()?;
+
+            // Check for Store.Action pattern
+            let (store, action) = if self.check(TokenKind::Dot) {
+                self.advance();
+                let action_name = self.expect_identifier()?;
+                (Some(first_ident), action_name)
+            } else {
+                (None, first_ident)
+            };
+
             let mut args = Vec::new();
             if self.check(TokenKind::LParen) {
                 self.advance();
@@ -309,7 +319,7 @@ impl Parser {
                 }
                 self.expect(TokenKind::RParen)?;
             }
-            return Ok(Statement::Dispatch { action, args });
+            return Ok(Statement::Dispatch { store, action, args });
         }
 
         // Navigate: navigate: "/path" or navigate: expression

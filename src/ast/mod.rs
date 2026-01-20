@@ -692,8 +692,9 @@ pub enum Statement {
         value: Expression,
     },
 
-    /// Dispatch action: `dispatch: ActionName`
+    /// Dispatch action: `dispatch: ActionName` or `dispatch: StoreName.ActionName`
     Dispatch {
+        store: Option<String>,
         action: String,
         args: Vec<Expression>,
     },

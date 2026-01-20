@@ -428,15 +428,16 @@ impl JsCodegen {
                     self.local_params.insert(name.clone());
                 }
             }
-            Statement::Dispatch { action, args } => {
+            Statement::Dispatch { store, action, args } => {
                 let args_str = args
                     .iter()
                     .map(|a| self.generate_expression(a))
                     .collect::<Vec<_>>()
                     .join(", ");
+                let target_store = store.as_deref().unwrap_or(store_name);
                 self.emit_line(&format!(
                     "dispatch('{}', '{}'{}{});",
-                    store_name,
+                    target_store,
                     action,
                     if args_str.is_empty() { "" } else { ", " },
                     args_str

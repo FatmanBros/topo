@@ -573,6 +573,45 @@ mod codegen_tests {
     }
 
     #[test]
+    fn test_generate_cross_store_dispatch() {
+        let source = r#"
+            Home | {
+                State {
+                    step: "intro"
+                }
+                Actions {
+                    SetStep(step)
+                }
+                Reducers {
+                    on SetStep(step) { step: step }
+                }
+            }
+
+            Wizard | {
+                State {
+                    currentPage: 0
+                }
+                Actions {
+                    Start
+                }
+                Effects {
+                    on Start {
+                        dispatch: Home.SetStep("questions")
+                    }
+                }
+            }
+        "#;
+
+        let js = parse_and_generate(source).expect("Failed to generate JS");
+        // Verify cross-store dispatch generates correct code
+        assert!(
+            js.contains("dispatch('Home', 'SetStep'"),
+            "Should generate cross-store dispatch with target store 'Home': {}",
+            js
+        );
+    }
+
+    #[test]
     fn test_generate_api_service() {
         let source = r#"
             UserApi :: {
