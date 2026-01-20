@@ -287,7 +287,16 @@ impl JsCodegen {
         self.emit_line("      if (input.tagName === 'SELECT') {");
         self.emit_line("        input.onchange = (e) => handler(e.target.value);");
         self.emit_line("      } else {");
-        self.emit_line("        input.oninput = (e) => handler(e.target.value);");
+        self.emit_line("        // Handle IME composition for CJK input");
+        self.emit_line("        let isComposing = false;");
+        self.emit_line("        input.addEventListener('compositionstart', () => isComposing = true);");
+        self.emit_line("        input.addEventListener('compositionend', (e) => {");
+        self.emit_line("          isComposing = false;");
+        self.emit_line("          handler(e.target.value);");
+        self.emit_line("        });");
+        self.emit_line("        input.oninput = (e) => {");
+        self.emit_line("          if (!isComposing) handler(e.target.value);");
+        self.emit_line("        };");
         self.emit_line("      }");
         self.emit_line("    }");
         self.emit_line("  });");
