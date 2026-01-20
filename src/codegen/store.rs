@@ -476,6 +476,28 @@ impl JsCodegen {
                 self.indent -= 1;
                 self.emit_line("}");
             }
+            Statement::If {
+                condition,
+                then_block,
+                else_block,
+            } => {
+                let cond = self.generate_expression(condition);
+                self.emit_line(&format!("if ({}) {{", cond));
+                self.indent += 1;
+                for s in then_block {
+                    self.generate_statement_impl(store, store_name, s, track_locals);
+                }
+                self.indent -= 1;
+                if let Some(else_stmts) = else_block {
+                    self.emit_line("} else {");
+                    self.indent += 1;
+                    for s in else_stmts {
+                        self.generate_statement_impl(store, store_name, s, track_locals);
+                    }
+                    self.indent -= 1;
+                }
+                self.emit_line("}");
+            }
             Statement::Await { expr } => {
                 let e = self.generate_expression(expr);
                 self.emit_line(&format!("await {};", e));

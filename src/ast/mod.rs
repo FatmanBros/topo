@@ -711,6 +711,13 @@ pub enum Statement {
         catch_block: Vec<Statement>,
     },
 
+    /// If statement: `if (condition) { ... } else { ... }`
+    If {
+        condition: Expression,
+        then_block: Vec<Statement>,
+        else_block: Option<Vec<Statement>>,
+    },
+
     /// Await expression as statement
     Await {
         expr: Expression,

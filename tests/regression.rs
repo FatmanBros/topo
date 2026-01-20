@@ -612,6 +612,42 @@ mod codegen_tests {
     }
 
     #[test]
+    fn test_generate_if_statement_in_effects() {
+        let source = r#"
+            KeyHandler | {
+                State {
+                    inputText: ""
+                    isLoading: false
+                }
+                Actions {
+                    HandleKeydown(event)
+                    Submit
+                }
+                Effects {
+                    on HandleKeydown(event) {
+                        if (event.ctrlKey && event.key == "Enter") {
+                            dispatch: Submit
+                        }
+                    }
+                }
+            }
+        "#;
+
+        let js = parse_and_generate(source).expect("Failed to generate JS");
+        // Verify if statement generates correct code
+        assert!(
+            js.contains("if ("),
+            "Should generate if statement: {}",
+            js
+        );
+        assert!(
+            js.contains("event.ctrlKey") && js.contains("event.key"),
+            "Should contain condition with event properties: {}",
+            js
+        );
+    }
+
+    #[test]
     fn test_generate_api_service() {
         let source = r#"
             UserApi :: {

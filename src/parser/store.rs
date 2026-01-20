@@ -289,6 +289,12 @@ impl Parser {
     fn statement(&mut self) -> Result<Statement, ParseError> {
         use crate::ast::Expression;
 
+        // If statement: if (condition) { ... } else { ... }
+        if self.check(TokenKind::If) {
+            self.advance();
+            return self.if_statement();
+        }
+
         if self.check(TokenKind::Try) {
             self.advance();
             return self.try_catch_statement();
@@ -365,6 +371,47 @@ impl Parser {
             try_block,
             catch_param,
             catch_block,
+        })
+    }
+
+    fn if_statement(&mut self) -> Result<Statement, ParseError> {
+        // Parse condition: if (condition) or if condition
+        let condition = if self.check(TokenKind::LParen) {
+            self.advance();
+            let cond = self.expression()?;
+            self.expect(TokenKind::RParen)?;
+            cond
+        } else {
+            self.expression()?
+        };
+
+        // Parse then block
+        self.expect(TokenKind::LBrace)?;
+        let then_block = self.statements()?;
+        self.expect(TokenKind::RBrace)?;
+
+        // Parse optional else block
+        let else_block = if self.check(TokenKind::Else) {
+            self.advance();
+            if self.check(TokenKind::If) {
+                // else if - parse as nested if in else block
+                self.advance();
+                let nested_if = self.if_statement()?;
+                Some(vec![nested_if])
+            } else {
+                self.expect(TokenKind::LBrace)?;
+                let block = self.statements()?;
+                self.expect(TokenKind::RBrace)?;
+                Some(block)
+            }
+        } else {
+            None
+        };
+
+        Ok(Statement::If {
+            condition,
+            then_block,
+            else_block,
         })
     }
 }
