@@ -648,6 +648,79 @@ mod codegen_tests {
     }
 
     #[test]
+    fn test_generate_if_else_statement() {
+        let source = r#"
+            Toggle | {
+                State {
+                    isOn: false
+                }
+                Actions {
+                    Toggle
+                    TurnOn
+                    TurnOff
+                }
+                Effects {
+                    on Toggle {
+                        if ($isOn) {
+                            dispatch: TurnOff
+                        } else {
+                            dispatch: TurnOn
+                        }
+                    }
+                }
+            }
+        "#;
+
+        let js = parse_and_generate(source).expect("Failed to generate JS");
+        assert!(
+            js.contains("if (") && js.contains("} else {"),
+            "Should generate if-else statement: {}",
+            js
+        );
+    }
+
+    #[test]
+    fn test_generate_if_else_if_statement() {
+        let source = r#"
+            StatusHandler | {
+                State {
+                    status: "idle"
+                }
+                Actions {
+                    HandleStatus(code)
+                    SetSuccess
+                    SetError
+                    SetUnknown
+                }
+                Effects {
+                    on HandleStatus(code) {
+                        if (code == 200) {
+                            dispatch: SetSuccess
+                        } else if (code >= 400) {
+                            dispatch: SetError
+                        } else {
+                            dispatch: SetUnknown
+                        }
+                    }
+                }
+            }
+        "#;
+
+        let js = parse_and_generate(source).expect("Failed to generate JS");
+        assert!(
+            js.contains("if ("),
+            "Should generate if statement: {}",
+            js
+        );
+        // else if becomes nested if in else block
+        assert!(
+            js.contains("} else {"),
+            "Should generate else block: {}",
+            js
+        );
+    }
+
+    #[test]
     fn test_generate_api_service() {
         let source = r#"
             UserApi :: {
