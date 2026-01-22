@@ -1203,13 +1203,19 @@ mod tests {
         let program = parser.parse().unwrap();
 
         let mut codegen = JsCodegen::new();
-        codegen.generate(&program);
-        let icon_output = codegen.generate_icons();
 
-        // Check icon data is generated
-        assert!(icon_output.contains("const __icons = {"));
+        // Runtime includes Icon function
+        let runtime = codegen.generate_runtime();
+        assert!(runtime.contains("const __icons = {}"));
+        assert!(runtime.contains("function Icon(props)"));
+
+        // Generate code (tracks icons)
+        codegen.generate(&program);
+
+        // Icon data is generated separately
+        let icon_output = codegen.generate_icons();
+        assert!(icon_output.contains("Object.assign(__icons"));
         assert!(icon_output.contains("'search':"));
-        assert!(icon_output.contains("function Icon(props)"));
         // search icon should contain the circle and path
         assert!(icon_output.contains("<circle"));
     }

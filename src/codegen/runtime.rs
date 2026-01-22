@@ -14,6 +14,8 @@ impl JsCodegen {
         self.emit_line("");
         self.emit_animation_runtime();
         self.emit_line("");
+        self.emit_icon_runtime();
+        self.emit_line("");
         self.emit_runtime_validators();
         self.emit_line("");
         self.emit_runtime_pipes();
@@ -1063,34 +1065,11 @@ impl JsCodegen {
         self.emit_line("}");
     }
 
-    /// Generate icon data for used icons only (tree-shaking)
-    pub fn emit_icon_data(&mut self) {
-        if self.used_icons.is_empty() {
-            return;
-        }
-
-        // Collect icon data first to avoid borrow conflict
-        let icon_data = super::icons::get_icon_data();
-        let icon_entries: Vec<(String, String)> = self.used_icons
-            .iter()
-            .filter_map(|name| {
-                icon_data.get(name.as_str()).map(|path| (name.clone(), path.to_string()))
-            })
-            .collect();
-
-        self.emit_line("// Icon data (tree-shaken)");
-        self.emit_line("const __icons = {");
-        self.indent += 1;
-
-        for (icon_name, svg_path) in &icon_entries {
-            self.emit_line(&format!("'{}': `{}`,", icon_name, svg_path));
-        }
-
-        self.indent -= 1;
-        self.emit_line("};");
+    /// Emit Icon component runtime (called during emit_runtime_imports)
+    pub(super) fn emit_icon_runtime(&mut self) {
+        self.emit_line("// Icon component runtime");
+        self.emit_line("const __icons = {};");
         self.emit_line("");
-
-        // Icon component function
         self.emit_line("function Icon(props) {");
         self.indent += 1;
         self.emit_line("const name = props.name;");
@@ -1125,6 +1104,35 @@ impl JsCodegen {
         self.emit_line("};");
         self.indent -= 1;
         self.emit_line("}");
+        self.emit_line("");
+    }
+
+    /// Generate icon data for used icons only (tree-shaking)
+    /// This populates the __icons object with actual SVG data
+    pub fn emit_icon_data(&mut self) {
+        if self.used_icons.is_empty() {
+            return;
+        }
+
+        // Collect icon data first to avoid borrow conflict
+        let icon_data = super::icons::get_icon_data();
+        let icon_entries: Vec<(String, String)> = self.used_icons
+            .iter()
+            .filter_map(|name| {
+                icon_data.get(name.as_str()).map(|path| (name.clone(), path.to_string()))
+            })
+            .collect();
+
+        self.emit_line("// Icon data (tree-shaken)");
+        self.emit_line("Object.assign(__icons, {");
+        self.indent += 1;
+
+        for (icon_name, svg_path) in &icon_entries {
+            self.emit_line(&format!("'{}': `{}`,", icon_name, svg_path));
+        }
+
+        self.indent -= 1;
+        self.emit_line("});");
         self.emit_line("");
     }
 
