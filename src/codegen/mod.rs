@@ -537,7 +537,86 @@ impl JsCodegen {
             Declaration::Repository(_) => {
                 // Repository definitions are handled separately in server codegen
             }
+            Declaration::Animation(anim) => self.generate_animation(anim),
         }
+    }
+
+    fn generate_animation(&mut self, anim: &AnimationDef) {
+        let name = &anim.name;
+        let duration = &anim.duration;
+
+        self.emit_line(&format!("const {} = {{", name));
+        self.indent += 1;
+
+        self.emit_line(&format!("name: '{}',", name));
+        self.emit_line(&format!("duration: '{}',", duration));
+
+        if let Some(ref easing) = anim.easing {
+            self.emit_line(&format!("easing: '{}',", easing));
+        }
+
+        if let Some(ref fill) = anim.fill {
+            self.emit_line(&format!("fill: '{}',", fill));
+        }
+
+        // Generate keyframes
+        self.emit_line("keyframes: [");
+        self.indent += 1;
+
+        match &anim.animation_type {
+            AnimationType::FromTo { from, to } => {
+                // Generate from keyframe
+                self.emit_line("{");
+                self.indent += 1;
+                for prop in from {
+                    let value = self.generate_expression(&prop.value);
+                    self.emit_line(&format!("{}: {},", prop.property, value));
+                }
+                self.indent -= 1;
+                self.emit_line("},");
+
+                // Generate to keyframe
+                self.emit_line("{");
+                self.indent += 1;
+                for prop in to {
+                    let value = self.generate_expression(&prop.value);
+                    self.emit_line(&format!("{}: {},", prop.property, value));
+                }
+                self.indent -= 1;
+                self.emit_line("},");
+            }
+            AnimationType::Keyframes { keyframes } => {
+                for kf in keyframes {
+                    self.emit_line("{");
+                    self.indent += 1;
+
+                    // Add offset for keyframe percentage
+                    let offset = kf.percent as f32 / 100.0;
+                    self.emit_line(&format!("offset: {},", offset));
+
+                    // Add easing if specified
+                    if let Some(ref easing) = kf.easing {
+                        self.emit_line(&format!("easing: '{}',", easing));
+                    }
+
+                    // Add properties
+                    for prop in &kf.properties {
+                        let value = self.generate_expression(&prop.value);
+                        self.emit_line(&format!("{}: {},", prop.property, value));
+                    }
+
+                    self.indent -= 1;
+                    self.emit_line("},");
+                }
+            }
+        }
+
+        self.indent -= 1;
+        self.emit_line("],");
+
+        self.indent -= 1;
+        self.emit_line("};");
+        self.emit_line(&format!("__animations.set('{}', {});", name, name));
     }
 
     /// Generate a pure function definition
@@ -993,5 +1072,48 @@ mod tests {
         let output = generate(source);
         // The object-style call should be converted to positional args
         assert!(output.contains("FormField('Email', 'email', 'Enter email')"));
+    }
+
+    #[test]
+    fn test_generate_from_to_animation() {
+        let source = r#"
+            Fade >> {
+                duration: 300ms
+                easing: ease-out
+                from: { opacity: 0 }
+                to: { opacity: 1 }
+            }
+        "#;
+
+        let output = generate(source);
+        assert!(output.contains("const Fade = {"));
+        assert!(output.contains("name: 'Fade'"));
+        assert!(output.contains("duration: '300ms'"));
+        assert!(output.contains("easing: 'ease-out'"));
+        assert!(output.contains("keyframes: ["));
+        assert!(output.contains("opacity: 0"));
+        assert!(output.contains("opacity: 1"));
+        assert!(output.contains("__animations.set('Fade', Fade)"));
+    }
+
+    #[test]
+    fn test_generate_keyframe_animation() {
+        let source = r#"
+            Bounce >> {
+                duration: 500ms
+                0%: { transform: "translateY(0)" }
+                50%: { transform: "translateY(-20px)" }
+                100%: { transform: "translateY(0)" }
+            }
+        "#;
+
+        let output = generate(source);
+        assert!(output.contains("const Bounce = {"));
+        assert!(output.contains("name: 'Bounce'"));
+        assert!(output.contains("duration: '500ms'"));
+        assert!(output.contains("offset: 0"));
+        assert!(output.contains("offset: 0.5"));
+        assert!(output.contains("offset: 1"));
+        assert!(output.contains("__animations.set('Bounce', Bounce)"));
     }
 }

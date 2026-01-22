@@ -77,6 +77,9 @@ pub enum Declaration {
 
     /// Repository definition: `Name :: tableName { methods... }`
     Repository(RepositoryDef),
+
+    /// Animation definition: `Name >> { duration, easing, from, to }` or keyframes
+    Animation(AnimationDef),
 }
 
 // ============================================================================
@@ -725,6 +728,11 @@ pub enum Statement {
 
     /// Expression statement
     Expression(Expression),
+
+    /// Animate element: `animate: AnimationName`
+    Animate {
+        animation: String,
+    },
 }
 
 // ============================================================================
@@ -1014,6 +1022,48 @@ impl Default for Span {
             column: 1,
         }
     }
+}
+
+// ============================================================================
+// Animation Definition (>>)
+// ============================================================================
+
+/// Animation definition: `Name >> { duration, easing, from, to }` or keyframes
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AnimationDef {
+    pub name: String,
+    pub duration: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub easing: Option<String>,
+    pub animation_type: AnimationType,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fill: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "kind")]
+pub enum AnimationType {
+    FromTo {
+        from: Vec<AnimationProperty>,
+        to: Vec<AnimationProperty>,
+    },
+    Keyframes {
+        keyframes: Vec<Keyframe>,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Keyframe {
+    pub percent: u8,
+    pub properties: Vec<AnimationProperty>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub easing: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AnimationProperty {
+    pub property: String,
+    pub value: Expression,
 }
 
 // ============================================================================

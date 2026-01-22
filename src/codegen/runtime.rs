@@ -10,6 +10,8 @@ impl JsCodegen {
         self.emit_line("// topo runtime");
         self.emit_line("const stores = new Map();");
         self.emit_line("");
+        self.emit_animation_runtime();
+        self.emit_line("");
         self.emit_runtime_validators();
         self.emit_line("");
         self.emit_runtime_pipes();
@@ -894,5 +896,82 @@ impl JsCodegen {
 
         self.indent -= 1;
         self.emit_line("};");
+    }
+
+    pub(super) fn emit_animation_runtime(&mut self) {
+        self.emit_line("// Animation runtime");
+        self.emit_line("const __animations = new Map();");
+        self.emit_line("");
+
+        // __animate function - uses Web Animations API for one-shot animations
+        self.emit_line("async function __animate(element, animationName, overrides = {}) {");
+        self.indent += 1;
+        self.emit_line("const anim = __animations.get(animationName);");
+        self.emit_line("if (!anim || !element) return;");
+        self.emit_line("");
+        self.emit_line("function parseDuration(dur) {");
+        self.emit_line("  if (typeof dur === 'number') return dur;");
+        self.emit_line("  if (dur.endsWith('ms')) return parseFloat(dur);");
+        self.emit_line("  if (dur.endsWith('s')) return parseFloat(dur) * 1000;");
+        self.emit_line("  return parseFloat(dur);");
+        self.emit_line("}");
+        self.emit_line("");
+        self.emit_line("const options = {");
+        self.emit_line("  duration: parseDuration(overrides.duration || anim.duration),");
+        self.emit_line("  easing: overrides.easing || anim.easing || 'ease',");
+        self.emit_line("  fill: anim.fill || 'forwards'");
+        self.emit_line("};");
+        self.emit_line("");
+        self.emit_line("const animation = element.animate(anim.keyframes, options);");
+        self.emit_line("return animation.finished;");
+        self.indent -= 1;
+        self.emit_line("}");
+        self.emit_line("");
+
+        // __applyAnimation function - uses CSS @keyframes for persistent animations
+        self.emit_line("function __applyAnimation(element, animationName) {");
+        self.indent += 1;
+        self.emit_line("const anim = __animations.get(animationName);");
+        self.emit_line("if (!anim || !element) return;");
+        self.emit_line("");
+        self.emit_line("const cssName = `topo-anim-${animationName}`;");
+        self.emit_line("");
+        self.emit_line("// Check if keyframes already exist");
+        self.emit_line("if (!document.querySelector(`style[data-anim=\"${cssName}\"]`)) {");
+        self.indent += 1;
+        self.emit_line("// Generate CSS keyframes");
+        self.emit_line("let keyframesCSS = `@keyframes ${cssName} {\\n`;");
+        self.emit_line("");
+        self.emit_line("anim.keyframes.forEach((kf, i) => {");
+        self.emit_line("  const percent = kf.offset !== undefined ? kf.offset * 100 : (i / (anim.keyframes.length - 1)) * 100;");
+        self.emit_line("  keyframesCSS += `  ${percent}% {\\n`;");
+        self.emit_line("  Object.entries(kf).forEach(([prop, val]) => {");
+        self.emit_line("    if (prop !== 'offset' && prop !== 'easing') {");
+        self.emit_line("      // Convert camelCase to kebab-case");
+        self.emit_line("      const cssProp = prop.replace(/([A-Z])/g, '-$1').toLowerCase();");
+        self.emit_line("      keyframesCSS += `    ${cssProp}: ${val};\\n`;");
+        self.emit_line("    }");
+        self.emit_line("  });");
+        self.emit_line("  keyframesCSS += `  }\\n`;");
+        self.emit_line("});");
+        self.emit_line("");
+        self.emit_line("keyframesCSS += '}';");
+        self.emit_line("");
+        self.emit_line("// Inject stylesheet");
+        self.emit_line("const style = document.createElement('style');");
+        self.emit_line("style.setAttribute('data-anim', cssName);");
+        self.emit_line("style.textContent = keyframesCSS;");
+        self.emit_line("document.head.appendChild(style);");
+        self.indent -= 1;
+        self.emit_line("}");
+        self.emit_line("");
+        self.emit_line("// Apply animation to element");
+        self.emit_line("const duration = anim.duration || '300ms';");
+        self.emit_line("const easing = anim.easing || 'ease';");
+        self.emit_line("const fill = anim.fill || 'forwards';");
+        self.emit_line("const iteration = anim.iteration || 'infinite';");
+        self.emit_line("element.style.animation = `${cssName} ${duration} ${easing} ${iteration} ${fill}`;");
+        self.indent -= 1;
+        self.emit_line("}");
     }
 }

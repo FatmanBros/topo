@@ -52,6 +52,7 @@ pub enum TokenKind {
     LtEq,       // <=
     Gt,         // >
     GtEq,       // >=
+    DoubleGt,   // >>
     AmpAmp,     // &&
     PipePipe,   // ||
 
@@ -188,6 +189,7 @@ impl std::fmt::Display for TokenKind {
             TokenKind::LtEq => write!(f, "<="),
             TokenKind::Gt => write!(f, ">"),
             TokenKind::GtEq => write!(f, ">="),
+            TokenKind::DoubleGt => write!(f, ">>"),
             TokenKind::AmpAmp => write!(f, "&&"),
             TokenKind::PipePipe => write!(f, "||"),
             TokenKind::If => write!(f, "if"),

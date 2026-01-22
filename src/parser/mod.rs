@@ -207,6 +207,10 @@ impl Parser {
             // Directive: Name @ { }
             self.advance();
             Ok(Declaration::Directive(self.directive_def(name, params)?))
+        } else if self.check(TokenKind::DoubleGt) {
+            // Animation: Name >> { }
+            self.advance();
+            Ok(Declaration::Animation(self.animation_def(name)?))
         } else if self.check(TokenKind::LBrace) {
             // Method: Name { }
             Ok(Declaration::Method(self.method_def(name)?))
@@ -702,6 +706,208 @@ impl Parser {
             nullable,
             constraints,
         })
+    }
+
+    // ========================================================================
+    // Animation Definition (>>)
+    // ========================================================================
+
+    fn animation_def(&mut self, name: String) -> Result<AnimationDef, ParseError> {
+        self.expect(TokenKind::LBrace)?;
+
+        let mut duration = String::from("300ms");
+        let mut easing = None;
+        let mut fill = None;
+        let mut from_props: Option<Vec<AnimationProperty>> = None;
+        let mut to_props: Option<Vec<AnimationProperty>> = None;
+        let mut keyframes: Vec<Keyframe> = Vec::new();
+
+        while !self.check(TokenKind::RBrace) && !self.is_at_end() {
+            let key = self.expect_property_key()?;
+
+            // Check for keyframe percentages (0%, 50%, 100%)
+            if key.ends_with('%') || self.check(TokenKind::Percent) {
+                // Parse keyframe: `50%: { ... }` or `50 %: { ... }`
+                let percent_str = if key.ends_with('%') {
+                    key.trim_end_matches('%').to_string()
+                } else {
+                    self.expect(TokenKind::Percent)?;
+                    key
+                };
+
+                let percent: u8 = percent_str.parse().map_err(|_| ParseError::UnexpectedToken {
+                    expected: "percentage (0-100)".to_string(),
+                    found: percent_str.clone(),
+                    line: self.peek().line,
+                    column: self.peek().column,
+                })?;
+
+                self.expect(TokenKind::Colon)?;
+                self.expect(TokenKind::LBrace)?;
+
+                let mut kf_props = Vec::new();
+                let mut kf_easing = None;
+
+                while !self.check(TokenKind::RBrace) && !self.is_at_end() {
+                    let prop_key = self.expect_property_key()?;
+                    self.expect(TokenKind::Colon)?;
+
+                    if prop_key == "easing" {
+                        kf_easing = Some(self.expect_identifier_or_string()?);
+                    } else {
+                        kf_props.push(AnimationProperty {
+                            property: prop_key,
+                            value: self.expression()?,
+                        });
+                    }
+
+                    let _ = self.match_token(TokenKind::Comma);
+                }
+
+                self.expect(TokenKind::RBrace)?;
+
+                keyframes.push(Keyframe {
+                    percent,
+                    properties: kf_props,
+                    easing: kf_easing,
+                });
+            } else {
+                self.expect(TokenKind::Colon)?;
+
+                match key.as_str() {
+                    "duration" => {
+                        duration = self.parse_duration()?;
+                    }
+                    "easing" => {
+                        easing = Some(self.expect_identifier_or_string()?);
+                    }
+                    "fill" => {
+                        fill = Some(self.expect_identifier_or_string()?);
+                    }
+                    "from" => {
+                        from_props = Some(self.parse_animation_properties()?);
+                    }
+                    "to" => {
+                        to_props = Some(self.parse_animation_properties()?);
+                    }
+                    _ => {
+                        // Skip unknown properties
+                        let _ = self.expression()?;
+                    }
+                }
+            }
+
+            let _ = self.match_token(TokenKind::Comma);
+        }
+
+        self.expect(TokenKind::RBrace)?;
+
+        // Determine animation type
+        let animation_type = if !keyframes.is_empty() {
+            AnimationType::Keyframes { keyframes }
+        } else if let (Some(from), Some(to)) = (from_props, to_props) {
+            AnimationType::FromTo { from, to }
+        } else {
+            // Default to empty from/to
+            AnimationType::FromTo {
+                from: Vec::new(),
+                to: Vec::new(),
+            }
+        };
+
+        Ok(AnimationDef {
+            name,
+            duration,
+            easing,
+            animation_type,
+            fill,
+        })
+    }
+
+    /// Parse duration: `300ms`, `1s`, `1.5s`, or a number
+    fn parse_duration(&mut self) -> Result<String, ParseError> {
+        let token = self.peek().clone();
+
+        match token.kind {
+            TokenKind::Number => {
+                self.advance();
+                let mut duration = token.lexeme;
+
+                // Check for unit suffix: ms or s
+                if self.check(TokenKind::Identifier) {
+                    let unit = self.peek().lexeme.clone();
+                    if unit == "ms" || unit == "s" {
+                        self.advance();
+                        duration.push_str(&unit);
+                    }
+                }
+
+                Ok(duration)
+            }
+            TokenKind::String => {
+                self.advance();
+                Ok(token.lexeme.trim_matches('"').to_string())
+            }
+            _ => Err(ParseError::UnexpectedToken {
+                expected: "duration (e.g., 300ms, 1s)".to_string(),
+                found: token.lexeme,
+                line: token.line,
+                column: token.column,
+            }),
+        }
+    }
+
+    /// Parse animation properties: `{ opacity: 0, transform: translateY(-10px) }`
+    fn parse_animation_properties(&mut self) -> Result<Vec<AnimationProperty>, ParseError> {
+        self.expect(TokenKind::LBrace)?;
+
+        let mut properties = Vec::new();
+
+        while !self.check(TokenKind::RBrace) && !self.is_at_end() {
+            let prop_key = self.expect_property_key()?;
+            self.expect(TokenKind::Colon)?;
+            let value = self.expression()?;
+
+            properties.push(AnimationProperty {
+                property: prop_key,
+                value,
+            });
+
+            let _ = self.match_token(TokenKind::Comma);
+        }
+
+        self.expect(TokenKind::RBrace)?;
+
+        Ok(properties)
+    }
+
+    /// Expect an identifier or a string (for values like "ease-out")
+    fn expect_identifier_or_string(&mut self) -> Result<String, ParseError> {
+        let token = self.peek().clone();
+        match token.kind {
+            TokenKind::String => {
+                self.advance();
+                Ok(token.lexeme.trim_matches('"').to_string())
+            }
+            _ if Self::is_valid_identifier_token(token.kind) => {
+                self.advance();
+                // Handle hyphenated identifiers: ease-out, ease-in-out
+                let mut result = token.lexeme;
+                while self.check(TokenKind::Minus) {
+                    self.advance();
+                    let next = self.expect_identifier()?;
+                    result.push('-');
+                    result.push_str(&next);
+                }
+                Ok(result)
+            }
+            _ => Err(ParseError::UnexpectedToken {
+                expected: "identifier or string".to_string(),
+                found: token.lexeme,
+                line: token.line,
+                column: token.column,
+            }),
+        }
     }
 
     // ========================================================================
@@ -1362,5 +1568,87 @@ mod tests {
 
         let result = parse(&source);
         assert!(result.is_ok(), "Moderate nesting should be allowed");
+    }
+
+    #[test]
+    fn test_parse_from_to_animation() {
+        let source = r#"
+            Fade >> {
+                duration: 300ms
+                easing: ease-out
+                from: { opacity: 0 }
+                to: { opacity: 1 }
+            }
+        "#;
+
+        let program = parse(source).unwrap();
+        assert_eq!(program.declarations.len(), 1);
+
+        if let Declaration::Animation(anim) = &program.declarations[0] {
+            assert_eq!(anim.name, "Fade");
+            assert_eq!(anim.duration, "300ms");
+            assert_eq!(anim.easing, Some("ease-out".to_string()));
+            if let AnimationType::FromTo { from, to } = &anim.animation_type {
+                assert_eq!(from.len(), 1);
+                assert_eq!(from[0].property, "opacity");
+                assert_eq!(to.len(), 1);
+                assert_eq!(to[0].property, "opacity");
+            } else {
+                panic!("Expected FromTo animation type");
+            }
+        } else {
+            panic!("Expected animation declaration");
+        }
+    }
+
+    #[test]
+    fn test_parse_keyframe_animation() {
+        let source = r#"
+            Bounce >> {
+                duration: 500ms
+                0%: { transform: "translateY(0)", easing: ease-out }
+                50%: { transform: "translateY(-20px)", easing: ease-in }
+                100%: { transform: "translateY(0)" }
+            }
+        "#;
+
+        let program = parse(source).unwrap();
+        assert_eq!(program.declarations.len(), 1);
+
+        if let Declaration::Animation(anim) = &program.declarations[0] {
+            assert_eq!(anim.name, "Bounce");
+            assert_eq!(anim.duration, "500ms");
+            if let AnimationType::Keyframes { keyframes } = &anim.animation_type {
+                assert_eq!(keyframes.len(), 3);
+                assert_eq!(keyframes[0].percent, 0);
+                assert_eq!(keyframes[0].easing, Some("ease-out".to_string()));
+                assert_eq!(keyframes[1].percent, 50);
+                assert_eq!(keyframes[1].easing, Some("ease-in".to_string()));
+                assert_eq!(keyframes[2].percent, 100);
+                assert_eq!(keyframes[2].easing, None);
+            } else {
+                panic!("Expected Keyframes animation type");
+            }
+        } else {
+            panic!("Expected animation declaration");
+        }
+    }
+
+    #[test]
+    fn test_parse_animation_with_seconds() {
+        let source = r#"
+            SlowFade >> {
+                duration: 2s
+                from: { opacity: 0 }
+                to: { opacity: 1 }
+            }
+        "#;
+
+        let program = parse(source).unwrap();
+        if let Declaration::Animation(anim) = &program.declarations[0] {
+            assert_eq!(anim.duration, "2s");
+        } else {
+            panic!("Expected animation declaration");
+        }
     }
 }

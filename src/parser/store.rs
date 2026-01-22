@@ -336,6 +336,14 @@ impl Parser {
             return Ok(Statement::Navigate { path });
         }
 
+        // Animate: animate: AnimationName
+        if self.check(TokenKind::Identifier) && self.peek().lexeme == "animate" {
+            self.advance();
+            self.expect(TokenKind::Colon)?;
+            let animation = self.expect_identifier()?;
+            return Ok(Statement::Animate { animation });
+        }
+
         // Assignment: name: value
         if self.check(TokenKind::Identifier) {
             let name = self.expect_identifier()?;

@@ -506,6 +506,9 @@ impl JsCodegen {
                 let e = self.generate_expression(expr);
                 self.emit_line(&format!("{};", e));
             }
+            Statement::Animate { animation } => {
+                self.emit_line(&format!("await __animate(this, '{}');", animation));
+            }
         }
     }
 

@@ -169,6 +169,8 @@ impl<'a> Lexer<'a> {
             '>' => {
                 if self.match_char('=') {
                     TokenKind::GtEq // >=
+                } else if self.match_char('>') {
+                    TokenKind::DoubleGt // >>
                 } else {
                     TokenKind::Gt
                 }

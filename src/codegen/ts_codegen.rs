@@ -53,6 +53,7 @@ impl TsCodegen {
             Declaration::Function(_) => {}    // Functions don't need type exports
             Declaration::Schema(_) => {}      // Schema is used for type inference, not type exports
             Declaration::Repository(_) => {}  // Repository types are generated from schema
+            Declaration::Animation(_) => {}   // Animations don't need type exports
         }
     }
 
