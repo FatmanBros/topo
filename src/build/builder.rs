@@ -78,6 +78,22 @@ pub fn build_project(input: &PathBuf, output: &PathBuf, mode: &str, target: &str
         all_output.push_str(&generate_i18n_runtime(i18n_config));
     }
 
+    // Generate all animation definitions first (before any other code)
+    // This ensures animations are available regardless of file compilation order
+    let mut has_animations = false;
+    for file in &compile_order {
+        if let Some(program) = parsed_files.get(file) {
+            let anim_js = codegen.generate_animations(program);
+            if !anim_js.is_empty() {
+                if !has_animations {
+                    all_output.push_str("\n// Animation definitions\n");
+                    has_animations = true;
+                }
+                all_output.push_str(&anim_js);
+            }
+        }
+    }
+
     // Load http.setup.tp if exists
     let http_setup_path = project_root.join("http.setup.tp");
     if http_setup_path.exists() {
@@ -284,6 +300,22 @@ pub fn build_project_dev(
 
     if let Some(i18n_config) = &config.i18n {
         all_output.push_str(&generate_i18n_runtime(i18n_config));
+    }
+
+    // Generate all animation definitions first (before any other code)
+    // This ensures animations are available regardless of file compilation order
+    let mut has_animations = false;
+    for file in &compile_order {
+        if let Some(program) = parsed_files.get(file) {
+            let anim_js = codegen.generate_animations(program);
+            if !anim_js.is_empty() {
+                if !has_animations {
+                    all_output.push_str("\n// Animation definitions\n");
+                    has_animations = true;
+                }
+                all_output.push_str(&anim_js);
+            }
+        }
     }
 
     let http_setup_path = project_root.join("http.setup.tp");

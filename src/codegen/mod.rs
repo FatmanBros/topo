@@ -248,6 +248,18 @@ impl JsCodegen {
         std::mem::take(&mut self.output)
     }
 
+    /// Generate only animation definitions from a program
+    /// Call this for all files before generating other code to ensure animations are defined first
+    pub fn generate_animations(&mut self, program: &Program) -> String {
+        for decl in &program.declarations {
+            if let Declaration::Animation(anim) = decl {
+                self.generate_animation(anim);
+                self.emit_line("");
+            }
+        }
+        std::mem::take(&mut self.output)
+    }
+
     /// Pre-collect component parameter names from a program
     /// Call this for all files before generating code to enable cross-file param detection
     pub fn collect_component_params(&mut self, program: &Program) {
@@ -447,7 +459,8 @@ impl JsCodegen {
 
         for decl in &program.declarations {
             // Skip Theme - it's handled separately via CSS injection
-            if matches!(decl, Declaration::Theme(_)) {
+            // Skip Animation - it's handled separately to ensure proper ordering
+            if matches!(decl, Declaration::Theme(_) | Declaration::Animation(_)) {
                 continue;
             }
             self.generate_declaration(decl);
@@ -958,7 +971,11 @@ mod tests {
         let mut parser = Parser::new(tokens);
         let program = parser.parse().unwrap();
         let mut codegen = JsCodegen::new();
-        codegen.generate(&program)
+        // Generate animations first (as build system does)
+        let mut output = codegen.generate_animations(&program);
+        // Then generate other declarations
+        output.push_str(&codegen.generate(&program));
+        output
     }
 
     #[test]
