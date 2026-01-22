@@ -1133,4 +1133,23 @@ mod tests {
         assert!(output.contains("offset: 1"));
         assert!(output.contains("__animations.set('Bounce', Bounce)"));
     }
+
+    #[test]
+    fn test_generate_api_service_with_mock() {
+        let source = r#"
+            User :: {
+                rest: "/api/users"
+                mock: "./mocks/users.json"
+            }
+        "#;
+
+        let output = generate(source);
+        // Check mock-related code is generated
+        assert!(output.contains("_mockPath: './mocks/users.json'"));
+        assert!(output.contains("_mockData: null"));
+        assert!(output.contains("async _loadMock()"));
+        // Check dev mode check in methods
+        assert!(output.contains("if (typeof __devtools !== 'undefined' && __devtools.enabled)"));
+        assert!(output.contains("const mock = await this._loadMock()"));
+    }
 }

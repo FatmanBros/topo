@@ -20,27 +20,84 @@ impl JsCodegen {
         self.emit_line(&format!("const {}Api = {{", api.name));
         self.indent += 1;
 
+        // Add mock support if mock path is specified
+        if let Some(mock_path) = &api.mock {
+            self.emit_line(&format!("_mockPath: '{}',", mock_path));
+            self.emit_line("_mockData: null,");
+            self.emit_line("");
+            self.emit_line("async _loadMock() {");
+            self.indent += 1;
+            self.emit_line("if (this._mockData !== null) return this._mockData;");
+            self.emit_line("try {");
+            self.indent += 1;
+            self.emit_line("const response = await fetch(this._mockPath);");
+            self.emit_line("this._mockData = await response.json();");
+            self.emit_line("return this._mockData;");
+            self.indent -= 1;
+            self.emit_line("} catch (e) {");
+            self.indent += 1;
+            self.emit_line("console.warn('Failed to load mock data:', e);");
+            self.emit_line("return null;");
+            self.indent -= 1;
+            self.emit_line("}");
+            self.indent -= 1;
+            self.emit_line("},");
+            self.emit_line("");
+        }
+
         if let Some(base_url) = &api.rest {
             // Generate CRUD methods
             self.emit_line(&format!("baseUrl: '{}',", base_url));
             self.emit_line("");
 
+            // getAll - mock対応
             self.emit_line("async getAll() {");
             self.indent += 1;
+            if api.mock.is_some() {
+                self.emit_line("if (typeof __devtools !== 'undefined' && __devtools.enabled) {");
+                self.indent += 1;
+                self.emit_line("const mock = await this._loadMock();");
+                self.emit_line("if (mock) return Array.isArray(mock) ? mock : mock.data || mock.items || [];");
+                self.indent -= 1;
+                self.emit_line("}");
+            }
             self.emit_line(&format!("return fetch('{}').then(r => r.json());", base_url));
             self.indent -= 1;
             self.emit_line("},");
             self.emit_line("");
 
+            // getById - mock対応
             self.emit_line("async getById(id) {");
             self.indent += 1;
+            if api.mock.is_some() {
+                self.emit_line("if (typeof __devtools !== 'undefined' && __devtools.enabled) {");
+                self.indent += 1;
+                self.emit_line("const mock = await this._loadMock();");
+                self.emit_line("if (mock) {");
+                self.indent += 1;
+                self.emit_line("const items = Array.isArray(mock) ? mock : mock.data || mock.items || [];");
+                self.emit_line("return items.find(item => item.id === id || item.id === String(id));");
+                self.indent -= 1;
+                self.emit_line("}");
+                self.indent -= 1;
+                self.emit_line("}");
+            }
             self.emit_line(&format!("return fetch(`{}/${{id}}`).then(r => r.json());", base_url));
             self.indent -= 1;
             self.emit_line("},");
             self.emit_line("");
 
+            // create - mock対応（devモードではデータをそのまま返す）
             self.emit_line("async create(data) {");
             self.indent += 1;
+            if api.mock.is_some() {
+                self.emit_line("if (typeof __devtools !== 'undefined' && __devtools.enabled) {");
+                self.indent += 1;
+                self.emit_line("console.log('[Mock] create:', data);");
+                self.emit_line("return { ...data, id: Date.now() };");
+                self.indent -= 1;
+                self.emit_line("}");
+            }
             self.emit_line(&format!(
                 "return fetch('{}', {{ method: 'POST', body: JSON.stringify(data), headers: {{ 'Content-Type': 'application/json' }} }}).then(r => r.json());",
                 base_url
@@ -49,8 +106,17 @@ impl JsCodegen {
             self.emit_line("},");
             self.emit_line("");
 
+            // update - mock対応
             self.emit_line("async update(id, data) {");
             self.indent += 1;
+            if api.mock.is_some() {
+                self.emit_line("if (typeof __devtools !== 'undefined' && __devtools.enabled) {");
+                self.indent += 1;
+                self.emit_line("console.log('[Mock] update:', id, data);");
+                self.emit_line("return { ...data, id };");
+                self.indent -= 1;
+                self.emit_line("}");
+            }
             self.emit_line(&format!(
                 "return fetch(`{}/${{id}}`, {{ method: 'PUT', body: JSON.stringify(data), headers: {{ 'Content-Type': 'application/json' }} }}).then(r => r.json());",
                 base_url
@@ -59,8 +125,17 @@ impl JsCodegen {
             self.emit_line("},");
             self.emit_line("");
 
+            // delete - mock対応
             self.emit_line("async delete(id) {");
             self.indent += 1;
+            if api.mock.is_some() {
+                self.emit_line("if (typeof __devtools !== 'undefined' && __devtools.enabled) {");
+                self.indent += 1;
+                self.emit_line("console.log('[Mock] delete:', id);");
+                self.emit_line("return { success: true };");
+                self.indent -= 1;
+                self.emit_line("}");
+            }
             self.emit_line(&format!(
                 "return fetch(`{}/${{id}}`, {{ method: 'DELETE' }});",
                 base_url
@@ -322,6 +397,34 @@ impl JsCodegen {
         let param_name = if has_request { "data" } else { "" };
         self.emit_line(&format!("async {}({}) {{", endpoint.name, param_name));
         self.indent += 1;
+
+        // Add mock support for custom endpoints
+        if api.mock.is_some() {
+            self.emit_line("if (typeof __devtools !== 'undefined' && __devtools.enabled) {");
+            self.indent += 1;
+            self.emit_line("const mock = await this._loadMock();");
+            self.emit_line("if (mock) {");
+            self.indent += 1;
+            // Try to find endpoint-specific mock data
+            self.emit_line(&format!("const endpointMock = mock['{}'] || mock.{};", endpoint.name, endpoint.name));
+            self.emit_line("if (endpointMock !== undefined) return endpointMock;");
+            // Fallback: for GET methods, return the array/data
+            if matches!(endpoint.method, HttpMethod::Get) {
+                self.emit_line("return Array.isArray(mock) ? mock : mock.data || mock.items || mock;");
+            } else {
+                if has_request {
+                    self.emit_line(&format!("console.log('[Mock] {}:', data);", endpoint.name));
+                    self.emit_line("return { ...data, id: Date.now() };");
+                } else {
+                    self.emit_line(&format!("console.log('[Mock] {}');", endpoint.name));
+                    self.emit_line("return { success: true };");
+                }
+            }
+            self.indent -= 1;
+            self.emit_line("}");
+            self.indent -= 1;
+            self.emit_line("}");
+        }
 
         // Generate fetch call
         let needs_body = matches!(endpoint.method, HttpMethod::Post | HttpMethod::Put | HttpMethod::Patch) && has_request;

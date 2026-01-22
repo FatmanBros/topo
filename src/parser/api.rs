@@ -19,6 +19,7 @@ impl Parser {
         let mut subscribe = None;
         let mut event_handlers = Vec::new();
         let mut server = None;
+        let mut mock = None;
 
         while !self.check(TokenKind::RBrace) && !self.is_at_end() {
             if self.check(TokenKind::Rest) {
@@ -93,6 +94,13 @@ impl Parser {
             } else if self.check(TokenKind::Server) {
                 // Server block: server { on endpoint(params, ctx) { ... } }
                 server = Some(self.server_block()?);
+            } else if self.check(TokenKind::Mock) {
+                // Mock data file: mock: "./mocks/users.json"
+                self.advance();
+                self.expect(TokenKind::Colon)?;
+                if let Expression::String { value } = self.expression()? {
+                    mock = Some(value);
+                }
             } else if self.check(TokenKind::Identifier) {
                 // Custom endpoint
                 endpoints.push(self.endpoint()?);
@@ -114,6 +122,7 @@ impl Parser {
             subscribe,
             event_handlers,
             server,
+            mock,
         })
     }
 

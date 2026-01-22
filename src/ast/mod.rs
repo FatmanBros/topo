@@ -344,6 +344,9 @@ pub struct ApiServiceDef {
     /// Server-side implementation block
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub server: Option<ServerBlock>,
+    /// Mock data file path (dev mode only)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mock: Option<String>,
 }
 
 // ============================================================================
