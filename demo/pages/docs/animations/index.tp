@@ -1,0 +1,414 @@
+// Animations docs page
+import { DocsTemplate } from "../template.tp"
+import { DocsSection, DocsDescription } from "@/components/molecules/docs-section.tp"
+import { DocsCodeSection } from "@/components/organisms/docs-code-section.tp"
+import { ConfigPreview } from "@/components/molecules/config-preview.tp"
+import { Text } from "@packages/components/atoms/text.tp"
+
+Page -> {
+    title: "Animations"
+    children: DocsTemplate({ children: [AnimationsContent] })
+}
+
+AnimationsContent -> {
+    align: vertical
+    style: "space-y-8"
+    children: [
+        PageHeader,
+        BasicSyntaxSection,
+        FromToSection,
+        KeyframesSection,
+        OptionsSection,
+        UsageSection,
+        EffectsSection,
+        LiveDemoSection
+    ]
+}
+
+PageHeader -> DocsSection({
+    id: "animations",
+    title: "Animations",
+    children: [HeaderDesc]
+})
+
+HeaderDesc -> DocsDescription({
+    text: "Define reusable animations with the >> syntax. Use Web Animations API for smooth, performant transitions."
+})
+
+// Basic syntax
+BasicSyntaxSection -> DocsCodeSection({
+    title: "Basic Syntax",
+    description: "Define animations using the >> operator:",
+    filename: "animations/basic.tp",
+    code: `
+// Animation definition
+AnimationName >> {
+    duration: 300ms
+    easing: ease-out
+    from: { property: startValue }
+    to: { property: endValue }
+}
+
+// Use in component (persistent)
+MyComponent -> {
+    animation: AnimationName
+    children: [...]
+}
+
+// Use in Effects (one-shot)
+MyStore | {
+    Effects {
+        on Show {
+            animate: AnimationName
+        }
+    }
+}`,
+    preview: [BasicPreview]
+})
+
+BasicPreview -> {
+    align: vertical
+    style: "space-y-2 p-4 bg-gray-50 rounded-lg"
+    children: [
+        Text({ text: "Name >> { ... }", style: "font-mono text-sm text-blue-600" }),
+        Text({ text: "animation: Name  (persistent)", style: "font-mono text-sm text-green-600" }),
+        Text({ text: "animate: Name    (one-shot)", style: "font-mono text-sm text-purple-600" })
+    ]
+}
+
+// From/To format
+FromToSection -> DocsCodeSection({
+    title: "From/To Format",
+    description: "Simple two-state animations with from and to blocks:",
+    filename: "animations/from-to.tp",
+    code: `
+// Fade in animation
+FadeIn >> {
+    duration: 300ms
+    easing: ease-out
+    from: { opacity: 0 }
+    to: { opacity: 1 }
+}
+
+// Slide in from left
+SlideInLeft >> {
+    duration: 400ms
+    easing: ease-out
+    from: { opacity: 0, transform: "translateX(-20px)" }
+    to: { opacity: 1, transform: "translateX(0)" }
+}
+
+// Scale up animation
+ScaleUp >> {
+    duration: 200ms
+    easing: ease-in-out
+    from: { transform: "scale(0.9)", opacity: 0 }
+    to: { transform: "scale(1)", opacity: 1 }
+}
+
+// Rotate animation
+Rotate >> {
+    duration: 1s
+    easing: linear
+    from: { transform: "rotate(0deg)" }
+    to: { transform: "rotate(360deg)" }
+}`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "FadeIn", desc: "Opacity 0 -> 1" },
+            { label: "SlideInLeft", desc: "Slide from left with fade" },
+            { label: "ScaleUp", desc: "Scale from 90% to 100%" },
+            { label: "Rotate", desc: "Full 360 degree rotation" }
+        ]
+    })]
+})
+
+// Keyframes format
+KeyframesSection -> DocsCodeSection({
+    title: "Keyframes Format",
+    description: "Multi-step animations with percentage-based keyframes:",
+    filename: "animations/keyframes.tp",
+    code: `
+// Bounce animation
+Bounce >> {
+    duration: 500ms
+    0%:   { transform: "translateY(0)", easing: ease-out }
+    50%:  { transform: "translateY(-20px)", easing: ease-in }
+    100%: { transform: "translateY(0)" }
+}
+
+// Pulse animation
+Pulse >> {
+    duration: 1s
+    0%:   { transform: "scale(1)" }
+    50%:  { transform: "scale(1.05)" }
+    100%: { transform: "scale(1)" }
+}
+
+// Shake animation
+Shake >> {
+    duration: 300ms
+    0%:   { transform: "translateX(0)" }
+    25%:  { transform: "translateX(-10px)" }
+    50%:  { transform: "translateX(10px)" }
+    75%:  { transform: "translateX(-5px)" }
+    100%: { transform: "translateX(0)" }
+}
+
+// Color transition
+ColorShift >> {
+    duration: 2s
+    0%:   { backgroundColor: "#3b82f6" }
+    33%:  { backgroundColor: "#8b5cf6" }
+    66%:  { backgroundColor: "#ec4899" }
+    100%: { backgroundColor: "#3b82f6" }
+}`,
+    preview: [KeyframePreview]
+})
+
+KeyframePreview -> {
+    align: vertical
+    style: "space-y-2 p-4 bg-gray-50 rounded-lg"
+    children: [
+        Text({ text: "0%:   { start state }", style: "font-mono text-sm text-gray-600" }),
+        Text({ text: "50%:  { middle state }", style: "font-mono text-sm text-blue-600" }),
+        Text({ text: "100%: { end state }", style: "font-mono text-sm text-green-600" }),
+        Text({ text: "Each keyframe can have its own easing", style: "text-sm text-gray-500 mt-2" })
+    ]
+}
+
+// Options
+OptionsSection -> DocsCodeSection({
+    title: "Animation Options",
+    description: "Configure duration, easing, and fill mode:",
+    filename: "animations/options.tp",
+    code: `
+MyAnimation >> {
+    // Duration: ms or s units
+    duration: 300ms    // milliseconds
+    duration: 1.5s     // seconds
+
+    // Easing functions
+    easing: ease           // default
+    easing: ease-in        // slow start
+    easing: ease-out       // slow end
+    easing: ease-in-out    // slow start and end
+    easing: linear         // constant speed
+
+    // Fill mode (how styles persist)
+    fill: forwards    // keep end state (default)
+    fill: backwards   // apply start state before animation
+    fill: both        // apply both
+    fill: none        // reset after animation
+
+    from: { ... }
+    to: { ... }
+}`,
+    preview: [ConfigPreview({
+        items: [
+            { label: "duration", desc: "Animation length (ms/s)" },
+            { label: "easing", desc: "Timing function" },
+            { label: "fill", desc: "How styles persist after" }
+        ]
+    })]
+})
+
+// Usage in components
+UsageSection -> DocsCodeSection({
+    title: "Using in Components",
+    description: "Apply animations to components with the animation property:",
+    filename: "animations/component-usage.tp",
+    code: `
+// Define animations
+FadeIn >> {
+    duration: 300ms
+    easing: ease-out
+    from: { opacity: 0 }
+    to: { opacity: 1 }
+}
+
+Spin >> {
+    duration: 1s
+    easing: linear
+    from: { transform: "rotate(0deg)" }
+    to: { transform: "rotate(360deg)" }
+}
+
+// Use animation property (persistent)
+LoadingSpinner -> {
+    animation: Spin
+    style: "w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full"
+}
+
+// Card with fade-in on mount
+Card -> {
+    animation: FadeIn
+    style: "p-4 bg-white rounded-lg shadow"
+    children: [CardContent]
+}`,
+    preview: [UsagePreview]
+})
+
+UsagePreview -> {
+    align: vertical
+    style: "space-y-2 p-4 bg-gray-50 rounded-lg"
+    children: [
+        Text({ text: "animation: Name", style: "font-mono text-sm text-blue-600" }),
+        Text({ text: "Persistent animation that runs continuously", style: "text-sm text-gray-500" }),
+        Text({ text: "Great for loaders, spinners, and attention effects", style: "text-sm text-gray-500" })
+    ]
+}
+
+// Usage in Effects
+EffectsSection -> DocsCodeSection({
+    title: "Using in Effects",
+    description: "Trigger one-shot animations from store effects:",
+    filename: "animations/effects-usage.tp",
+    code: `
+// Define animations
+FadeIn >> {
+    duration: 300ms
+    easing: ease-out
+    from: { opacity: 0 }
+    to: { opacity: 1 }
+}
+
+ShakeError >> {
+    duration: 300ms
+    0%:   { transform: "translateX(0)" }
+    25%:  { transform: "translateX(-10px)" }
+    75%:  { transform: "translateX(10px)" }
+    100%: { transform: "translateX(0)" }
+}
+
+// Store with animation effects
+NotificationCard | {
+    State {
+        message: ""
+        isVisible: false
+    }
+
+    Actions {
+        Show(message)
+        Hide
+        Error(message)
+    }
+
+    Reducers {
+        on Show(message) { message: message, isVisible: true }
+        on Hide { isVisible: false }
+        on Error(message) { message: message, isVisible: true }
+    }
+
+    Effects {
+        on Show {
+            animate: FadeIn
+        }
+
+        on Error {
+            animate: ShakeError
+        }
+    }
+}
+
+NotificationCard -> {
+    style: "p-4 bg-white rounded-lg shadow"
+    children: Text({ content: $NotificationCard.message })
+}`,
+    preview: [EffectsPreview]
+})
+
+EffectsPreview -> {
+    align: vertical
+    style: "space-y-2 p-4 bg-gray-50 rounded-lg"
+    children: [
+        Text({ text: "animate: Name", style: "font-mono text-sm text-purple-600" }),
+        Text({ text: "One-shot animation triggered by action", style: "text-sm text-gray-500" }),
+        Text({ text: "Uses await - waits for animation to complete", style: "text-sm text-gray-500" })
+    ]
+}
+
+// Live demo
+AnimDemo | {
+    State {
+        showCard: false
+    }
+
+    Actions {
+        Toggle
+    }
+
+    Reducers {
+        on Toggle { showCard: !showCard }
+    }
+}
+
+LiveDemoSection -> DocsSection({
+    id: "demo",
+    title: "Animation Examples",
+    children: [DemoContent]
+})
+
+DemoContent -> {
+    align: vertical
+    style: "space-y-6 p-6 bg-gray-50 rounded-lg"
+    children: [
+        DemoCard({
+            title: "Fade In/Out",
+            description: "Smooth opacity transition",
+            code: `FadeIn >> {
+    duration: 300ms
+    easing: ease-out
+    from: { opacity: 0 }
+    to: { opacity: 1 }
+}`
+        }),
+        DemoCard({
+            title: "Slide Up",
+            description: "Slide from bottom with fade",
+            code: `SlideUp >> {
+    duration: 400ms
+    easing: ease-out
+    from: { opacity: 0, transform: "translateY(20px)" }
+    to: { opacity: 1, transform: "translateY(0)" }
+}`
+        }),
+        DemoCard({
+            title: "Bounce",
+            description: "Multi-step bounce effect",
+            code: `Bounce >> {
+    duration: 500ms
+    0%:   { transform: "translateY(0)" }
+    50%:  { transform: "translateY(-20px)" }
+    100%: { transform: "translateY(0)" }
+}`
+        }),
+        DemoCard({
+            title: "Spin",
+            description: "Continuous rotation",
+            code: `Spin >> {
+    duration: 1s
+    easing: linear
+    from: { transform: "rotate(0deg)" }
+    to: { transform: "rotate(360deg)" }
+}`
+        })
+    ]
+}
+
+DemoCard(title, description, code) -> {
+    style: "p-4 bg-white rounded-lg border border-gray-200"
+    children: [
+        {
+            style: "mb-3"
+            children: [
+                Text({ text: title, style: "font-semibold text-gray-900" }),
+                Text({ text: description, style: "text-sm text-gray-500" })
+            ]
+        },
+        {
+            style: "p-3 bg-gray-900 rounded font-mono text-sm text-green-400 whitespace-pre overflow-x-auto"
+            children: [Text({ text: code })]
+        }
+    ]
+}

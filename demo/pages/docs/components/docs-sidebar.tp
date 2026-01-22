@@ -101,6 +101,9 @@ DocsSidebarNav -> {
             title: "Advanced",
             items: [
                 DocsSidebarItem({ label: "Forms & Validation", href: "/docs/forms", active: false }),
+                DocsSidebarItem({ label: "Animations", href: "/docs/animations", active: false }),
+                DocsSidebarItem({ label: "Pipes", href: "/docs/pipes", active: false }),
+                DocsSidebarItem({ label: "i18n", href: "/docs/i18n", active: false }),
                 DocsSidebarItem({ label: "Testing", href: "/docs/testing", active: false }),
                 DocsSidebarItem({ label: "Performance", href: "/docs/advanced/performance", active: false }),
                 DocsSidebarItem({ label: "TypeScript", href: "/docs/advanced/typescript", active: false })
