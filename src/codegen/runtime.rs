@@ -10,6 +10,8 @@ impl JsCodegen {
         self.emit_line("// topo runtime");
         self.emit_line("const stores = new Map();");
         self.emit_line("");
+        self.emit_devtools_runtime();
+        self.emit_line("");
         self.emit_animation_runtime();
         self.emit_line("");
         self.emit_runtime_validators();
@@ -30,11 +32,13 @@ impl JsCodegen {
         self.emit_line("    selector(name, fn) { selectors.set(name, fn); },");
         self.emit_line("    subscribe(fn) { listeners.push(fn); },");
         self.emit_line("    dispatch(action, ...args) {");
+        self.emit_line("      const prevState = { ...state };");
         self.emit_line("      const reducer = reducers.get(action);");
         self.emit_line("      if (reducer) {");
         self.emit_line("        Object.assign(state, reducer(state, ...args));");
         self.emit_line("        listeners.forEach(fn => fn(state));");
         self.emit_line("      }");
+        self.emit_line("      __devtools.log(name, action, args, prevState, state);");
         self.emit_line("      const effect = effects.get(action);");
         self.emit_line("      if (effect) effect(...args);");
         self.emit_line("    },");
@@ -896,6 +900,90 @@ impl JsCodegen {
 
         self.indent -= 1;
         self.emit_line("};");
+    }
+
+    pub(super) fn emit_devtools_runtime(&mut self) {
+        self.emit_line("// Store DevTools (dev mode only)");
+        self.emit_line("const __devtools = {");
+        self.indent += 1;
+        self.emit_line("enabled: false,");
+        self.emit_line("history: [],");
+        self.emit_line("maxHistory: 50,");
+        self.emit_line("");
+
+        // getStores - get all store states
+        self.emit_line("getStores() {");
+        self.emit_line("  const result = {};");
+        self.emit_line("  stores.forEach((store, name) => {");
+        self.emit_line("    result[name] = { ...store.state };");
+        self.emit_line("  });");
+        self.emit_line("  return result;");
+        self.emit_line("},");
+        self.emit_line("");
+
+        // getStore - get specific store state
+        self.emit_line("getStore(name) {");
+        self.emit_line("  const store = stores.get(name);");
+        self.emit_line("  return store ? { ...store.state } : null;");
+        self.emit_line("},");
+        self.emit_line("");
+
+        // log - log action with state change
+        self.emit_line("log(storeName, action, args, prevState, nextState) {");
+        self.emit_line("  if (!this.enabled) return;");
+        self.emit_line("  const entry = {");
+        self.emit_line("    timestamp: new Date().toISOString(),");
+        self.emit_line("    store: storeName,");
+        self.emit_line("    action,");
+        self.emit_line("    args,");
+        self.emit_line("    prevState: { ...prevState },");
+        self.emit_line("    nextState: { ...nextState },");
+        self.emit_line("    diff: this._diff(prevState, nextState)");
+        self.emit_line("  };");
+        self.emit_line("  this.history.push(entry);");
+        self.emit_line("  if (this.history.length > this.maxHistory) this.history.shift();");
+        self.emit_line("  console.groupCollapsed(`%c[${storeName}] ${action}`, 'color: #8b5cf6; font-weight: bold');");
+        self.emit_line("  console.log('%cprev state', 'color: #9ca3af', prevState);");
+        self.emit_line("  console.log('%caction', 'color: #3b82f6', { type: action, payload: args });");
+        self.emit_line("  console.log('%cnext state', 'color: #22c55e', nextState);");
+        self.emit_line("  if (entry.diff.length > 0) console.log('%cdiff', 'color: #f59e0b', entry.diff);");
+        self.emit_line("  console.groupEnd();");
+        self.emit_line("},");
+        self.emit_line("");
+
+        // _diff - compute state diff
+        self.emit_line("_diff(prev, next) {");
+        self.emit_line("  const changes = [];");
+        self.emit_line("  const allKeys = new Set([...Object.keys(prev), ...Object.keys(next)]);");
+        self.emit_line("  allKeys.forEach(key => {");
+        self.emit_line("    if (JSON.stringify(prev[key]) !== JSON.stringify(next[key])) {");
+        self.emit_line("      changes.push({ key, from: prev[key], to: next[key] });");
+        self.emit_line("    }");
+        self.emit_line("  });");
+        self.emit_line("  return changes;");
+        self.emit_line("},");
+        self.emit_line("");
+
+        // getHistory - get action history
+        self.emit_line("getHistory() { return [...this.history]; },");
+        self.emit_line("");
+
+        // clearHistory
+        self.emit_line("clearHistory() { this.history = []; },");
+        self.emit_line("");
+
+        // enable/disable
+        self.emit_line("enable() { this.enabled = true; console.log('%c[topo] DevTools enabled', 'color: #22c55e'); },");
+        self.emit_line("disable() { this.enabled = false; console.log('%c[topo] DevTools disabled', 'color: #9ca3af'); }");
+
+        self.indent -= 1;
+        self.emit_line("};");
+        self.emit_line("");
+
+        // Expose to window
+        self.emit_line("if (typeof window !== 'undefined') {");
+        self.emit_line("  window.__TOPO__ = __devtools;");
+        self.emit_line("}");
     }
 
     pub(super) fn emit_animation_runtime(&mut self) {

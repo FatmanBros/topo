@@ -364,6 +364,10 @@ pub fn build_project_dev(
         all_output.push_str("mount(null, '#app');\n");
     }
 
+    // Enable DevTools in dev mode
+    all_output.push_str("\n// Enable DevTools (dev mode)\n");
+    all_output.push_str("if (typeof __devtools !== 'undefined') __devtools.enable();\n");
+
     let output_file = output.join("app.js");
     fs::write(&output_file, &all_output)?;
 
