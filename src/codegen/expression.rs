@@ -260,6 +260,24 @@ impl JsCodegen {
 
                 let c = self.generate_expression(callee);
 
+                // Check for Icon component: Icon({ name: "xxx" })
+                // Track icon usage for tree-shaking
+                if let Expression::Identifier { name } = callee.as_ref() {
+                    if name == "Icon" && args.len() == 1 {
+                        if let Expression::Object { members } = &args[0] {
+                            for member in members {
+                                if let ObjectMember::Property(prop) = member {
+                                    if prop.key == "name" {
+                                        if let Expression::String { value } = &prop.value {
+                                            self.track_icon(value);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // Check for object-style props: ComponentName({ prop1: val1, prop2: val2 })
                 // Convert to positional args: ComponentName(val1, val2)
                 if args.len() == 1 {

@@ -4,6 +4,7 @@
 
 mod api;
 mod expression;
+mod icons;
 mod routes;
 mod runtime;
 mod server_js;
@@ -50,6 +51,8 @@ pub struct JsCodegen {
     current_file_store_fields: HashSet<String>,
     /// Generated Routes names (for avoiding duplicate declarations)
     generated_routes_names: HashMap<String, usize>,
+    /// Used icon names (for tree-shaking)
+    used_icons: HashSet<String>,
 }
 
 impl JsCodegen {
@@ -71,6 +74,7 @@ impl JsCodegen {
             current_file_store_actions: HashSet::new(),
             current_file_store_fields: HashSet::new(),
             generated_routes_names: HashMap::new(),
+            used_icons: HashSet::new(),
         }
     }
 
@@ -245,6 +249,13 @@ impl JsCodegen {
     pub fn generate_runtime(&mut self) -> String {
         self.emit_runtime_imports();
         self.emit_line("");
+        std::mem::take(&mut self.output)
+    }
+
+    /// Generate icon data after all code is generated
+    /// This ensures tree-shaking works correctly
+    pub fn generate_icons(&mut self) -> String {
+        self.emit_icon_data();
         std::mem::take(&mut self.output)
     }
 
@@ -1151,5 +1162,55 @@ mod tests {
         // Check dev mode check in methods
         assert!(output.contains("if (typeof __devtools !== 'undefined' && __devtools.enabled)"));
         assert!(output.contains("const mock = await this._loadMock()"));
+    }
+
+    #[test]
+    fn test_icon_tracking() {
+        let source = r#"
+            App -> {
+                children: [
+                    Icon({ name: "search" }),
+                    Icon({ name: "arrow-left" })
+                ]
+            }
+        "#;
+
+        let mut lexer = Lexer::new(source).unwrap();
+        let tokens = lexer.tokenize().unwrap();
+        let mut parser = Parser::new(tokens);
+        let program = parser.parse().unwrap();
+
+        let mut codegen = JsCodegen::new();
+        codegen.generate(&program);
+
+        // Check that icons were tracked
+        let used_icons = codegen.get_used_icons();
+        assert!(used_icons.contains("search"));
+        assert!(used_icons.contains("arrow-left"));
+    }
+
+    #[test]
+    fn test_icon_data_generation() {
+        let source = r#"
+            App -> {
+                children: [Icon({ name: "search" })]
+            }
+        "#;
+
+        let mut lexer = Lexer::new(source).unwrap();
+        let tokens = lexer.tokenize().unwrap();
+        let mut parser = Parser::new(tokens);
+        let program = parser.parse().unwrap();
+
+        let mut codegen = JsCodegen::new();
+        codegen.generate(&program);
+        let icon_output = codegen.generate_icons();
+
+        // Check icon data is generated
+        assert!(icon_output.contains("const __icons = {"));
+        assert!(icon_output.contains("'search':"));
+        assert!(icon_output.contains("function Icon(props)"));
+        // search icon should contain the circle and path
+        assert!(icon_output.contains("<circle"));
     }
 }

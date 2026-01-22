@@ -165,6 +165,13 @@ pub fn build_project(input: &PathBuf, output: &PathBuf, mode: &str, target: &str
         }
     }
 
+    // Generate icon data after all files are compiled (tree-shaken)
+    let icon_js = codegen.generate_icons();
+    if !icon_js.is_empty() {
+        all_output.push_str("\n// Icon components\n");
+        all_output.push_str(&icon_js);
+    }
+
     // Register file-based routes
     if !routes.is_empty() {
         all_output.push_str("\n// File-based routes\n");
@@ -345,6 +352,13 @@ pub fn build_project_dev(
             all_output.push_str(&js);
             all_output.push('\n');
         }
+    }
+
+    // Generate icon data after all files are compiled (tree-shaken)
+    let icon_js = codegen.generate_icons();
+    if !icon_js.is_empty() {
+        all_output.push_str("\n// Icon components\n");
+        all_output.push_str(&icon_js);
     }
 
     if !routes.is_empty() {
