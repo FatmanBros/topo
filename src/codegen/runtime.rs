@@ -1062,4 +1062,79 @@ impl JsCodegen {
         self.indent -= 1;
         self.emit_line("}");
     }
+
+    /// Generate icon data for used icons only (tree-shaking)
+    pub fn emit_icon_data(&mut self) {
+        if self.used_icons.is_empty() {
+            return;
+        }
+
+        // Collect icon data first to avoid borrow conflict
+        let icon_data = super::icons::get_icon_data();
+        let icon_entries: Vec<(String, String)> = self.used_icons
+            .iter()
+            .filter_map(|name| {
+                icon_data.get(name.as_str()).map(|path| (name.clone(), path.to_string()))
+            })
+            .collect();
+
+        self.emit_line("// Icon data (tree-shaken)");
+        self.emit_line("const __icons = {");
+        self.indent += 1;
+
+        for (icon_name, svg_path) in &icon_entries {
+            self.emit_line(&format!("'{}': `{}`,", icon_name, svg_path));
+        }
+
+        self.indent -= 1;
+        self.emit_line("};");
+        self.emit_line("");
+
+        // Icon component function
+        self.emit_line("function Icon(props) {");
+        self.indent += 1;
+        self.emit_line("const name = props.name;");
+        self.emit_line("const size = props.size || 24;");
+        self.emit_line("const color = props.color || 'currentColor';");
+        self.emit_line("const strokeWidth = props.strokeWidth || 2;");
+        self.emit_line("const className = props.class || props.style || '';");
+        self.emit_line("");
+        self.emit_line("const path = __icons[name];");
+        self.emit_line("if (!path) {");
+        self.emit_line("  console.warn(`Icon \"${name}\" not found`);");
+        self.emit_line("  return { type: 'span', props: { content: `[${name}]` } };");
+        self.emit_line("}");
+        self.emit_line("");
+        self.emit_line("return {");
+        self.emit_line("  type: 'svg',");
+        self.emit_line("  props: {");
+        self.emit_line("    attr: {");
+        self.emit_line("      xmlns: 'http://www.w3.org/2000/svg',");
+        self.emit_line("      width: size,");
+        self.emit_line("      height: size,");
+        self.emit_line("      viewBox: '0 0 24 24',");
+        self.emit_line("      fill: 'none',");
+        self.emit_line("      stroke: color,");
+        self.emit_line("      'stroke-width': strokeWidth,");
+        self.emit_line("      'stroke-linecap': 'round',");
+        self.emit_line("      'stroke-linejoin': 'round',");
+        self.emit_line("      class: className");
+        self.emit_line("    },");
+        self.emit_line("    innerHTML: path");
+        self.emit_line("  }");
+        self.emit_line("};");
+        self.indent -= 1;
+        self.emit_line("}");
+        self.emit_line("");
+    }
+
+    /// Track an icon usage for tree-shaking
+    pub fn track_icon(&mut self, name: &str) {
+        self.used_icons.insert(name.to_string());
+    }
+
+    /// Get the set of used icons
+    pub fn get_used_icons(&self) -> &std::collections::HashSet<String> {
+        &self.used_icons
+    }
 }
