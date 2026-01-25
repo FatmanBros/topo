@@ -1,15 +1,16 @@
-// Icon atom - emoji-based icons for LP (no external dependencies)
-Icon(emoji, size) -> {
+// EmojiIcon atom - emoji-based icons for LP (no external dependencies)
+// Note: "Icon" is reserved for built-in Lucide icons
+EmojiIcon(emoji, size) -> {
     type: text
     content: emoji
     style: size || "text-2xl"
 }
 
 // Preset icons for LP
-MountainIcon -> Icon("⛰️", "text-3xl")
-SparkleIcon -> Icon("✨", "text-2xl")
-RocketIcon -> Icon("🚀", "text-2xl")
-CodeIcon -> Icon("💻", "text-2xl")
-BoxIcon -> Icon("📦", "text-2xl")
-LightningIcon -> Icon("⚡", "text-2xl")
-CheckIcon -> Icon("✓", "text-sm")
+MountainIcon -> EmojiIcon("⛰️", "text-3xl")
+SparkleIcon -> EmojiIcon("✨", "text-2xl")
+RocketIcon -> EmojiIcon("🚀", "text-2xl")
+CodeIcon -> EmojiIcon("💻", "text-2xl")
+BoxIcon -> EmojiIcon("📦", "text-2xl")
+LightningIcon -> EmojiIcon("⚡", "text-2xl")
+CheckIcon -> EmojiIcon("✓", "text-sm")

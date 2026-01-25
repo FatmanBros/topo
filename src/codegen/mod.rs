@@ -1219,4 +1219,124 @@ mod tests {
         // search icon should contain the circle and path
         assert!(icon_output.contains("<circle"));
     }
+
+    #[test]
+    fn test_anonymous_store_shorthand_in_subcomponents() {
+        let source = r#"
+            | {
+                State {
+                    inputText: ""
+                    isLoading: false
+                }
+                Actions {
+                    SetInputText(value)
+                    Submit
+                }
+            }
+
+            MainComponent -> {
+                children: [SubComponent]
+            }
+
+            SubComponent -> {
+                style: inputText.trim() != "" ? "active" : "inactive"
+                click: Submit
+            }
+        "#;
+
+        let mut lexer = Lexer::new(source).unwrap();
+        let tokens = lexer.tokenize().unwrap();
+        let mut parser = Parser::new(tokens);
+        let program = parser.parse().unwrap();
+
+        let mut codegen = JsCodegen::new();
+        let output = codegen.generate(&program);
+
+        // SubComponent should reference the anonymous store state
+        // The anonymous store should be named based on the file (but in tests, no file path)
+        // State fields should be resolved to store.state.field
+        assert!(output.contains(".state.inputText"), "State field should be resolved to store.state.inputText, got:\n{}", output);
+        // Actions should be resolved to dispatch
+        assert!(output.contains("dispatch("), "Action should be resolved to dispatch, got:\n{}", output);
+    }
+
+    #[test]
+    fn test_anonymous_store_shorthand_with_file_path() {
+        let source = r#"
+            | {
+                State {
+                    inputText: ""
+                    isLoading: false
+                }
+                Actions {
+                    SetInputText(value)
+                    Submit
+                }
+            }
+
+            InputStep -> {
+                children: [SendButton]
+            }
+
+            SendButton -> {
+                style: inputText.trim() != "" ? "active" : "inactive"
+                click: Submit
+            }
+        "#;
+
+        let mut lexer = Lexer::new(source).unwrap();
+        let tokens = lexer.tokenize().unwrap();
+        let mut parser = Parser::new(tokens);
+        let program = parser.parse().unwrap();
+
+        let mut codegen = JsCodegen::new();
+        // Simulate file path like in actual build
+        let output = codegen.generate_with_file_path(&program, Some("/pages/home/components/input-step.tp"));
+
+        // State fields should be resolved to _InputStepStore.state.inputText
+        // (underscore prefix because store name matches component name)
+        assert!(output.contains("_InputStepStore.state.inputText"),
+            "State field should be resolved to _InputStepStore.state.inputText, got:\n{}", output);
+        // Actions should be resolved to dispatch('InputStep', 'Submit')
+        assert!(output.contains("dispatch('InputStep', 'Submit')"),
+            "Action should be resolved to dispatch('InputStep', 'Submit'), got:\n{}", output);
+    }
+
+    #[test]
+    fn test_anonymous_store_shorthand_in_alias_component() {
+        let source = r#"
+            | {
+                State {
+                    inputText: ""
+                    isLoading: false
+                }
+                Actions {
+                    Submit
+                }
+            }
+
+            InputStep -> {
+                children: [SendButtonIcon]
+            }
+
+            SendButtonIcon -> Icon({
+                name: "arrow-right",
+                class: inputText.trim() != "" && !isLoading ? "active" : "inactive"
+            })
+        "#;
+
+        let mut lexer = Lexer::new(source).unwrap();
+        let tokens = lexer.tokenize().unwrap();
+        let mut parser = Parser::new(tokens);
+        let program = parser.parse().unwrap();
+
+        let mut codegen = JsCodegen::new();
+        let output = codegen.generate_with_file_path(&program, Some("/pages/home/components/input-step.tp"));
+
+        println!("Generated output:\n{}", output);
+
+        // State fields in alias component args should also be resolved
+        assert!(output.contains("_InputStepStore.state.inputText") || output.contains("InputStep.state.inputText"),
+            "State field in alias component should be resolved, got:\n{}", output);
+    }
 }

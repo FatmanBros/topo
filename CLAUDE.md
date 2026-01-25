@@ -15,6 +15,21 @@ git worktree add ../topo-feature feature-branch
 git worktree remove ../topo-feature
 ```
 
+## リリース手順
+
+タグを打つ前に必ず `Cargo.toml` の `version` を確認・更新すること。
+
+```bash
+# 1. Cargo.toml のバージョンを更新
+# 2. バージョン確認
+cargo run --bin topo -- --version
+
+# 3. コミット & タグ
+git commit -am "chore: bump version to x.x.x"
+git tag vx.x.x
+git push origin main --tags
+```
+
 ## ページ設計: Feature-based Structure
 
 ページは機能単位でディレクトリにまとめる。各コンポーネントは自身の Store を持ち、init で独立してデータ取得する。

@@ -12,7 +12,7 @@ e2e:
 	cargo run --bin topo -- test
 
 claude:
-	claude --dangerously-skip-permissions
+	claude-docker .
 
 # VSCode extension (build + package + install)
 vsc:
